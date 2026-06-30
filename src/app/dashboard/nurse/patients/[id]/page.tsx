@@ -8,8 +8,14 @@ import { SignsSymptomsTab } from "@/components/patients/signs-symptoms-tab";
 import { ClassificationTab } from "@/components/patients/classification-tab";
 import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
 import { AssessmentWizard } from "@/components/patients/assessment-wizard";
+import { PregnancyTab } from "@/components/patients/pregnancy-tab";
 import { ActivityTimeline } from "@/components/patients/activity-timeline";
-import { usePatient, useVisitsForPatient } from "@/lib/patients/use-patients";
+import {
+  usePatient,
+  useVisitsForPatient,
+  usePregnancyForPatient,
+} from "@/lib/patients/use-patients";
+import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { getInitials } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import {
@@ -24,6 +30,7 @@ const TABS = [
   "Patient Details",
   "Signs & Symptoms",
   "New Assessment",
+  "Pregnancy",
   "Classification",
   "Visit History",
 ] as const;
@@ -33,6 +40,7 @@ type Tab = (typeof TABS)[number];
 function PatientDetailContent({ patientId }: { patientId: string }) {
   const patient = usePatient(patientId);
   const visits = useVisitsForPatient(patientId);
+  const pregnancy = usePregnancyForPatient(patientId);
   const [activeTab, setActiveTab] = useState<Tab>("Patient Details");
 
   if (!patient) return notFound();
@@ -113,7 +121,11 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               {patient.name}
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {patient.age} years • {patient.gestationalAgeWeeks} weeks gestation
+              {patient.age} years •{" "}
+              {pregnancy
+                ? gestationalAgeWeeks(pregnancy.lmpDate)
+                : patient.gestationalAgeWeeks}{" "}
+              weeks gestation
             </p>
           </div>
           <RiskBadge level={currentRisk} />
@@ -145,6 +157,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           <SignsSymptomsTab patientId={patient.id} />
         )}
         {activeTab === "New Assessment" && <AssessmentWizard />}
+        {activeTab === "Pregnancy" && <PregnancyTab patientId={patient.id} />}
         {activeTab === "Classification" && (
           <ClassificationTab currentRisk={currentRisk} />
         )}
