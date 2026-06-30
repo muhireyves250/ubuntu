@@ -85,6 +85,62 @@ export function acceptReferral(patientId: string): Referral {
   return referral;
 }
 
+export interface FollowUpPatient {
+  patient: Patient;
+  latestRiskLevel: RiskLevel;
+  reason: "high-risk" | "overdue";
+}
+
+export function useFollowUpPatients(): FollowUpPatient[] {
+  const patients = usePatients();
+  const visits = useVisits();
+
+  return useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 14);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+    const results: FollowUpPatient[] = [];
+
+    for (const patient of patients) {
+      const patientVisits = visits
+        .filter((v) => v.patientId === patient.id)
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      const latestVisit = patientVisits[0];
+      const latestRiskLevel: RiskLevel = latestVisit?.riskLevel ?? "green";
+
+      if (latestRiskLevel === "yellow" || latestRiskLevel === "orange") {
+        results.push({ patient, latestRiskLevel, reason: "high-risk" });
+      } else if (latestVisit && latestVisit.date < cutoffStr) {
+        results.push({ patient, latestRiskLevel, reason: "overdue" });
+      }
+    }
+
+    return results;
+  }, [patients, visits]);
+}
+
+export interface TodaysVisit {
+  visit: Visit;
+  patient: Patient | undefined;
+}
+
+export function useTodaysVisits(): TodaysVisit[] {
+  const visits = useVisits();
+  const patients = usePatients();
+
+  return useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return visits
+      .filter((v) => v.date === today)
+      .map((visit) => ({
+        visit,
+        patient: patients.find((p) => p.id === visit.patientId),
+      }));
+  }, [visits, patients]);
+}
+
 export interface RiskSummary {
   totalPatients: number;
   totalVisits: number;
