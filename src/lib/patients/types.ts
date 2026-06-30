@@ -15,6 +15,8 @@ export interface VisitLabs {
   bpSystolic?: number;
   bpDiastolic?: number;
   hemoglobin?: number;
+  platelets?: number;
+  bloodSugar?: number;
   urineProtein?: "negative" | "trace" | "1+" | "2+" | "3+";
   fetalHeartRate?: number;
   temperature?: number;

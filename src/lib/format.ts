@@ -1,3 +1,9 @@
+import type { Visit } from "./patients/types";
+
+export function shortId(id: string): string {
+  return id.replace(/^patient-/, "PT-").slice(0, 14).toUpperCase();
+}
+
 export function getInitials(name: string): string {
   return name
     .split(" ")
@@ -5,6 +11,26 @@ export function getInitials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+export function formatLabs(visit: Visit): string {
+  const labs = visit.labs;
+  if (!labs) return "—";
+  const parts: string[] = [];
+  if (labs.bpSystolic != null && labs.bpDiastolic != null) {
+    parts.push(`BP ${labs.bpSystolic}/${labs.bpDiastolic}`);
+  }
+  if (labs.hemoglobin != null) parts.push(`Hb ${labs.hemoglobin}g/dl`);
+  if (labs.platelets != null) parts.push(`Plt ${labs.platelets}k`);
+  if (labs.bloodSugar != null) parts.push(`BG ${labs.bloodSugar}mmol/L`);
+  if (labs.urineProtein) parts.push(`Urine protein ${labs.urineProtein}`);
+  if (labs.fetalHeartRate != null) parts.push(`FHR ${labs.fetalHeartRate}bpm`);
+  if (labs.temperature != null) parts.push(`Temp ${labs.temperature}°C`);
+  if (labs.pulse != null) parts.push(`Pulse ${labs.pulse}bpm`);
+  if (labs.fundalHeight != null) parts.push(`Fundal height ${labs.fundalHeight}cm`);
+  if (labs.weight != null) parts.push(`Weight ${labs.weight}kg`);
+  if (labs.edema) parts.push(`Edema ${labs.edema}`);
+  return parts.length > 0 ? parts.join(" · ") : "—";
 }
 
 export function relativeTime(isoString: string): string {
