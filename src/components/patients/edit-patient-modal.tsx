@@ -3,34 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { updatePatient } from "@/lib/patients/use-patients";
+import { IconClose } from "@/components/dashboard/icons";
 import type { Patient } from "@/lib/patients/types";
 
-interface EditPatientModalProps {
+export function EditPatientModal({
+  patient,
+  onClose,
+}: {
   patient: Patient;
   onClose: () => void;
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
 }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-const inputCls =
-  "w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-100 placeholder:text-zinc-400";
-
-export function EditPatientModal({ patient, onClose }: EditPatientModalProps) {
   const [name, setName] = useState(patient.name);
   const [age, setAge] = useState(String(patient.age));
   const [gestationalAgeWeeks, setGestationalAgeWeeks] = useState(
@@ -40,21 +22,18 @@ export function EditPatientModal({ patient, onClose }: EditPatientModalProps) {
     patient.obstetricHistory,
   );
   const [medicalHistory, setMedicalHistory] = useState(patient.medicalHistory);
-  const [isSaving, setIsSaving] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     firstInputRef.current?.focus();
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
     }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setIsSaving(true);
+  function handleSubmit() {
     updatePatient(patient.id, {
       name: name.trim(),
       age: Number(age),
@@ -62,138 +41,114 @@ export function EditPatientModal({ patient, onClose }: EditPatientModalProps) {
       obstetricHistory: obstetricHistory.trim(),
       medicalHistory: medicalHistory.trim(),
     });
-    setIsSaving(false);
     onClose();
   }
 
+  const inputCls =
+    "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50";
+
   return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-patient-title"
-        className="flex w-full max-w-md flex-col rounded-3xl bg-white shadow-[0_24px_60px_-12px_rgba(0,0,0,0.25)] ring-1 ring-black/5"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between rounded-t-3xl bg-teal-700 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-white">
-                <path
-                  d="M11 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4M18.5 2.5a2.121 2.121 0 0 1 3 3L13 14l-4 1 1-4 7.5-7.5Z"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <div>
-              <h2
-                id="edit-patient-title"
-                className="text-sm font-semibold text-white"
-              >
-                Edit patient
-              </h2>
-              <p className="text-xs text-teal-200">{patient.name}</p>
-            </div>
-          </div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+      />
+
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-300 bg-[#ffeedb] p-6 shadow-2xl dark:border-zinc-700 dark:bg-orange-950/40">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+            Edit Patient
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-teal-100 transition-colors hover:bg-white/20 hover:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-zinc-500 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
           >
-            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-              <path
-                d="M18 6 6 18M6 6l12 12"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <IconClose className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Body */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-6">
-          <Field label="Full name">
+        <form
+          onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
+          className="mt-5 flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+        >
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Full name
             <input
               ref={firstInputRef}
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Patient full name"
               className={inputCls}
             />
-          </Field>
+          </label>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Age (years)">
+          <div className="flex gap-4">
+            <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Age
               <input
                 type="number"
                 required
                 min={10}
-                max={70}
+                max={60}
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 className={inputCls}
               />
-            </Field>
-            <Field label="Gestational age (wks)">
+            </label>
+
+            <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Gestational age (weeks)
               <input
                 type="number"
                 required
-                min={4}
+                min={1}
                 max={42}
                 value={gestationalAgeWeeks}
                 onChange={(e) => setGestationalAgeWeeks(e.target.value)}
                 className={inputCls}
               />
-            </Field>
+            </label>
           </div>
 
-          <Field label="Obstetric history">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Obstetric history
             <textarea
-              rows={3}
+              rows={2}
               value={obstetricHistory}
               onChange={(e) => setObstetricHistory(e.target.value)}
-              placeholder="e.g. G2P1, previous C/S…"
+              placeholder="e.g. G2P1, previous postpartum hemorrhage"
               className={`${inputCls} resize-none`}
             />
-          </Field>
+          </label>
 
-          <Field label="Medical history">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Medical history
             <textarea
-              rows={3}
+              rows={2}
               value={medicalHistory}
               onChange={(e) => setMedicalHistory(e.target.value)}
-              placeholder="e.g. hypertension, diabetes…"
+              placeholder="e.g. Chronic hypertension"
               className={`${inputCls} resize-none`}
             />
-          </Field>
+          </label>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-3 border-t border-zinc-100 pt-4">
+          <div className="mt-2 grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isSaving}
-              className="rounded-xl bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-600 active:scale-[0.98] disabled:opacity-60"
+              className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800"
             >
-              {isSaving ? "Saving…" : "Save changes"}
+              Save changes
             </button>
           </div>
         </form>
