@@ -127,37 +127,44 @@ export function NewPregnancyModal({
             />
           </label>
 
-          <div className="flex flex-col gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={previousPPH}
-                onChange={(event) => setPreviousPPH(event.target.checked)}
-                className="h-4 w-4 rounded border-zinc-300"
-              />
-              Previous postpartum hemorrhage (PPH)
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={previousEclampsia}
-                onChange={(event) => setPreviousEclampsia(event.target.checked)}
-                className="h-4 w-4 rounded border-zinc-300"
-              />
-              Previous eclampsia
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={previousStillbirth}
-                onChange={(event) =>
-                  setPreviousStillbirth(event.target.checked)
-                }
-                className="h-4 w-4 rounded border-zinc-300"
-              />
-              Previous stillbirth
-            </label>
-          </div>
+          <fieldset>
+            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Risk history
+            </legend>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={previousPPH}
+                  onChange={(event) => setPreviousPPH(event.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                />
+                Previous postpartum hemorrhage (PPH)
+              </label>
+              <label className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={previousEclampsia}
+                  onChange={(event) =>
+                    setPreviousEclampsia(event.target.checked)
+                  }
+                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                />
+                Previous eclampsia
+              </label>
+              <label className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={previousStillbirth}
+                  onChange={(event) =>
+                    setPreviousStillbirth(event.target.checked)
+                  }
+                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                />
+                Previous stillbirth
+              </label>
+            </div>
+          </fieldset>
 
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Last menstrual period (LMP)
