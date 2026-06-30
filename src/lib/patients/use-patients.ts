@@ -5,18 +5,35 @@ import {
   addPatient,
   addReferral,
   addVisit,
+  addPregnancy,
+  addAncVisit,
   getPatientsSnapshot,
   getReferralsSnapshot,
   getServerPatientsSnapshot,
   getServerReferralsSnapshot,
   getServerVisitsSnapshot,
+  getServerPregnanciesSnapshot,
+  getServerAncVisitsSnapshot,
   getVisitsSnapshot,
+  getPregnanciesSnapshot,
+  getAncVisitsSnapshot,
   subscribeToPatients,
   subscribeToReferrals,
   subscribeToVisits,
+  subscribeToPregnancies,
+  subscribeToAncVisits,
 } from "./storage";
 import { classifyRiskLevel } from "./symptom-checklist";
-import type { Patient, Referral, RiskLevel, Visit } from "./types";
+import { computeEdd } from "./pregnancy";
+import type {
+  Patient,
+  Referral,
+  RiskLevel,
+  Visit,
+  VisitLabs,
+  Pregnancy,
+  AncVisit,
+} from "./types";
 
 export function usePatients(): Patient[] {
   return useSyncExternalStore(
@@ -71,6 +88,45 @@ export function useActiveReferrals(): Referral[] {
   return useMemo(
     () => referrals.filter((r) => r.status === "active"),
     [referrals],
+  );
+}
+
+export function usePregnancies(): Pregnancy[] {
+  return useSyncExternalStore(
+    subscribeToPregnancies,
+    getPregnanciesSnapshot,
+    getServerPregnanciesSnapshot,
+  );
+}
+
+export function useAncVisits(): AncVisit[] {
+  return useSyncExternalStore(
+    subscribeToAncVisits,
+    getAncVisitsSnapshot,
+    getServerAncVisitsSnapshot,
+  );
+}
+
+export function usePregnancyForPatient(patientId: string): Pregnancy | null {
+  const pregnancies = usePregnancies();
+  return useMemo(
+    () =>
+      pregnancies.find(
+        (pregnancy) =>
+          pregnancy.patientId === patientId && pregnancy.status === "active",
+      ) ?? null,
+    [pregnancies, patientId],
+  );
+}
+
+export function useAncVisitsForPregnancy(pregnancyId: string): AncVisit[] {
+  const ancVisits = useAncVisits();
+  return useMemo(
+    () =>
+      ancVisits
+        .filter((visit) => visit.pregnancyId === pregnancyId)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [ancVisits, pregnancyId],
   );
 }
 
@@ -194,6 +250,7 @@ export function recordVisit(data: {
   date: string;
   symptomIds: string[];
   notes: string;
+  labs?: VisitLabs;
 }): Visit {
   const visit: Visit = {
     id: `visit-${crypto.randomUUID()}`,
@@ -202,7 +259,39 @@ export function recordVisit(data: {
     symptomIds: data.symptomIds,
     notes: data.notes,
     riskLevel: classifyRiskLevel(data.symptomIds),
+    labs: data.labs,
   };
   addVisit(visit);
   return visit;
+}
+
+export function createPregnancy(
+  data: Omit<Pregnancy, "id" | "eddDate" | "status" | "createdAt">,
+): Pregnancy {
+  const existing = getPregnanciesSnapshot().find(
+    (pregnancy) =>
+      pregnancy.patientId === data.patientId && pregnancy.status === "active",
+  );
+  if (existing) {
+    throw new Error("Patient already has an active pregnancy");
+  }
+
+  const pregnancy: Pregnancy = {
+    ...data,
+    id: `pregnancy-${crypto.randomUUID()}`,
+    eddDate: computeEdd(data.lmpDate),
+    status: "active",
+    createdAt: new Date().toISOString(),
+  };
+  addPregnancy(pregnancy);
+  return pregnancy;
+}
+
+export function recordAncVisit(data: Omit<AncVisit, "id">): AncVisit {
+  const ancVisit: AncVisit = {
+    ...data,
+    id: `anc-visit-${crypto.randomUUID()}`,
+  };
+  addAncVisit(ancVisit);
+  return ancVisit;
 }
