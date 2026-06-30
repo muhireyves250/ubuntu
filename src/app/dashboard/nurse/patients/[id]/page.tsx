@@ -10,10 +10,12 @@ import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
 import { AssessmentWizard } from "@/components/patients/assessment-wizard";
 import { PregnancyTab } from "@/components/patients/pregnancy-tab";
 import { ActivityTimeline } from "@/components/patients/activity-timeline";
+import { ProfileOverviewTab } from "@/components/patients/profile-overview-tab";
 import {
   usePatient,
   useVisitsForPatient,
   usePregnancyForPatient,
+  useAncVisitsForPregnancy,
 } from "@/lib/patients/use-patients";
 import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { getInitials } from "@/lib/format";
@@ -27,6 +29,7 @@ import {
 } from "@/components/dashboard/icons";
 
 const TABS = [
+  "Overview",
   "Patient Details",
   "Signs & Symptoms",
   "New Assessment",
@@ -41,7 +44,8 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const patient = usePatient(patientId);
   const visits = useVisitsForPatient(patientId);
   const pregnancy = usePregnancyForPatient(patientId);
-  const [activeTab, setActiveTab] = useState<Tab>("Patient Details");
+  const ancVisits = useAncVisitsForPregnancy(pregnancy?.id ?? "");
+  const [activeTab, setActiveTab] = useState<Tab>("Overview");
 
   if (!patient) return notFound();
 
@@ -49,6 +53,16 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {currentRisk === "red" && (
+        <div className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-sm">
+          <span>⚠</span>
+          <span>
+            HIGH RISK — This patient is currently classified Red. Immediate
+            review recommended.
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <h1 className="font-mono text-sm font-semibold text-zinc-900 dark:text-zinc-50">
           {patient.id.toUpperCase()}
@@ -150,6 +164,15 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
       </div>
 
       <div className="rounded-xl border border-zinc-300 bg-[#ffeedb] p-5 dark:border-zinc-700 dark:bg-orange-950/40">
+        {activeTab === "Overview" && (
+          <ProfileOverviewTab
+            patient={patient}
+            visits={visits}
+            pregnancy={pregnancy}
+            ancVisits={ancVisits}
+            onAction={(tab) => setActiveTab(tab as Tab)}
+          />
+        )}
         {activeTab === "Patient Details" && (
           <PatientDetailsTab patient={patient} />
         )}
