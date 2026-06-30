@@ -156,7 +156,9 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         {activeTab === "Signs & Symptoms" && (
           <SignsSymptomsTab patientId={patient.id} />
         )}
-        {activeTab === "New Assessment" && <AssessmentWizard />}
+        {activeTab === "New Assessment" && (
+          <AssessmentWizard patientId={patient.id} />
+        )}
         {activeTab === "Pregnancy" && <PregnancyTab patientId={patient.id} />}
         {activeTab === "Classification" && (
           <ClassificationTab currentRisk={currentRisk} />
