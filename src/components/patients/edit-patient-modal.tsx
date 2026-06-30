@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { updatePatient } from "@/lib/patients/use-patients";
 import type { Patient } from "@/lib/patients/types";
 
@@ -51,7 +52,7 @@ export function EditPatientModal({ patient, onClose }: EditPatientModalProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsSaving(true);
     updatePatient(patient.id, {
@@ -65,9 +66,9 @@ export function EditPatientModal({ patient, onClose }: EditPatientModalProps) {
     onClose();
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -197,6 +198,7 @@ export function EditPatientModal({ patient, onClose }: EditPatientModalProps) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
