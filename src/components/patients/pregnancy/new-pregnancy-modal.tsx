@@ -91,7 +91,7 @@ export function NewPregnancyModal({
           )}
 
           <div className="flex gap-4">
-            <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Gravidity
               <input
                 type="number"
@@ -99,10 +99,10 @@ export function NewPregnancyModal({
                 min={1}
                 value={gravidity}
                 onChange={(event) => setGravidity(event.target.value)}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </label>
-            <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Parity
               <input
                 type="number"
@@ -110,7 +110,7 @@ export function NewPregnancyModal({
                 min={0}
                 value={parity}
                 onChange={(event) => setParity(event.target.value)}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </label>
           </div>
