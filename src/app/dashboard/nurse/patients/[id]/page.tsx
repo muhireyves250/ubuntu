@@ -11,6 +11,7 @@ import { AssessmentWizard } from "@/components/patients/assessment-wizard";
 import { PregnancyTab } from "@/components/patients/pregnancy-tab";
 import { ActivityTimeline } from "@/components/patients/activity-timeline";
 import { ProfileOverviewTab } from "@/components/patients/profile-overview-tab";
+import { EditPatientModal } from "@/components/patients/edit-patient-modal";
 import {
   usePatient,
   useVisitsForPatient,
@@ -46,6 +47,8 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const pregnancy = usePregnancyForPatient(patientId);
   const ancVisits = useAncVisitsForPregnancy(pregnancy?.id ?? "");
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   if (!patient) return notFound();
 
@@ -53,6 +56,12 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {showEditModal && (
+        <EditPatientModal
+          patient={patient}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
       {currentRisk === "red" && (
         <div className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-sm">
           <span>⚠</span>
@@ -69,14 +78,30 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         </h1>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled
-            className="flex items-center gap-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
-          >
-            Actions
-            <IconChevronDown className="h-3.5 w-3.5" />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setActionsOpen((o) => !o)}
+              className="flex items-center gap-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-white/60 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
+            >
+              Actions
+              <IconChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {actionsOpen && (
+              <div className="absolute left-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionsOpen(false);
+                    setShowEditModal(true);
+                  }}
+                  className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
+                >
+                  Edit patient
+                </button>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             disabled
@@ -184,7 +209,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "Pregnancy" && <PregnancyTab patientId={patient.id} />}
         {activeTab === "Classification" && (
-          <ClassificationTab currentRisk={currentRisk} />
+          <ClassificationTab currentRisk={currentRisk} visits={visits} />
         )}
         {activeTab === "Visit History" && (
           <VisitHistoryTab

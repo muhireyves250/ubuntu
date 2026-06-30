@@ -167,3 +167,14 @@ export function addAncVisit(ancVisit: AncVisit) {
   writeList(ANC_VISITS_KEY, ancVisitsCache);
   ancVisitListeners.forEach((listener) => listener());
 }
+
+export function updatePatient(
+  patientId: string,
+  updates: Partial<Omit<Patient, "id" | "registeredAt">>,
+) {
+  patientsCache = loadPatients().map((p) =>
+    p.id === patientId ? { ...p, ...updates } : p,
+  );
+  writeList(PATIENTS_KEY, patientsCache);
+  patientListeners.forEach((listener) => listener());
+}

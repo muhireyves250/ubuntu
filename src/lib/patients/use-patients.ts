@@ -7,6 +7,7 @@ import {
   addVisit,
   addPregnancy,
   addAncVisit,
+  updatePatient as storageUpdatePatient,
   getPatientsSnapshot,
   getReferralsSnapshot,
   getServerPatientsSnapshot,
@@ -294,4 +295,11 @@ export function recordAncVisit(data: Omit<AncVisit, "id">): AncVisit {
   };
   addAncVisit(ancVisit);
   return ancVisit;
+}
+
+export function updatePatient(
+  patientId: string,
+  updates: Partial<Omit<Patient, "id" | "registeredAt">>,
+): void {
+  storageUpdatePatient(patientId, updates);
 }
