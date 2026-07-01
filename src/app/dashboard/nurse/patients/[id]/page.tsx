@@ -11,6 +11,7 @@ import { AssessmentWizard } from "@/components/patients/assessment-wizard";
 import { PregnancyTab } from "@/components/patients/pregnancy-tab";
 import { ActivityTimeline } from "@/components/patients/activity-timeline";
 import { ProfileOverviewTab } from "@/components/patients/profile-overview-tab";
+import { AiPredictionTab } from "@/components/patients/ai-prediction-panel";
 import { EditPatientModal } from "@/components/patients/edit-patient-modal";
 import { CreateReferralModal } from "@/components/patients/create-referral-modal";
 import {
@@ -38,6 +39,7 @@ const TABS = [
   "Pregnancy",
   "Classification",
   "Visit History",
+  "AI Prediction",
 ] as const;
 
 type Tab = (typeof TABS)[number];
@@ -231,6 +233,9 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             visits={visits}
             onAddVisit={() => setActiveTab("Signs & Symptoms")}
           />
+        )}
+        {activeTab === "AI Prediction" && (
+          <AiPredictionTab visits={visits} />
         )}
       </div>
 
