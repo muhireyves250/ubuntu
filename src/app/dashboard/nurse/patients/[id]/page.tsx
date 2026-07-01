@@ -12,6 +12,7 @@ import { PregnancyTab } from "@/components/patients/pregnancy-tab";
 import { ActivityTimeline } from "@/components/patients/activity-timeline";
 import { ProfileOverviewTab } from "@/components/patients/profile-overview-tab";
 import { EditPatientModal } from "@/components/patients/edit-patient-modal";
+import { CreateReferralModal } from "@/components/patients/create-referral-modal";
 import {
   usePatient,
   useVisitsForPatient,
@@ -48,6 +49,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const ancVisits = useAncVisitsForPregnancy(pregnancy?.id ?? "");
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
 
   if (!patient) return notFound();
@@ -60,6 +62,15 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         <EditPatientModal
           patient={patient}
           onClose={() => setShowEditModal(false)}
+        />
+      )}
+      {showReferralModal && (
+        <CreateReferralModal
+          patient={patient}
+          currentRisk={currentRisk}
+          clinicalSummary={visits[0]?.notes ?? ""}
+          onClose={() => setShowReferralModal(false)}
+          onCreated={() => setActiveTab("Visit History")}
         />
       )}
       {currentRisk === "red" && (
@@ -91,13 +102,17 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               <div className="absolute left-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                 <button
                   type="button"
-                  onClick={() => {
-                    setActionsOpen(false);
-                    setShowEditModal(true);
-                  }}
+                  onClick={() => { setActionsOpen(false); setShowEditModal(true); }}
                   className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
                 >
                   Edit patient
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActionsOpen(false); setShowReferralModal(true); }}
+                  className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
+                >
+                  Create referral
                 </button>
               </div>
             )}

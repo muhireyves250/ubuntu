@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   usePatients,
@@ -9,6 +9,8 @@ import {
   acceptReferral,
 } from "@/lib/patients/use-patients";
 import type { Patient } from "@/lib/patients/types";
+import { ConfirmModal } from "./confirm-modal";
+import { PatientEmergencyInfoModal } from "./patient-emergency-info-modal";
 
 function IconEmergency({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -47,11 +49,20 @@ interface RedCaseCardProps {
   patient: Patient;
   latestVisitDate: string;
   onAccept: (patientId: string) => void;
+  onViewInfo: (patientId: string) => void;
 }
 
-function RedCaseCard({ patient, latestVisitDate, onAccept }: RedCaseCardProps) {
+function RedCaseCard({ patient, latestVisitDate, onAccept, onViewInfo }: RedCaseCardProps) {
   return (
-    <div className="animate-pulse-ring-urgent flex items-start gap-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/30">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onViewInfo(patient.id)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") onViewInfo(patient.id);
+      }}
+      className="animate-pulse-ring-urgent flex cursor-pointer items-start gap-4 rounded-xl border border-red-200 bg-red-50 p-4 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:hover:bg-red-950/50"
+    >
       <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
         <IconEmergency className="h-5 w-5" />
       </div>
@@ -74,7 +85,10 @@ function RedCaseCard({ patient, latestVisitDate, onAccept }: RedCaseCardProps) {
       </div>
       <button
         type="button"
-        onClick={() => onAccept(patient.id)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onAccept(patient.id);
+        }}
         className="mt-0.5 shrink-0 flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-700 active:scale-95"
       >
         Accept
@@ -89,6 +103,8 @@ export function RedCaseAlertPanel() {
   const patients = usePatients();
   const visits = useVisits();
   const activeReferrals = useActiveReferrals();
+  const [pendingAccept, setPendingAccept] = useState<Patient | null>(null);
+  const [viewInfoPatientId, setViewInfoPatientId] = useState<string | null>(null);
 
   const acceptedPatientIds = useMemo(
     () => new Set(activeReferrals.map((r) => r.patientId)),
@@ -113,7 +129,7 @@ export function RedCaseAlertPanel() {
   if (redCases.length === 0) return null;
 
   return (
-    <div className="rounded-[1.25rem] border border-red-300 bg-red-50/60 p-6 shadow-[0_2px_12px_rgba(220,38,38,0.08)] dark:border-red-900/50 dark:bg-red-950/20">
+    <div className="rounded-[1.25rem] border border-red-300 bg-white p-6 shadow-[0_2px_12px_rgba(220,38,38,0.08)] dark:border-red-900/50 dark:bg-red-950/20">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="relative flex h-3 w-3">
@@ -143,12 +159,43 @@ export function RedCaseAlertPanel() {
             patient={patient}
             latestVisitDate={latestVisit?.date ?? "Unknown"}
             onAccept={(id) => {
-              acceptReferral(id);
-              router.push(`/dashboard/nurse/patients/${id}`);
+              const target = redCases.find(({ patient: p }) => p.id === id)?.patient;
+              if (target) setPendingAccept(target);
             }}
+            onViewInfo={setViewInfoPatientId}
           />
         ))}
       </div>
+
+      {pendingAccept && (
+        <ConfirmModal
+          title="Accept this emergency referral?"
+          description={`${pendingAccept.name} will be assigned to you and marked as an accepted referral.`}
+          confirmLabel="Accept"
+          tone="danger"
+          onConfirm={() => {
+            acceptReferral(pendingAccept.id);
+            router.push(`/dashboard/nurse/patients/${pendingAccept.id}`);
+          }}
+          onCancel={() => setPendingAccept(null)}
+        />
+      )}
+
+      {viewInfoPatientId && (() => {
+        const viewed = redCases.find(({ patient }) => patient.id === viewInfoPatientId);
+        if (!viewed) return null;
+        return (
+          <PatientEmergencyInfoModal
+            patient={viewed.patient}
+            latestVisit={viewed.latestVisit}
+            onClose={() => setViewInfoPatientId(null)}
+            onAccept={() => {
+              setViewInfoPatientId(null);
+              setPendingAccept(viewed.patient);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

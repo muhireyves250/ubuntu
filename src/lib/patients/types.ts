@@ -41,6 +41,9 @@ export interface Referral {
   patientId: string;
   acceptedAt: string;
   status: "active";
+  receivingFacility?: string;
+  reason?: string;
+  urgency?: "routine" | "urgent" | "emergency";
 }
 
 export interface Pregnancy {

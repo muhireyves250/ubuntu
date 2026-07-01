@@ -24,6 +24,13 @@ import {
   subscribeToPregnancies,
   subscribeToAncVisits,
 } from "./storage";
+import {
+  subscribeToAcknowledged,
+  getAcknowledgedSnapshot,
+  getServerAcknowledgedSnapshot,
+  acknowledgeAlert as storageAcknowledgeAlert,
+  type AcknowledgedAlert,
+} from "./alerts-storage";
 import { classifyRiskLevel } from "./symptom-checklist";
 import { computeEdd } from "./pregnancy";
 import type {
@@ -302,4 +309,26 @@ export function updatePatient(
   updates: Partial<Omit<Patient, "id" | "registeredAt">>,
 ): void {
   storageUpdatePatient(patientId, updates);
+}
+
+export function useAcknowledgedAlerts(): AcknowledgedAlert[] {
+  return useSyncExternalStore(
+    subscribeToAcknowledged,
+    getAcknowledgedSnapshot,
+    getServerAcknowledgedSnapshot,
+  );
+}
+
+export function useUnacknowledgedCount(): number {
+  const followUps = useFollowUpPatients();
+  const acknowledged = useAcknowledgedAlerts();
+  const ackIds = useMemo(
+    () => new Set(acknowledged.map((a) => a.patientId)),
+    [acknowledged],
+  );
+  return followUps.filter((f) => !ackIds.has(f.patient.id)).length;
+}
+
+export function acknowledgeAlert(patientId: string, note: string): void {
+  storageAcknowledgeAlert(patientId, note);
 }
