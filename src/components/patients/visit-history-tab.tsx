@@ -3,21 +3,45 @@
 import { Fragment, useState } from "react";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { nextDueVisit, missedVisits } from "@/lib/patients/pregnancy";
 import { formatLabs } from "@/lib/format";
-import type { Visit } from "@/lib/patients/types";
+import type { Pregnancy, Visit, VisitType } from "@/lib/patients/types";
 
 const SYMPTOM_LABEL = new Map(
   SYMPTOM_CHECKLIST.map((symptom) => [symptom.id, symptom.label]),
 );
 
+const TYPE_BADGE: Record<VisitType, string> = {
+  scheduled: "bg-teal-50 text-teal-800 dark:bg-teal-950/30 dark:text-teal-400",
+  unscheduled: "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
+  emergency: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+};
+
+function TypeBadge({ type }: { type: VisitType }) {
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${TYPE_BADGE[type]}`}>
+      {type}
+    </span>
+  );
+}
+
 export function VisitHistoryTab({
+  pregnancy,
   visits,
-  onAddVisit,
+  onLogScheduledVisit,
+  onLogUnscheduledVisit,
 }: {
+  pregnancy: Pregnancy;
   visits: Visit[];
-  onAddVisit: () => void;
+  onLogScheduledVisit: (week: number) => void;
+  onLogUnscheduledVisit: () => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const due = nextDueVisit(pregnancy, visits);
+  const missed = missedVisits(pregnancy, visits);
+  const unscheduledCount = visits.filter((v) => v.type === "unscheduled").length;
+  const emergencyCount = visits.filter((v) => v.type === "emergency").length;
 
   return (
     <div className="flex flex-col gap-3">
@@ -25,15 +49,37 @@ export function VisitHistoryTab({
         Antenatal Care Followup
       </p>
 
+      <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <span className="font-medium text-zinc-800 dark:text-zinc-200">
+          {due
+            ? `Next due: Week ${due.week}${due.overdue ? " (overdue)" : ""}`
+            : "All scheduled visits logged"}
+        </span>
+        {missed.length > 0 && (
+          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
+            {missed.length} missed
+          </span>
+        )}
+        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+          {unscheduledCount} unscheduled
+        </span>
+        <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-950/30 dark:text-red-400">
+          {emergencyCount} emergency
+        </span>
+      </div>
+
       <div className="scrollbar-hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
             <tr>
               <th className="px-3 py-2.5">No.</th>
               <th className="px-3 py-2.5">Visit Date</th>
+              <th className="px-3 py-2.5">Type</th>
               <th className="px-3 py-2.5">Risk</th>
               <th className="px-3 py-2.5">Signs &amp; Symptoms</th>
               <th className="px-3 py-2.5">Labs</th>
+              <th className="px-3 py-2.5">Hospital</th>
+              <th className="px-3 py-2.5">Nurse</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -54,6 +100,9 @@ export function VisitHistoryTab({
                       {visit.date}
                     </td>
                     <td className="px-3 py-2.5">
+                      <TypeBadge type={visit.type} />
+                    </td>
+                    <td className="px-3 py-2.5">
                       <RiskBadge level={visit.riskLevel} size="sm" />
                     </td>
                     <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
@@ -66,14 +115,28 @@ export function VisitHistoryTab({
                     <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
                       {formatLabs(visit)}
                     </td>
+                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
+                      {visit.hospital}
+                    </td>
+                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
+                      {visit.attendingNurse}
+                    </td>
                   </tr>
                   {expanded && (
                     <tr key={`${visit.id}-detail`}>
                       <td
-                        colSpan={5}
+                        colSpan={8}
                         className="bg-zinc-50 px-4 py-3 dark:bg-zinc-900"
                       >
                         <div className="flex flex-col gap-1.5 text-sm text-zinc-700 dark:text-zinc-300">
+                          {visit.type === "emergency" && visit.emergencySummary ? (
+                            <p>
+                              <span className="font-medium text-zinc-400">
+                                Summary:{" "}
+                              </span>
+                              {visit.emergencySummary}
+                            </p>
+                          ) : null}
                           {visit.notes ? (
                             <p>
                               <span className="font-medium text-zinc-400">
@@ -90,7 +153,7 @@ export function VisitHistoryTab({
                               {formatLabs(visit)}
                             </p>
                           ) : null}
-                          {!visit.notes && !visit.labs && (
+                          {!visit.notes && !visit.labs && !visit.emergencySummary && (
                             <p className="text-zinc-400">
                               No additional details recorded.
                             </p>
@@ -106,7 +169,7 @@ export function VisitHistoryTab({
             {visits.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={8}
                   className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400"
                 >
                   No visits recorded yet.
@@ -117,13 +180,23 @@ export function VisitHistoryTab({
         </table>
       </div>
 
-      <button
-        type="button"
-        onClick={onAddVisit}
-        className="w-fit rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-      >
-        + Add Row
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={!due}
+          onClick={() => due && onLogScheduledVisit(due.week)}
+          className="w-fit rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        >
+          Log Scheduled Visit
+        </button>
+        <button
+          type="button"
+          onClick={onLogUnscheduledVisit}
+          className="w-fit rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        >
+          Log Unscheduled Visit
+        </button>
+      </div>
     </div>
   );
 }
