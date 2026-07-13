@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { addReferral } from "@/lib/patients/storage";
+import { createReferral } from "@/lib/patients/use-patients";
 import { IconClose } from "@/components/dashboard/icons";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { fullName } from "@/lib/format";
@@ -51,11 +51,8 @@ export function CreateReferralModal({
   }, [onClose]);
 
   function handleSubmit() {
-    addReferral({
-      id: `referral-${crypto.randomUUID()}`,
+    createReferral({
       patientId: patient.id,
-      acceptedAt: new Date().toISOString(),
-      status: "active",
       receivingFacility,
       reason: reason.trim(),
       urgency,
