@@ -189,6 +189,7 @@ export function VisitHistoryTab({
           <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
             <tr>
               <th className="px-3 py-2.5">No.</th>
+              <th className="px-3 py-2.5">ANC Week</th>
               <th className="px-3 py-2.5">Visit Date</th>
               <th className="px-3 py-2.5">Type</th>
               <th className="px-3 py-2.5">Risk</th>
@@ -211,6 +212,9 @@ export function VisitHistoryTab({
                   >
                     <td className="px-3 py-2.5 text-zinc-500 dark:text-zinc-400">
                       {index + 1}
+                    </td>
+                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
+                      {visit.scheduledWeek != null ? `Week ${visit.scheduledWeek}` : "—"}
                     </td>
                     <td className="px-3 py-2.5 font-medium text-zinc-900 dark:text-zinc-50">
                       {visit.date}
@@ -241,7 +245,7 @@ export function VisitHistoryTab({
                   {expanded && (
                     <tr key={`${visit.id}-detail`}>
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="bg-zinc-50 px-4 py-3 dark:bg-zinc-900"
                       >
                         <div className="flex flex-col gap-1.5 text-sm text-zinc-700 dark:text-zinc-300">
