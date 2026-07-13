@@ -1,10 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth/auth-context";
 import { registerPatient } from "@/lib/patients/use-patients";
 import { IconClose } from "@/components/dashboard/icons";
 import type { Patient } from "@/lib/patients/types";
+
+const CHRONIC_CONDITION_OPTIONS = [
+  "Hypertension",
+  "Diabetes",
+  "Heart Disease",
+  "HIV",
+  "Asthma",
+  "Epilepsy",
+  "Kidney Disease",
+] as const;
+
+const inputCls =
+  "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50";
 
 export function RegisterPatientModal({
   onClose,
@@ -13,12 +25,33 @@ export function RegisterPatientModal({
   onClose: () => void;
   onRegistered: (patient: Patient) => void;
 }) {
-  const { user } = useAuth();
-  const [name, setName] = useState("");
-  const [age, setAge] = useState("");
-  const [gestationalAgeWeeks, setGestationalAgeWeeks] = useState("");
-  const [obstetricHistory, setObstetricHistory] = useState("");
-  const [medicalHistory, setMedicalHistory] = useState("");
+  // Personal Information
+  const [nationalId, setNationalId] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [phone, setPhone] = useState("");
+  const [altPhone, setAltPhone] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
+
+  // Address
+  const [district, setDistrict] = useState("");
+  const [sector, setSector] = useState("");
+  const [cell, setCell] = useState("");
+  const [village, setVillage] = useState("");
+
+  // Emergency Contact
+  const [contactName, setContactName] = useState("");
+  const [relationship, setRelationship] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+
+  // Basic Medical Information
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [rhFactor, setRhFactor] = useState<"" | "positive" | "negative">("");
+  const [allergies, setAllergies] = useState("");
+  const [chronicConditions, setChronicConditions] = useState<string[]>([]);
+  const [hasOtherCondition, setHasOtherCondition] = useState(false);
+  const [otherCondition, setOtherCondition] = useState("");
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -28,15 +61,43 @@ export function RegisterPatientModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
+  function toggleCondition(condition: string) {
+    setChronicConditions((current) =>
+      current.includes(condition)
+        ? current.filter((c) => c !== condition)
+        : [...current, condition],
+    );
+  }
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const conditions = [
+      ...chronicConditions,
+      ...(hasOtherCondition && otherCondition.trim() ? [otherCondition.trim()] : []),
+    ];
     const patient = registerPatient({
-      name,
-      age: Number(age),
-      gestationalAgeWeeks: Number(gestationalAgeWeeks),
-      facility: user?.facility ?? "Unknown facility",
-      obstetricHistory,
-      medicalHistory,
+      nationalId: nationalId.trim(),
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      dateOfBirth,
+      phone: phone.trim(),
+      altPhone: altPhone.trim() || undefined,
+      maritalStatus: maritalStatus.trim() || undefined,
+      address: {
+        district: district.trim(),
+        sector: sector.trim(),
+        cell: cell.trim(),
+        village: village.trim(),
+      },
+      emergencyContact: {
+        name: contactName.trim(),
+        relationship: relationship.trim(),
+        phone: contactPhone.trim(),
+      },
+      bloodGroup: bloodGroup.trim() || undefined,
+      rhFactor: rhFactor || undefined,
+      allergies: allergies.trim() || undefined,
+      chronicConditions: conditions.length > 0 ? conditions : undefined,
     });
     onRegistered(patient);
   }
@@ -64,69 +125,155 @@ export function RegisterPatientModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Full name
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
-
-          <div className="flex gap-4">
-            <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Age
-              <input
-                type="number"
-                required
-                min={10}
-                max={60}
-                value={age}
-                onChange={(event) => setAge(event.target.value)}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
+        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-6 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+          <fieldset className="flex flex-col gap-3">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Personal Information
+            </legend>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              National ID Number
+              <input type="text" required value={nationalId} onChange={(e) => setNationalId(e.target.value)} className={inputCls} />
             </label>
-
-            <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Gestational age (weeks)
-              <input
-                type="number"
-                required
-                min={1}
-                max={42}
-                value={gestationalAgeWeeks}
-                onChange={(event) => setGestationalAgeWeeks(event.target.value)}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
+            <div className="flex gap-4">
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                First Name
+                <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Last Name
+                <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Date of Birth
+              <input type="date" required value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputCls} />
             </label>
-          </div>
+            <div className="flex gap-4">
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Phone Number
+                <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Alternative Phone Number
+                <input type="text" value={altPhone} onChange={(e) => setAltPhone(e.target.value)} className={inputCls} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Marital Status
+              <input type="text" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={inputCls} />
+            </label>
+          </fieldset>
 
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Obstetric history
-            <textarea
-              rows={2}
-              value={obstetricHistory}
-              onChange={(event) => setObstetricHistory(event.target.value)}
-              placeholder="e.g. G2P1, previous postpartum hemorrhage"
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
+          <fieldset className="flex flex-col gap-3">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Address
+            </legend>
+            <div className="flex gap-4">
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                District
+                <input type="text" required value={district} onChange={(e) => setDistrict(e.target.value)} className={inputCls} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Sector
+                <input type="text" required value={sector} onChange={(e) => setSector(e.target.value)} className={inputCls} />
+              </label>
+            </div>
+            <div className="flex gap-4">
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Cell
+                <input type="text" required value={cell} onChange={(e) => setCell(e.target.value)} className={inputCls} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Village
+                <input type="text" required value={village} onChange={(e) => setVillage(e.target.value)} className={inputCls} />
+              </label>
+            </div>
+          </fieldset>
 
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Medical history
-            <textarea
-              rows={2}
-              value={medicalHistory}
-              onChange={(event) => setMedicalHistory(event.target.value)}
-              placeholder="e.g. Chronic hypertension"
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
+          <fieldset className="flex flex-col gap-3">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Emergency Contact
+            </legend>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Contact Name
+              <input type="text" required value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputCls} />
+            </label>
+            <div className="flex gap-4">
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Relationship
+                <input type="text" required value={relationship} onChange={(e) => setRelationship(e.target.value)} className={inputCls} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Phone Number
+                <input type="text" required value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputCls} />
+              </label>
+            </div>
+          </fieldset>
 
-          <div className="mt-2 grid grid-cols-2 gap-2.5">
+          <fieldset className="flex flex-col gap-3">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Basic Medical Information
+            </legend>
+            <div className="flex gap-4">
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Blood Group
+                <input type="text" placeholder="e.g. O" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={inputCls} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Rh Factor
+                <select value={rhFactor} onChange={(e) => setRhFactor(e.target.value as typeof rhFactor)} className={inputCls}>
+                  <option value="">Unknown</option>
+                  <option value="positive">Positive</option>
+                  <option value="negative">Negative</option>
+                </select>
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Known Allergies
+              <textarea rows={2} value={allergies} onChange={(e) => setAllergies(e.target.value)} className={inputCls} />
+            </label>
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Chronic Medical Conditions
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {CHRONIC_CONDITION_OPTIONS.map((condition) => (
+                  <label
+                    key={condition}
+                    className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={chronicConditions.includes(condition)}
+                      onChange={() => toggleCondition(condition)}
+                      className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                    />
+                    {condition}
+                  </label>
+                ))}
+                <label className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={hasOtherCondition}
+                    onChange={(e) => setHasOtherCondition(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                  />
+                  Other
+                </label>
+              </div>
+              {hasOtherCondition && (
+                <input
+                  type="text"
+                  placeholder="Specify condition"
+                  value={otherCondition}
+                  onChange={(e) => setOtherCondition(e.target.value)}
+                  className={`${inputCls} mt-2 w-full`}
+                />
+              )}
+            </div>
+          </fieldset>
+
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={onClose}
