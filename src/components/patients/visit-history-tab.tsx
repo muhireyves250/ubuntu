@@ -116,56 +116,69 @@ export function VisitHistoryTab({
                     ? "Missed"
                     : "Upcoming";
 
-            if (row.status !== "completed") {
-              return (
-                <div key={row.visitNumber} className={chipClasses}>
-                  <span>Week {row.dueByWeek}</span>
-                  <span className="text-[10px] uppercase tracking-wide opacity-80">{label}</span>
-                  {row.status === "due" && (
-                    <button
-                      type="button"
-                      onClick={() => onLogScheduledVisit(row.dueByWeek)}
-                      className="ml-1 rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-700"
-                    >
-                      Log
-                    </button>
-                  )}
-                </div>
-              );
-            }
-
             const isExpanded = expandedScheduleWeek === row.dueByWeek;
             return (
-              <button
-                key={row.visitNumber}
-                type="button"
-                onClick={() => setExpandedScheduleWeek(isExpanded ? null : row.dueByWeek)}
-                className={`${chipClasses} cursor-pointer hover:opacity-80`}
-              >
-                <span>Week {row.dueByWeek}</span>
-                <span className="text-[10px] uppercase tracking-wide opacity-80">{label}</span>
-              </button>
+              <div key={row.visitNumber} className={`${chipClasses} cursor-pointer hover:opacity-80`}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedScheduleWeek(isExpanded ? null : row.dueByWeek)}
+                  className="flex items-center gap-1.5"
+                >
+                  <span>Week {row.dueByWeek}</span>
+                  <span className="text-[10px] uppercase tracking-wide opacity-80">{label}</span>
+                </button>
+                {row.status === "due" && (
+                  <button
+                    type="button"
+                    onClick={() => onLogScheduledVisit(row.dueByWeek)}
+                    className="ml-1 rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-700"
+                  >
+                    Log
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
 
         {expandedScheduleWeek !== null && (() => {
-          const visit = visits.find(
-            (v) => v.type !== "emergency" && v.scheduledWeek === expandedScheduleWeek,
-          );
-          if (!visit) return null;
+          const row = scheduleRows.find((r) => r.dueByWeek === expandedScheduleWeek);
+          if (!row) return null;
+
+          if (row.status === "completed") {
+            const visit = visits.find(
+              (v) => v.type !== "emergency" && v.scheduledWeek === expandedScheduleWeek,
+            );
+            if (!visit) return null;
+            return (
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                <p className="mb-1 font-semibold uppercase tracking-wide text-zinc-400">
+                  Week {expandedScheduleWeek} visit — {visit.date}
+                </p>
+                <p>Hospital: {visit.hospital}</p>
+                <p>Nurse: {visit.attendingNurse}</p>
+                <p>Risk: {visit.riskLevel}</p>
+                {visit.notes && <p>Notes: {visit.notes}</p>}
+                <p>Labs: {formatLabs(visit)}</p>
+                {visit.treatment && <p>Treatment: {visit.treatment}</p>}
+                {visit.followUpPlan && <p>Follow-up plan: {visit.followUpPlan}</p>}
+              </div>
+            );
+          }
+
+          const explanation =
+            row.status === "missed"
+              ? `This visit was due by week ${row.dueByWeek} and was not logged. The patient is now at week ${currentWeeks}.`
+              : row.status === "due"
+                ? `This visit was due by week ${row.dueByWeek} and has not been logged yet. Log it now to stay on schedule.`
+                : `This visit is not yet due. Expected around week ${row.dueByWeek} (currently week ${currentWeeks}).`;
+
           return (
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
               <p className="mb-1 font-semibold uppercase tracking-wide text-zinc-400">
-                Week {expandedScheduleWeek} visit — {visit.date}
+                ANC visit {row.visitNumber} of {ANC_SCHEDULE.length} — Week {row.dueByWeek}
               </p>
-              <p>Hospital: {visit.hospital}</p>
-              <p>Nurse: {visit.attendingNurse}</p>
-              <p>Risk: {visit.riskLevel}</p>
-              {visit.notes && <p>Notes: {visit.notes}</p>}
-              <p>Labs: {formatLabs(visit)}</p>
-              {visit.treatment && <p>Treatment: {visit.treatment}</p>}
-              {visit.followUpPlan && <p>Follow-up plan: {visit.followUpPlan}</p>}
+              <p>{explanation}</p>
             </div>
           );
         })()}
