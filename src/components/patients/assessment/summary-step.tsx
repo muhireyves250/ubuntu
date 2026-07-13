@@ -22,24 +22,25 @@ const SEVERITY_COLORS: Record<string, string> = {
     "bg-zinc-50 text-zinc-600 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800",
 };
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export function SummaryStep({
   vitals,
   symptoms,
   labs,
-  patientId,
+  pregnancyId,
+  type,
+  scheduledWeek,
+  ancNumber,
   onRecorded,
 }: {
   vitals: VitalSigns;
   symptoms: string[];
   labs: LabValues;
-  patientId: string;
+  pregnancyId: string;
+  type: "scheduled" | "unscheduled";
+  scheduledWeek?: number;
+  ancNumber?: number;
   onRecorded: (visit: Visit) => void;
 }) {
-  const [date, setDate] = useState(today);
   const [notes, setNotes] = useState("");
 
   const bmi = computeBmi(vitals);
@@ -62,8 +63,10 @@ export function SummaryStep({
     };
     const hasVisitLabs = Object.values(visitLabs).some((v) => v !== undefined);
     const visit = recordVisit({
-      patientId,
-      date,
+      pregnancyId,
+      type,
+      scheduledWeek,
+      ancNumber,
       symptomIds: symptoms,
       notes,
       labs: hasVisitLabs ? visitLabs : undefined,
@@ -194,17 +197,6 @@ export function SummaryStep({
           </dl>
         </section>
       )}
-
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-        Visit date
-        <input
-          type="date"
-          required
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
-      </label>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
         Notes

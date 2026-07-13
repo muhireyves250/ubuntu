@@ -29,7 +29,17 @@ type StepNumber = (typeof STEPS)[number]["number"];
 
 const SYMPTOM_LABEL = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s.label]));
 
-export function AssessmentWizard({ patientId }: { patientId: string }) {
+export function AssessmentWizard({
+  pregnancyId,
+  type,
+  scheduledWeek,
+  ancNumber,
+}: {
+  pregnancyId: string;
+  type: "scheduled" | "unscheduled";
+  scheduledWeek?: number;
+  ancNumber?: number;
+}) {
   const [currentStep, setCurrentStep] = useState<StepNumber>(1);
   const [maxReachedStep, setMaxReachedStep] = useState<StepNumber>(1);
   const [vitals, setVitals] = useState<VitalSigns>(emptyVitalSigns());
@@ -165,7 +175,10 @@ export function AssessmentWizard({ patientId }: { patientId: string }) {
           vitals={vitals}
           symptoms={symptoms}
           labs={labs}
-          patientId={patientId}
+          pregnancyId={pregnancyId}
+          type={type}
+          scheduledWeek={scheduledWeek}
+          ancNumber={ancNumber}
           onRecorded={setSavedVisit}
         />
       )}
