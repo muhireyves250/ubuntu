@@ -1,0 +1,66 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { closeReferral } from "@/lib/patients/use-patients";
+import { IconClose } from "./icons";
+import type { Referral } from "@/lib/patients/types";
+
+export function CloseReferralModal({
+  referral,
+  patientName,
+  onClose,
+  onClosed,
+}: {
+  referral: Referral;
+  patientName: string;
+  onClose: () => void;
+  onClosed: () => void;
+}) {
+  const [outcome, setOutcome] = useState<"recovered" | "died">("recovered");
+  const [outcomeStatement, setOutcomeStatement] = useState("");
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    closeReferral(referral.id, { outcome, outcomeStatement });
+    onClosed();
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-300 bg-[#ffeedb] p-6 shadow-2xl dark:border-zinc-700 dark:bg-orange-950/40">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Close Referral — {patientName}</h2>
+          <button type="button" onClick={onClose} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-zinc-500 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800">
+            <IconClose className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Outcome
+            <select value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)} className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50">
+              <option value="recovered">Recovered</option>
+              <option value="died">Died</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Outcome statement
+            <textarea required rows={4} value={outcomeStatement} onChange={(e) => setOutcomeStatement(e.target.value)} placeholder="Describe the case outcome…" className="resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
+          </label>
+          <div className="mt-2 grid grid-cols-2 gap-2.5">
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">Cancel</button>
+            <button type="submit" className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800">Close Case</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
