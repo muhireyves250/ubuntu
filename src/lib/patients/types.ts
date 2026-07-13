@@ -64,14 +64,25 @@ export interface Visit {
   emergencySummary?: string;
 }
 
+export type ReferralStatus = "pending" | "accepted" | "closed";
+export type ReferralOutcome = "recovered" | "died";
+
 export interface Referral {
   id: string;
   patientId: string;
-  acceptedAt: string;
-  status: "active";
-  receivingFacility?: string;
-  reason?: string;
-  urgency?: "routine" | "urgent" | "emergency";
+  createdAt: string;
+  status: ReferralStatus;
+  receivingFacility: string;
+  reason: string;
+  urgency: "routine" | "urgent" | "emergency";
+  referredByNurse: string;
+  referredByFacility: string;
+  acceptedAt?: string;
+  acceptedByNurse?: string;
+  acceptedByFacility?: string;
+  closedAt?: string;
+  outcome?: ReferralOutcome;
+  outcomeStatement?: string;
 }
 
 export interface Pregnancy {
