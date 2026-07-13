@@ -27,7 +27,9 @@ function itemLabel(item: TimelineItem): string {
       }
       return `Unscheduled visit — classified ${item.data.riskLevel}`;
     case "referral":
-      return "Referral accepted";
+      if (item.data.status === "pending") return "Referral sent — pending acceptance";
+      if (item.data.status === "accepted") return "Referral accepted";
+      return "Referral closed";
     case "milestone":
       return `ANC visit ${item.data.visitNumber} of 10 recommended — due by week ${item.data.dueByWeek}`;
   }
@@ -70,7 +72,7 @@ export function PregnancyTimeline({
           ({
             kind: "referral",
             id: referral.id,
-            date: referral.acceptedAt.slice(0, 10),
+            date: (referral.acceptedAt ?? referral.createdAt).slice(0, 10),
             data: referral,
           }) satisfies TimelineItem,
       ),
@@ -128,7 +130,13 @@ export function PregnancyTimeline({
                   </>
                 )}
                 {item.kind === "referral" && (
-                  <p>Accepted at: {item.data.acceptedAt}</p>
+                  <>
+                    <p>Referred to: {item.data.receivingFacility}</p>
+                    {item.data.acceptedAt && <p>Accepted at: {item.data.acceptedAt}</p>}
+                    {item.data.outcome && (
+                      <p>Outcome: {item.data.outcome} — {item.data.outcomeStatement}</p>
+                    )}
+                  </>
                 )}
                 {item.kind === "milestone" && (
                   <p>
