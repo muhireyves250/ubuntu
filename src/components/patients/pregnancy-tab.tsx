@@ -97,7 +97,13 @@ function PregnancySection({ pregnancy }: { pregnancy: Pregnancy }) {
   );
 }
 
-export function PregnancyTab({ patientId }: { patientId: string }) {
+export function PregnancyTab({
+  patientId,
+  onGoToVisitHistory,
+}: {
+  patientId: string;
+  onGoToVisitHistory: () => void;
+}) {
   const pregnancies = usePregnanciesForPatient(patientId);
   const openPregnancy = pregnancies.find((p) => p.status === "open");
   const closedPregnancies = pregnancies.filter((p) => p.status === "closed");
@@ -160,6 +166,13 @@ export function PregnancyTab({ patientId }: { patientId: string }) {
       {openPregnancy && (
         <>
           <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={onGoToVisitHistory}
+              className="w-fit rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+            >
+              Continue to Visit History
+            </button>
             <button
               type="button"
               onClick={() => setShowClosePregnancy(true)}

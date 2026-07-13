@@ -282,7 +282,12 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             )}
           </>
         )}
-        {activeTab === "Pregnancy" && <PregnancyTab patientId={patient.id} />}
+        {activeTab === "Pregnancy" && (
+          <PregnancyTab
+            patientId={patient.id}
+            onGoToVisitHistory={() => setActiveTab("Visit History")}
+          />
+        )}
         {activeTab === "Visit History" && (
           <>
             {openPregnancy ? (
