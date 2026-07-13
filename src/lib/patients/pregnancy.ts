@@ -1,4 +1,4 @@
-import type { AncVisit, Pregnancy } from "./types";
+import type { Pregnancy, Visit } from "./types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -16,10 +16,16 @@ export function gestationalAgeWeeks(lmpDate: string, asOf?: string): number {
 }
 
 export const ANC_SCHEDULE: { visitNumber: number; dueByWeek: number }[] = [
-  { visitNumber: 1, dueByWeek: 12 },
-  { visitNumber: 2, dueByWeek: 26 },
-  { visitNumber: 3, dueByWeek: 30 },
-  { visitNumber: 4, dueByWeek: 36 },
+  { visitNumber: 1, dueByWeek: 8 },
+  { visitNumber: 2, dueByWeek: 12 },
+  { visitNumber: 3, dueByWeek: 16 },
+  { visitNumber: 4, dueByWeek: 20 },
+  { visitNumber: 5, dueByWeek: 24 },
+  { visitNumber: 6, dueByWeek: 28 },
+  { visitNumber: 7, dueByWeek: 32 },
+  { visitNumber: 8, dueByWeek: 36 },
+  { visitNumber: 9, dueByWeek: 38 },
+  { visitNumber: 10, dueByWeek: 40 },
 ];
 
 export interface Milestone {
@@ -31,10 +37,10 @@ export interface Milestone {
 
 export function deriveMilestones(
   pregnancy: Pregnancy,
-  ancVisits: AncVisit[],
+  visits: Visit[],
   asOf?: string,
 ): Milestone[] {
-  const loggedCount = ancVisits.length;
+  const loggedCount = visits.filter((v) => v.type !== "emergency").length;
   const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate, asOf);
 
   return ANC_SCHEDULE.filter(
@@ -45,4 +51,31 @@ export function deriveMilestones(
     dueByWeek: scheduled.dueByWeek,
     overdue: currentWeeks > scheduled.dueByWeek,
   }));
+}
+
+export function nextDueVisit(
+  pregnancy: Pregnancy,
+  visits: Visit[],
+): { week: number; overdue: boolean } | null {
+  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate);
+  const loggedWeeks = new Set(
+    visits
+      .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
+      .map((v) => v.scheduledWeek as number),
+  );
+  const next = ANC_SCHEDULE.find((s) => !loggedWeeks.has(s.dueByWeek));
+  if (!next) return null;
+  return { week: next.dueByWeek, overdue: currentWeeks > next.dueByWeek };
+}
+
+export function missedVisits(pregnancy: Pregnancy, visits: Visit[]): number[] {
+  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate);
+  const loggedWeeks = new Set(
+    visits
+      .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
+      .map((v) => v.scheduledWeek as number),
+  );
+  return ANC_SCHEDULE.filter(
+    (s) => s.dueByWeek < currentWeeks && !loggedWeeks.has(s.dueByWeek),
+  ).map((s) => s.dueByWeek);
 }
