@@ -1,102 +1,73 @@
 "use client";
 
-const URINE_PROTEIN_OPTIONS = ["negative", "trace", "1+", "2+", "3+"] as const;
-
-export interface LabValues {
-  hemoglobin: string;
-  platelets: string;
-  bloodSugar: string;
-  urineProtein: string;
-}
-
-export function emptyLabValues(): LabValues {
-  return { hemoglobin: "", platelets: "", bloodSugar: "", urineProtein: "" };
-}
-
-interface LabFieldProps {
-  label: string;
-  hint: string;
-  value: string;
-  onChange: (v: string) => void;
-  step?: string;
-  placeholder: string;
-}
-
-function LabField({ label, hint, value, onChange, step, placeholder }: LabFieldProps) {
-  return (
-    <label className="flex flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-      {label}
-      <input
-        type="number"
-        inputMode="decimal"
-        min={0}
-        step={step ?? "0.1"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-      />
-      <span className="text-xs font-normal text-zinc-400">{hint}</span>
-    </label>
-  );
-}
+import { IconAlert, IconClipboard } from "@/components/dashboard/icons";
 
 export function LabsStep({
-  values,
+  labsOrdered,
   onChange,
 }: {
-  values: LabValues;
-  onChange: (field: keyof LabValues, value: string) => void;
+  labsOrdered: boolean;
+  onChange: (ordered: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-        Laboratory Results{" "}
-        <span className="normal-case font-normal">(all optional)</span>
+        Laboratory Tests
+      </p>
+      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        Hemoglobin, platelets, blood sugar, and urine protein are filled in by the
+        laboratory nurse, not here. Choose whether this visit needs lab work.
       </p>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <LabField
-          label="Hemoglobin (g/dL)"
-          hint="Normal: 11–16 g/dL"
-          value={values.hemoglobin}
-          onChange={(v) => onChange("hemoglobin", v)}
-          placeholder="e.g. 12.5"
-        />
-        <LabField
-          label="Platelets (×10³/μL)"
-          hint="Normal: 150–400 ×10³/μL"
-          value={values.platelets}
-          onChange={(v) => onChange("platelets", v)}
-          step="1"
-          placeholder="e.g. 250"
-        />
-        <LabField
-          label="Blood Sugar (mmol/L)"
-          hint="Normal fasting: 3.9–5.5 mmol/L"
-          value={values.bloodSugar}
-          onChange={(v) => onChange("bloodSugar", v)}
-          placeholder="e.g. 4.8"
-        />
-        <label className="flex flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Urine Protein
-          <select
-            value={values.urineProtein}
-            onChange={(e) => onChange("urineProtein", e.target.value)}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          >
-            <option value="">— not tested —</option>
-            {URINE_PROTEIN_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs font-normal text-zinc-400">
-            Select result if tested
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors ${
+            !labsOrdered
+              ? "border-teal-400 bg-teal-50 dark:border-teal-700 dark:bg-teal-950/30"
+              : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+          }`}
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-teal-700 dark:bg-zinc-900 dark:text-teal-400">
+            <IconClipboard className="h-4 w-4" />
           </span>
-        </label>
+          <span className="font-medium text-zinc-900 dark:text-zinc-50">
+            No lab tests needed
+          </span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            Continue straight to summary.
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors ${
+            labsOrdered
+              ? "border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30"
+              : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+          }`}
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-amber-700 dark:bg-zinc-900 dark:text-amber-400">
+            <IconAlert className="h-4 w-4" />
+          </span>
+          <span className="font-medium text-zinc-900 dark:text-zinc-50">
+            Order laboratory tests
+          </span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            Sends this visit to the laboratory nurse for results.
+          </span>
+        </button>
       </div>
+
+      {labsOrdered && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          This visit will be marked as awaiting lab results once submitted. The
+          laboratory nurse will fill in Hb, platelets, blood sugar, and urine
+          protein.
+        </p>
+      )}
     </div>
   );
 }
