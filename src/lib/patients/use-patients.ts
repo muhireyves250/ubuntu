@@ -9,6 +9,7 @@ import {
   updatePatient as storageUpdatePatient,
   updatePregnancy as storageUpdatePregnancy,
   updateReferral as storageUpdateReferral,
+  updateVisit as storageUpdateVisit,
   getPatientsSnapshot,
   getReferralsSnapshot,
   getServerPatientsSnapshot,
@@ -68,6 +69,37 @@ export function useVisits(): Visit[] {
     getVisitsSnapshot,
     getServerVisitsSnapshot,
   );
+}
+
+export function useLabQueue(): Visit[] {
+  const visits = useVisits();
+  return useMemo(
+    () =>
+      visits
+        .filter((v) => v.labStatus === "pending")
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [visits],
+  );
+}
+
+export function completeLabWork(
+  visitId: string,
+  results: {
+    hemoglobin?: number;
+    platelets?: number;
+    bloodSugar?: number;
+    urineProtein?: VisitLabs["urineProtein"];
+  },
+): Visit {
+  const visit = getVisitsSnapshot().find((v) => v.id === visitId);
+  if (!visit || visit.labStatus !== "pending") {
+    throw new Error("Visit has no pending lab request");
+  }
+  storageUpdateVisit(visitId, {
+    labStatus: "completed",
+    labs: { ...visit.labs, ...results },
+  });
+  return getVisitsSnapshot().find((v) => v.id === visitId)!;
 }
 
 export function usePatient(patientId: string): Patient | undefined {
@@ -349,6 +381,7 @@ export function recordVisit(data: {
   symptomIds: string[];
   notes: string;
   labs?: VisitLabs;
+  labStatus?: "pending";
   emergencySummary?: string;
   treatment?: string;
   followUpPlan?: string;
@@ -368,6 +401,7 @@ export function recordVisit(data: {
     notes: data.notes,
     riskLevel,
     labs: data.labs,
+    labStatus: data.labStatus,
     emergencySummary: data.emergencySummary,
     treatment: data.treatment,
     followUpPlan: data.followUpPlan,

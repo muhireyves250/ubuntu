@@ -1,5 +1,6 @@
 export type Role =
   | "nurse"
+  | "lab_nurse"
   | "hc_head"
   | "dh_clinical_director"
   | "th_gynecologist"
