@@ -30,19 +30,39 @@ function writeList<T>(key: string, items: T[]) {
   window.localStorage.setItem(key, JSON.stringify(items));
 }
 
+function isCurrentShapePatient(patient: Patient): boolean {
+  return (
+    typeof patient.nationalId === "string" &&
+    typeof patient.address === "object" &&
+    patient.address !== null &&
+    typeof patient.emergencyContact === "object" &&
+    patient.emergencyContact !== null
+  );
+}
+
+function isCurrentShapeVisit(visit: Visit): boolean {
+  return typeof visit.pregnancyId === "string" && typeof visit.type === "string";
+}
+
+function isCurrentShapePregnancy(pregnancy: Pregnancy): boolean {
+  return typeof pregnancy.status === "string" && typeof pregnancy.startDate === "string";
+}
+
 function loadPatients(): Patient[] {
   if (patientsCache) return patientsCache;
   const stored = readList<Patient>(PATIENTS_KEY);
-  patientsCache = stored ?? SEED_PATIENTS;
-  if (!stored) writeList(PATIENTS_KEY, patientsCache);
+  const usable = stored && stored.every(isCurrentShapePatient) ? stored : null;
+  patientsCache = usable ?? SEED_PATIENTS;
+  if (!usable) writeList(PATIENTS_KEY, patientsCache);
   return patientsCache;
 }
 
 function loadVisits(): Visit[] {
   if (visitsCache) return visitsCache;
   const stored = readList<Visit>(VISITS_KEY);
-  visitsCache = stored ?? SEED_VISITS;
-  if (!stored) writeList(VISITS_KEY, visitsCache);
+  const usable = stored && stored.every(isCurrentShapeVisit) ? stored : null;
+  visitsCache = usable ?? SEED_VISITS;
+  if (!usable) writeList(VISITS_KEY, visitsCache);
   return visitsCache;
 }
 
@@ -57,8 +77,9 @@ function loadReferrals(): Referral[] {
 function loadPregnancies(): Pregnancy[] {
   if (pregnanciesCache) return pregnanciesCache;
   const stored = readList<Pregnancy>(PREGNANCIES_KEY);
-  pregnanciesCache = stored ?? SEED_PREGNANCIES;
-  if (!stored) writeList(PREGNANCIES_KEY, pregnanciesCache);
+  const usable = stored && stored.every(isCurrentShapePregnancy) ? stored : null;
+  pregnanciesCache = usable ?? SEED_PREGNANCIES;
+  if (!usable) writeList(PREGNANCIES_KEY, pregnanciesCache);
   return pregnanciesCache;
 }
 
