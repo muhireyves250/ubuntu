@@ -98,7 +98,7 @@ function DhDashboardContent() {
                         <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
                           {fullName(patient)}
                         </p>
-                        <p className="text-xs text-zinc-500">{relativeTime(referral.acceptedAt)}</p>
+                        <p className="text-xs text-zinc-500">{relativeTime(referral.acceptedAt ?? referral.createdAt)}</p>
                       </div>
                       {referral.urgency && (
                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
