@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { RoleGuard } from "@/components/role-guard";
 import { PatientDetailsTab } from "@/components/patients/patient-details-tab";
 import { SignsSymptomsTab } from "@/components/patients/signs-symptoms-tab";
-import { ClassificationTab } from "@/components/patients/classification-tab";
 import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
 import { AssessmentWizard } from "@/components/patients/assessment-wizard";
 import { PregnancyTab } from "@/components/patients/pregnancy-tab";
@@ -36,10 +35,9 @@ const TABS = [
   "Overview",
   "Patient Details",
   "Signs & Symptoms",
-  "New Assessment",
   "Pregnancy",
-  "Classification",
   "Visit History",
+  "New Assessment",
   "AI Prediction",
 ] as const;
 
@@ -252,7 +250,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                     Referral
                   </p>
                   <p className="text-zinc-700 dark:text-zinc-300">
-                    Urgency: {emergencyResult.referral.urgency}
+                    Sent to {emergencyResult.referral.receivingFacility} — pending acceptance
                   </p>
                 </div>
                 <button
@@ -285,9 +283,6 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           </>
         )}
         {activeTab === "Pregnancy" && <PregnancyTab patientId={patient.id} />}
-        {activeTab === "Classification" && (
-          <ClassificationTab currentRisk={currentRisk} visits={allVisits} />
-        )}
         {activeTab === "Visit History" && (
           <>
             {openPregnancy ? (
