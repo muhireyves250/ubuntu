@@ -58,6 +58,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/nurse/referrals",
     enabledRoles: ["nurse", "admin"],
   },
+  {
+    label: "Lab Queue",
+    icon: IconClipboard,
+    href: "/dashboard/lab",
+    enabledRoles: ["lab_nurse", "admin"],
+  },
 ];
 
 import { useState } from "react";
