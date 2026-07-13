@@ -11,77 +11,166 @@ import { NewPregnancyModal } from "@/components/patients/pregnancy/new-pregnancy
 import { ClosePregnancyModal } from "@/components/patients/pregnancy/close-pregnancy-modal";
 import { PregnancyTimeline } from "@/components/patients/pregnancy/pregnancy-timeline";
 import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
+import { IconAlert, IconCalendar, IconClipboard } from "@/components/dashboard/icons";
 import type { Pregnancy } from "@/lib/patients/types";
+
+const FULL_TERM_WEEKS = 40;
+
+function StatChip({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3.5 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+          {label}
+        </p>
+        <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function PregnancySummaryCard({ pregnancy }: { pregnancy: Pregnancy }) {
   const weeks = gestationalAgeWeeks(pregnancy.lmpDate);
+  const progressPct = Math.min(100, Math.round((weeks / FULL_TERM_WEEKS) * 100));
+  const riskFlags = [
+    pregnancy.previousPPH && "Previous PPH",
+    pregnancy.previousEclampsia && "Previous eclampsia",
+    pregnancy.previousStillbirth && "Previous stillbirth",
+  ].filter((f): f is string => Boolean(f));
 
   return (
-    <div className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900 sm:grid-cols-2">
-      <p>
-        <span className="text-zinc-400">Gravidity / Parity</span>
-        <br />
-        <span className="font-medium text-zinc-900 dark:text-zinc-50">
-          G{pregnancy.gravidity} P{pregnancy.parity}
+    <div className="overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-[#ffeedb] px-5 py-3.5 dark:border-zinc-800 dark:bg-orange-950/40">
+        <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">
+          Pregnancy #{pregnancy.pregnancyNumber}
+        </h3>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+            pregnancy.status === "open"
+              ? "bg-teal-700 text-white"
+              : "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+          }`}
+        >
+          {pregnancy.status}
         </span>
-      </p>
-      <p>
-        <span className="text-zinc-400">Previous C-sections</span>
-        <br />
-        <span className="font-medium text-zinc-900 dark:text-zinc-50">
-          {pregnancy.previousCS}
-        </span>
-      </p>
-      <p>
-        <span className="text-zinc-400">LMP</span>
-        <br />
-        <span className="font-medium text-zinc-900 dark:text-zinc-50">
-          {pregnancy.lmpDate}
-        </span>
-      </p>
-      <p>
-        <span className="text-zinc-400">EDD</span>
-        <br />
-        <span className="font-medium text-zinc-900 dark:text-zinc-50">
-          {pregnancy.eddDate}
-        </span>
-      </p>
-      <p>
-        <span className="text-zinc-400">
-          {pregnancy.status === "open" ? "Gestational age" : "Delivery date"}
-        </span>
-        <br />
-        <span className="font-medium text-zinc-900 dark:text-zinc-50">
-          {pregnancy.status === "open" ? `${weeks} weeks` : pregnancy.delivery?.date}
-        </span>
-      </p>
-      <div className="flex flex-wrap items-start gap-1.5">
-        {pregnancy.previousPPH && (
-          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
-            Previous PPH
-          </span>
+      </div>
+
+      <div className="flex flex-col gap-4 bg-white p-5 dark:bg-zinc-900">
+        {pregnancy.status === "open" && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                Week {weeks} of {FULL_TERM_WEEKS}
+              </span>
+              <span className="text-xs text-zinc-400">
+                Due {pregnancy.eddDate}
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+              <div
+                className="h-full rounded-full bg-teal-600 transition-all"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
         )}
-        {pregnancy.previousEclampsia && (
-          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
-            Previous eclampsia
-          </span>
+
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <StatChip
+            icon={<IconClipboard className="h-4.5 w-4.5" />}
+            label="Gravidity / Parity"
+            value={`G${pregnancy.gravidity} P${pregnancy.parity}`}
+          />
+          <StatChip
+            icon={<IconAlert className="h-4.5 w-4.5" />}
+            label="Previous C-sections"
+            value={pregnancy.previousCS}
+          />
+          <StatChip
+            icon={<IconCalendar className="h-4.5 w-4.5" />}
+            label="LMP"
+            value={pregnancy.lmpDate}
+          />
+          <StatChip
+            icon={<IconCalendar className="h-4.5 w-4.5" />}
+            label={pregnancy.status === "open" ? "EDD" : "Delivery date"}
+            value={pregnancy.status === "open" ? pregnancy.eddDate : pregnancy.delivery?.date}
+          />
+        </div>
+
+        {riskFlags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {riskFlags.map((flag) => (
+              <span
+                key={flag}
+                className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-950/30 dark:text-orange-400"
+              >
+                <IconAlert className="h-3 w-3" />
+                {flag}
+              </span>
+            ))}
+          </div>
         )}
-        {pregnancy.previousStillbirth && (
-          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
-            Previous stillbirth
-          </span>
+
+        {pregnancy.status === "closed" && pregnancy.delivery && (
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+              Delivery outcome
+            </p>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div>
+                <dt className="text-xs text-zinc-400">Outcome</dt>
+                <dd className="font-medium capitalize text-zinc-900 dark:text-zinc-50">
+                  {pregnancy.delivery.outcome.replace("-", " ")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-400">Method</dt>
+                <dd className="font-medium capitalize text-zinc-900 dark:text-zinc-50">
+                  {pregnancy.delivery.method}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-400">Baby status</dt>
+                <dd className="font-medium capitalize text-zinc-900 dark:text-zinc-50">
+                  {pregnancy.delivery.babyStatus}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-400">Birth weight</dt>
+                <dd className="font-medium text-zinc-900 dark:text-zinc-50">
+                  {pregnancy.delivery.birthWeightKg} kg
+                </dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs text-zinc-400">Mother&apos;s condition</dt>
+                <dd className="font-medium text-zinc-900 dark:text-zinc-50">
+                  {pregnancy.delivery.motherCondition}
+                </dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs text-zinc-400">Summary</dt>
+                <dd className="text-zinc-700 dark:text-zinc-300">
+                  {pregnancy.delivery.summary}
+                </dd>
+              </div>
+            </dl>
+          </div>
         )}
       </div>
-      {pregnancy.status === "closed" && pregnancy.delivery && (
-        <div className="sm:col-span-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
-          <p>Outcome: {pregnancy.delivery.outcome}</p>
-          <p>Method: {pregnancy.delivery.method}</p>
-          <p>Baby status: {pregnancy.delivery.babyStatus}</p>
-          <p>Birth weight: {pregnancy.delivery.birthWeightKg} kg</p>
-          <p>Mother&apos;s condition: {pregnancy.delivery.motherCondition}</p>
-          <p>Summary: {pregnancy.delivery.summary}</p>
-        </div>
-      )}
     </div>
   );
 }
