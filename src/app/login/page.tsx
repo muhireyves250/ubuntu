@@ -9,7 +9,13 @@ import { findDemoUserById } from "@/lib/auth/demo-users";
 import { ROLE_LABEL, dashboardPathForRole } from "@/lib/auth/role-routes";
 
 const TAB_USER_IDS = ["nurse-uwase", "hc-head-mukamana", "dh-director-niyonsenga"] as const;
-const MORE_USER_IDS = ["th-gyn-ingabire", "central-control", "admin"] as const;
+const MORE_USER_IDS = [
+  "nurse-kagame",
+  "lab-nurse-mugisha",
+  "th-gyn-ingabire",
+  "central-control",
+  "admin",
+] as const;
 
 function EyeIcon({ open }: { open: boolean }) {
   if (open) {

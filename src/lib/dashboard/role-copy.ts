@@ -11,6 +11,11 @@ export const ROLE_OVERVIEW_COPY: Record<Role, RoleOverviewCopy> = {
     description:
       "Register patients and record visit signs & symptoms here once the patient module is built.",
   },
+  lab_nurse: {
+    scope: "Laboratory",
+    description:
+      "Pending lab requests sent by ANC nurses will appear here for you to fill in.",
+  },
   hc_head: {
     scope: "Health Center",
     description:

@@ -59,6 +59,7 @@ export interface Visit {
   riskLevel: RiskLevel;
   notes: string;
   labs?: VisitLabs;
+  labStatus?: "pending" | "completed";
   treatment?: string;
   followUpPlan?: string;
   emergencySummary?: string;

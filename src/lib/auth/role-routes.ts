@@ -2,6 +2,7 @@ import type { Role } from "./types";
 
 export const ROLE_DASHBOARD_PATH: Record<Role, string> = {
   nurse: "/dashboard/nurse",
+  lab_nurse: "/dashboard/lab",
   hc_head: "/dashboard/hc",
   dh_clinical_director: "/dashboard/dh",
   th_gynecologist: "/dashboard/th",
@@ -11,6 +12,7 @@ export const ROLE_DASHBOARD_PATH: Record<Role, string> = {
 
 export const ROLE_LABEL: Record<Role, string> = {
   nurse: "Nurse (ANC)",
+  lab_nurse: "Laboratory Nurse",
   hc_head: "Head of Health Center",
   dh_clinical_director: "District Hospital Clinical Director",
   th_gynecologist: "Teaching Hospital Gynecologist on call",

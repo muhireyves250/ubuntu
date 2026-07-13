@@ -156,6 +156,14 @@ export function addVisit(visit: Visit) {
   visitListeners.forEach((listener) => listener());
 }
 
+export function updateVisit(visitId: string, updates: Partial<Visit>) {
+  visitsCache = loadVisits().map((v) =>
+    v.id === visitId ? { ...v, ...updates } : v,
+  );
+  writeList(VISITS_KEY, visitsCache);
+  visitListeners.forEach((listener) => listener());
+}
+
 export function addReferral(referral: Referral) {
   referralsCache = [...loadReferrals(), referral];
   writeList(REFERRALS_KEY, referralsCache);
