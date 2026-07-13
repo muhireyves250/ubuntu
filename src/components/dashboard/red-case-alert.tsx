@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import {
   usePatients,
   useVisits,
+  usePregnancies,
   useActiveReferrals,
   acceptReferral,
 } from "@/lib/patients/use-patients";
+import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { fullName } from "@/lib/format";
 import type { Patient } from "@/lib/patients/types";
 import { ConfirmModal } from "./confirm-modal";
 import { PatientEmergencyInfoModal } from "./patient-emergency-info-modal";
@@ -48,11 +51,13 @@ function IconClock({ className = "h-4 w-4" }: { className?: string }) {
 interface RedCaseCardProps {
   patient: Patient;
   latestVisitDate: string;
+  hospital: string;
+  gaWeeks: number | null;
   onAccept: (patientId: string) => void;
   onViewInfo: (patientId: string) => void;
 }
 
-function RedCaseCard({ patient, latestVisitDate, onAccept, onViewInfo }: RedCaseCardProps) {
+function RedCaseCard({ patient, latestVisitDate, hospital, gaWeeks, onAccept, onViewInfo }: RedCaseCardProps) {
   return (
     <div
       role="button"
@@ -69,14 +74,14 @@ function RedCaseCard({ patient, latestVisitDate, onAccept, onViewInfo }: RedCase
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-semibold text-red-800 dark:text-red-300 truncate">
-            {patient.name}
+            {fullName(patient)}
           </p>
           <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
             Obstetric Emergency
           </span>
         </div>
         <p className="mt-0.5 text-xs text-red-700/70 dark:text-red-400/70">
-          {patient.gestationalAgeWeeks}w gestation · {patient.facility}
+          {gaWeeks !== null ? `${gaWeeks}w gestation · ` : ""}{hospital}
         </p>
         <div className="mt-1 flex items-center gap-1 text-xs text-red-600/60 dark:text-red-400/60">
           <IconClock className="h-3.5 w-3.5" />
@@ -102,6 +107,7 @@ export function RedCaseAlertPanel() {
   const router = useRouter();
   const patients = usePatients();
   const visits = useVisits();
+  const pregnancies = usePregnancies();
   const activeReferrals = useActiveReferrals();
   const [pendingAccept, setPendingAccept] = useState<Patient | null>(null);
   const [viewInfoPatientId, setViewInfoPatientId] = useState<string | null>(null);
@@ -111,20 +117,29 @@ export function RedCaseAlertPanel() {
     [activeReferrals],
   );
 
+  const patientIdByPregnancyId = useMemo(
+    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
+    [pregnancies],
+  );
+
   const redCases = useMemo(() => {
     return patients
       .filter((patient) => !acceptedPatientIds.has(patient.id))
       .map((patient) => {
         const latestVisit = visits
-          .filter((v) => v.patientId === patient.id)
+          .filter((v) => patientIdByPregnancyId.get(v.pregnancyId) === patient.id)
           .sort((a, b) => b.date.localeCompare(a.date))[0];
-        return { patient, latestVisit };
+        const openPregnancy = pregnancies.find(
+          (p) => p.patientId === patient.id && p.status === "open",
+        );
+        const gaWeeks = openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null;
+        return { patient, latestVisit, gaWeeks };
       })
       .filter(({ latestVisit }) => latestVisit?.riskLevel === "red")
       .sort((a, b) =>
         (b.latestVisit?.date ?? "").localeCompare(a.latestVisit?.date ?? ""),
       );
-  }, [patients, visits, acceptedPatientIds]);
+  }, [patients, visits, pregnancies, patientIdByPregnancyId, acceptedPatientIds]);
 
   if (redCases.length === 0) return null;
 
@@ -153,11 +168,13 @@ export function RedCaseAlertPanel() {
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
-        {redCases.map(({ patient, latestVisit }) => (
+        {redCases.map(({ patient, latestVisit, gaWeeks }) => (
           <RedCaseCard
             key={patient.id}
             patient={patient}
             latestVisitDate={latestVisit?.date ?? "Unknown"}
+            hospital={latestVisit?.hospital ?? patient.registrationFacility}
+            gaWeeks={gaWeeks}
             onAccept={(id) => {
               const target = redCases.find(({ patient: p }) => p.id === id)?.patient;
               if (target) setPendingAccept(target);
@@ -170,7 +187,7 @@ export function RedCaseAlertPanel() {
       {pendingAccept && (
         <ConfirmModal
           title="Accept this emergency referral?"
-          description={`${pendingAccept.name} will be assigned to you and marked as an accepted referral.`}
+          description={`${fullName(pendingAccept)} will be assigned to you and marked as an accepted referral.`}
           confirmLabel="Accept"
           tone="danger"
           onConfirm={() => {

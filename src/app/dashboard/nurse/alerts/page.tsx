@@ -10,7 +10,7 @@ import {
   useAcknowledgedAlerts,
   acknowledgeAlert,
 } from "@/lib/patients/use-patients";
-import { getInitials, shortId } from "@/lib/format";
+import { getInitials, shortId, fullName } from "@/lib/format";
 
 type Filter = "all" | "unacknowledged" | "acknowledged";
 
@@ -102,7 +102,7 @@ function ActiveAlertsContent() {
     <div className="flex flex-col gap-5">
       {ackTarget && ackTargetPatient && (
         <AcknowledgeModal
-          patientName={ackTargetPatient.patient.name}
+          patientName={fullName(ackTargetPatient.patient)}
           onConfirm={(note) => {
             acknowledgeAlert(ackTarget, note);
             setAckTarget(null);
@@ -183,11 +183,11 @@ function ActiveAlertsContent() {
                     className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                      {getInitials(patient.name)}
+                      {getInitials(fullName(patient))}
                     </span>
                     <div className="min-w-0">
                       <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
-                        {patient.name}
+                        {fullName(patient)}
                         <span className="ml-2 font-mono text-xs text-zinc-400">
                           {shortId(patient.id)}
                         </span>

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { Patient, Visit } from "@/lib/patients/types";
+import { fullName, computeAge } from "@/lib/format";
 import { IconClose } from "./icons";
 
 export function PatientEmergencyInfoModal({
@@ -39,10 +40,10 @@ export function PatientEmergencyInfoModal({
               Obstetric Emergency
             </span>
             <h2 className="mt-2 text-lg font-bold text-zinc-900 dark:text-zinc-50">
-              {patient.name}
+              {fullName(patient)}
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {patient.age} years • {patient.gestationalAgeWeeks} weeks gestation
+              {computeAge(patient.dateOfBirth)} years
             </p>
           </div>
           <button
@@ -59,7 +60,9 @@ export function PatientEmergencyInfoModal({
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Facility
             </p>
-            <p className="mt-0.5 text-zinc-900 dark:text-zinc-50">{patient.facility}</p>
+            <p className="mt-0.5 text-zinc-900 dark:text-zinc-50">
+              {latestVisit?.hospital ?? patient.registrationFacility}
+            </p>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -71,15 +74,17 @@ export function PatientEmergencyInfoModal({
           </div>
           <div className="col-span-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Obstetric history
+              Chronic conditions
             </p>
-            <p className="mt-0.5 text-zinc-900 dark:text-zinc-50">{patient.obstetricHistory}</p>
+            <p className="mt-0.5 text-zinc-900 dark:text-zinc-50">
+              {patient.chronicConditions?.join(", ") || "—"}
+            </p>
           </div>
           <div className="col-span-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Medical history
+              Allergies
             </p>
-            <p className="mt-0.5 text-zinc-900 dark:text-zinc-50">{patient.medicalHistory}</p>
+            <p className="mt-0.5 text-zinc-900 dark:text-zinc-50">{patient.allergies || "—"}</p>
           </div>
           {latestVisit?.notes && (
             <div className="col-span-2">
@@ -102,7 +107,7 @@ export function PatientEmergencyInfoModal({
             <div className="h-full w-[68%] rounded-full bg-red-600" />
           </div>
           <p className="mt-2 text-xs text-red-700/80 dark:text-red-400/80">
-            Estimated capacity to manage this emergency at {patient.facility}.
+            Estimated capacity to manage this emergency at {latestVisit?.hospital ?? patient.registrationFacility}.
           </p>
         </div>
 

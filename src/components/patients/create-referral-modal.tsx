@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { addReferral } from "@/lib/patients/storage";
 import { IconClose } from "@/components/dashboard/icons";
 import { RiskBadge } from "@/components/patients/risk-badge";
+import { fullName } from "@/lib/format";
 import type { Patient, RiskLevel } from "@/lib/patients/types";
 
 const RECEIVING_FACILITIES = [
@@ -87,8 +88,8 @@ export function CreateReferralModal({
 
         <div className="mt-4 flex items-center gap-3 rounded-xl border border-zinc-300 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-zinc-900 dark:text-zinc-50">{patient.name}</p>
-            <p className="text-xs text-zinc-500">{patient.gestationalAgeWeeks}w gestation · {patient.facility}</p>
+            <p className="font-medium text-zinc-900 dark:text-zinc-50">{fullName(patient)}</p>
+            <p className="text-xs text-zinc-500">{patient.registrationFacility}</p>
           </div>
           <RiskBadge level={currentRisk} size="sm" />
         </div>

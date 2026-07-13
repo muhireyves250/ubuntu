@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
 import { useReferrals, usePatients } from "@/lib/patients/use-patients";
-import { getInitials, relativeTime, shortId } from "@/lib/format";
+import { getInitials, relativeTime, shortId, fullName } from "@/lib/format";
 
 function ReferralLogContent() {
   const referrals = useReferrals();
@@ -56,10 +56,10 @@ function ReferralLogContent() {
                       className="flex items-center gap-2.5 font-medium text-zinc-900 hover:text-teal-900 dark:text-zinc-50 dark:hover:text-teal-300"
                     >
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                        {getInitials(patient!.name)}
+                        {getInitials(fullName(patient!))}
                       </span>
                       <span>
-                        {patient!.name}
+                        {fullName(patient!)}
                         <span className="ml-2 font-mono text-xs text-zinc-400">
                           {shortId(patient!.id)}
                         </span>
@@ -67,7 +67,7 @@ function ReferralLogContent() {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    {patient!.facility}
+                    {patient!.registrationFacility}
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                     <span title={referral.acceptedAt}>

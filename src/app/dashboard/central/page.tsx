@@ -9,6 +9,7 @@ import {
   useRiskSummary,
   usePatients,
   useVisits,
+  usePregnancies,
   useActiveReferrals,
 } from "@/lib/patients/use-patients";
 
@@ -16,16 +17,20 @@ function CentralDashboardContent() {
   const summary = useRiskSummary();
   const patients = usePatients();
   const visits = useVisits();
+  const pregnancies = usePregnancies();
   const referrals = useActiveReferrals();
 
+  const patientIdByPregnancyId = new Map(pregnancies.map((p) => [p.id, p.patientId]));
+
   const facilityCounts = patients.reduce<Record<string, { total: number; red: number; orange: number }>>((acc, patient) => {
-    if (!acc[patient.facility]) acc[patient.facility] = { total: 0, red: 0, orange: 0 };
-    acc[patient.facility].total += 1;
+    const facility = patient.registrationFacility;
+    if (!acc[facility]) acc[facility] = { total: 0, red: 0, orange: 0 };
+    acc[facility].total += 1;
     const latestVisit = visits
-      .filter((v) => v.patientId === patient.id)
+      .filter((v) => patientIdByPregnancyId.get(v.pregnancyId) === patient.id)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
-    if (latestVisit?.riskLevel === "red") acc[patient.facility].red += 1;
-    if (latestVisit?.riskLevel === "orange") acc[patient.facility].orange += 1;
+    if (latestVisit?.riskLevel === "red") acc[facility].red += 1;
+    if (latestVisit?.riskLevel === "orange") acc[facility].orange += 1;
     return acc;
   }, {});
 
