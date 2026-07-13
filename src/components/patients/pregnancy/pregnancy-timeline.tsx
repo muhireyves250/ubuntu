@@ -1,20 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { deriveMilestones } from "@/lib/patients/pregnancy";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { formatLabs } from "@/lib/format";
-import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
+import type { Referral, Visit } from "@/lib/patients/types";
 
 type TimelineItem =
   | { kind: "assessment"; id: string; date: string; data: Visit }
-  | { kind: "referral"; id: string; date: string; data: Referral }
-  | {
-      kind: "milestone";
-      id: string;
-      date: null;
-      data: { visitNumber: number; dueByWeek: number; overdue: boolean };
-    };
+  | { kind: "referral"; id: string; date: string; data: Referral };
 
 function itemLabel(item: TimelineItem): string {
   switch (item.kind) {
@@ -30,34 +23,20 @@ function itemLabel(item: TimelineItem): string {
       if (item.data.status === "pending") return "Referral sent — pending acceptance";
       if (item.data.status === "accepted") return "Referral accepted";
       return "Referral closed";
-    case "milestone":
-      return `ANC visit ${item.data.visitNumber} of 10 recommended — due by week ${item.data.dueByWeek}`;
   }
 }
 
 export function PregnancyTimeline({
-  pregnancy,
   visits,
   referrals,
 }: {
-  pregnancy: Pregnancy;
   visits: Visit[];
   referrals: Referral[];
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const items = useMemo<TimelineItem[]>(() => {
-    const milestones = deriveMilestones(pregnancy, visits).map(
-      (milestone) =>
-        ({
-          kind: "milestone",
-          id: milestone.id,
-          date: null,
-          data: milestone,
-        }) satisfies TimelineItem,
-    );
-
-    const dated: TimelineItem[] = [
+    return [
       ...visits.map(
         (visit) =>
           ({
@@ -77,9 +56,7 @@ export function PregnancyTimeline({
           }) satisfies TimelineItem,
       ),
     ].sort((a, b) => b.date.localeCompare(a.date));
-
-    return [...milestones, ...dated];
-  }, [pregnancy, visits, referrals]);
+  }, [visits, referrals]);
 
   if (items.length === 0) {
     return (
@@ -98,11 +75,9 @@ export function PregnancyTimeline({
             <span
               aria-hidden
               className={`absolute -left-[1.05rem] top-1.5 h-2 w-2 rounded-full ${
-                item.kind === "milestone" && item.data.overdue
-                  ? "bg-orange-500"
-                  : item.kind === "assessment" && item.data.type === "emergency"
-                    ? "bg-red-600"
-                    : "bg-teal-700"
+                item.kind === "assessment" && item.data.type === "emergency"
+                  ? "bg-red-600"
+                  : "bg-teal-700"
               }`}
             />
             <button
@@ -117,7 +92,7 @@ export function PregnancyTimeline({
                 <RiskBadge level={item.data.riskLevel} size="sm" />
               )}
             </button>
-            <p className="text-xs text-zinc-400">{item.date ?? "Upcoming"}</p>
+            <p className="text-xs text-zinc-400">{item.date}</p>
 
             {expanded && (
               <div className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
@@ -137,13 +112,6 @@ export function PregnancyTimeline({
                       <p>Outcome: {item.data.outcome} — {item.data.outcomeStatement}</p>
                     )}
                   </>
-                )}
-                {item.kind === "milestone" && (
-                  <p>
-                    {item.data.overdue
-                      ? "This visit is overdue."
-                      : "This visit has not been logged yet."}
-                  </p>
                 )}
               </div>
             )}

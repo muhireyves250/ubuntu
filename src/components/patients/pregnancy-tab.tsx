@@ -92,7 +92,7 @@ function PregnancySection({ pregnancy }: { pregnancy: Pregnancy }) {
   return (
     <div className="flex flex-col gap-5">
       <PregnancySummaryCard pregnancy={pregnancy} />
-      <PregnancyTimeline pregnancy={pregnancy} visits={visits} referrals={referrals} />
+      <PregnancyTimeline visits={visits} referrals={referrals} />
     </div>
   );
 }
