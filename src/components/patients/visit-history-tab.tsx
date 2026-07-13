@@ -137,6 +137,22 @@ export function VisitHistoryTab({
                               {visit.emergencySummary}
                             </p>
                           ) : null}
+                          {visit.treatment ? (
+                            <p>
+                              <span className="font-medium text-zinc-400">
+                                Treatment:{" "}
+                              </span>
+                              {visit.treatment}
+                            </p>
+                          ) : null}
+                          {visit.followUpPlan ? (
+                            <p>
+                              <span className="font-medium text-zinc-400">
+                                Follow-up plan:{" "}
+                              </span>
+                              {visit.followUpPlan}
+                            </p>
+                          ) : null}
                           {visit.notes ? (
                             <p>
                               <span className="font-medium text-zinc-400">
@@ -153,7 +169,7 @@ export function VisitHistoryTab({
                               {formatLabs(visit)}
                             </p>
                           ) : null}
-                          {!visit.notes && !visit.labs && !visit.emergencySummary && (
+                          {!visit.notes && !visit.labs && !visit.emergencySummary && !visit.treatment && !visit.followUpPlan && (
                             <p className="text-zinc-400">
                               No additional details recorded.
                             </p>

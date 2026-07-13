@@ -42,6 +42,8 @@ export function SummaryStep({
   onRecorded: (visit: Visit) => void;
 }) {
   const [notes, setNotes] = useState("");
+  const [treatment, setTreatment] = useState("");
+  const [followUpPlan, setFollowUpPlan] = useState("");
 
   const bmi = computeBmi(vitals);
   const hasLabs =
@@ -70,6 +72,8 @@ export function SummaryStep({
       symptomIds: symptoms,
       notes,
       labs: hasVisitLabs ? visitLabs : undefined,
+      treatment: treatment.trim() || undefined,
+      followUpPlan: followUpPlan.trim() || undefined,
     });
     onRecorded(visit);
   }
@@ -205,6 +209,28 @@ export function SummaryStep({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Additional clinical observations…"
+          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        Treatment provided
+        <input
+          type="text"
+          value={treatment}
+          onChange={(e) => setTreatment(e.target.value)}
+          placeholder="e.g. IV magnesium sulfate administered…"
+          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        Follow-up plan
+        <input
+          type="text"
+          value={followUpPlan}
+          onChange={(e) => setFollowUpPlan(e.target.value)}
+          placeholder="e.g. Return in 2 weeks for BP recheck…"
           className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         />
       </label>
