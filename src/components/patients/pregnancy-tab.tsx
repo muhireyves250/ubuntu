@@ -93,7 +93,9 @@ function PregnancySection({ pregnancy }: { pregnancy: Pregnancy }) {
   return (
     <div className="flex flex-col gap-5">
       <PregnancySummaryCard pregnancy={pregnancy} />
-      <VisitHistoryTab pregnancy={pregnancy} visits={visits} readOnly />
+      {pregnancy.status === "closed" && (
+        <VisitHistoryTab pregnancy={pregnancy} visits={visits} readOnly />
+      )}
       <PregnancyTimeline visits={visits} referrals={referrals} />
     </div>
   );
