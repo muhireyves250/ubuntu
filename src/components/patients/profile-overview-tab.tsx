@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import { formatLabs, fullName, computeAge } from "@/lib/format";
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { formatLabs, fullName, computeAge, relativeTime } from "@/lib/format";
+import { gestationalAgeWeeks, nextDueVisit } from "@/lib/patients/pregnancy";
 import {
   IconUsers,
   IconCalendar,
@@ -21,6 +21,13 @@ const RISK_HERO_STYLES: Record<RiskLevel, string> = {
   yellow: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-900/50",
   orange: "bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/50",
   red: "bg-red-50 border-red-300 dark:bg-red-950/20 dark:border-red-900/50",
+};
+
+const RISK_GUIDANCE: Record<RiskLevel, string> = {
+  green: "No concerns detected — continue routine antenatal care.",
+  yellow: "Elevated risk. Keep a closer eye on the next visit.",
+  orange: "Urgent risk factors present. Prompt follow-up recommended.",
+  red: "Obstetric emergency. Immediate attention required.",
 };
 
 function fmt(isoDate: string): string {
@@ -99,9 +106,11 @@ export function ProfileOverviewTab({
   const latestVisit = visits[0] ?? null;
   const currentRisk = latestVisit?.riskLevel ?? "green";
   const gaWeeks = pregnancy ? gestationalAgeWeeks(pregnancy.lmpDate) : null;
-  const ancVisitCount = pregnancy
-    ? visits.filter((v) => v.pregnancyId === pregnancy.id && v.type !== "emergency").length
-    : 0;
+  const pregnancyVisits = pregnancy
+    ? visits.filter((v) => v.pregnancyId === pregnancy.id)
+    : [];
+  const ancVisitCount = pregnancyVisits.filter((v) => v.type !== "emergency").length;
+  const due = pregnancy ? nextDueVisit(pregnancy, pregnancyVisits) : null;
 
   if (loading) {
     return (
@@ -132,6 +141,10 @@ export function ProfileOverviewTab({
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        Here&apos;s today&apos;s snapshot for <span className="font-medium text-zinc-700 dark:text-zinc-300">{patient.firstName}</span>.
+      </p>
+
       {/* Risk hero */}
       <div
         className={`flex flex-col items-center gap-2 rounded-2xl border p-6 text-center ${RISK_HERO_STYLES[currentRisk]}`}
@@ -140,8 +153,13 @@ export function ProfileOverviewTab({
           Current Risk Level
         </p>
         <RiskBadge level={currentRisk} size="lg" />
+        <p className="max-w-xs text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          {RISK_GUIDANCE[currentRisk]}
+        </p>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {latestVisit ? `Last assessed: ${latestVisit.date}` : "No assessments yet"}
+          {latestVisit
+            ? `Last assessed ${relativeTime(latestVisit.date)} · ${latestVisit.date}`
+            : "No assessments yet"}
         </p>
       </div>
 
@@ -167,15 +185,28 @@ export function ProfileOverviewTab({
         {/* Active pregnancy */}
         <SectionCard icon={<IconCalendar className="h-4 w-4" />} title="Active Pregnancy">
           {pregnancy ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-              <Field label="Gestational age" value={`${gaWeeks} weeks`} />
-              <Field label="EDD" value={fmt(pregnancy.eddDate)} />
-              <Field label="Obstetric" value={`G${pregnancy.gravidity} P${pregnancy.parity}`} />
-              <Field
-                label="ANC visits"
-                value={`${ancVisitCount} visit${ancVisitCount !== 1 ? "s" : ""} recorded`}
-              />
-            </dl>
+            <div className="flex flex-col gap-3">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <Field label="Gestational age" value={`${gaWeeks} weeks`} />
+                <Field label="EDD" value={fmt(pregnancy.eddDate)} />
+                <Field label="Obstetric" value={`G${pregnancy.gravidity} P${pregnancy.parity}`} />
+                <Field
+                  label="ANC visits"
+                  value={`${ancVisitCount} visit${ancVisitCount !== 1 ? "s" : ""} recorded`}
+                />
+              </dl>
+              <div
+                className={`rounded-lg px-3 py-2 text-xs font-medium ${
+                  due?.overdue
+                    ? "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400"
+                    : "bg-teal-50 text-teal-800 dark:bg-teal-950/30 dark:text-teal-400"
+                }`}
+              >
+                {due
+                  ? `Next ANC visit due: Week ${due.week}${due.overdue ? " (overdue)" : ""}`
+                  : "All scheduled ANC visits are up to date."}
+              </div>
+            </div>
           ) : (
             <p className="text-sm text-zinc-400">No active pregnancy on record.</p>
           )}
@@ -186,7 +217,9 @@ export function ProfileOverviewTab({
           {latestVisit ? (
             <div className="flex flex-col gap-2.5 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-zinc-500 dark:text-zinc-400">{latestVisit.date}</span>
+                <span className="text-zinc-500 dark:text-zinc-400">
+                  {latestVisit.date} · {relativeTime(latestVisit.date)}
+                </span>
                 <RiskBadge level={latestVisit.riskLevel} size="sm" />
               </div>
               <Field label="Symptoms" value={topSymptoms} />
@@ -203,7 +236,7 @@ export function ProfileOverviewTab({
         <button
           type="button"
           onClick={() => onAction("New Assessment")}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-300 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#0f766e] px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800"
         >
           <IconClipboard className="h-4 w-4" />
           New Assessment
