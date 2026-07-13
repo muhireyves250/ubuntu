@@ -2,13 +2,31 @@ export type RiskLevel = "green" | "yellow" | "orange" | "red";
 
 export interface Patient {
   id: string;
-  name: string;
-  age: number;
-  gestationalAgeWeeks: number;
-  facility: string;
-  registeredAt: string;
-  obstetricHistory: string;
-  medicalHistory: string;
+  nationalId: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string; // ISO date "YYYY-MM-DD"
+  phone: string;
+  altPhone?: string;
+  maritalStatus?: string;
+  address: {
+    district: string;
+    sector: string;
+    cell: string;
+    village: string;
+  };
+  emergencyContact: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  bloodGroup?: string;
+  rhFactor?: "positive" | "negative";
+  allergies?: string;
+  chronicConditions?: string[];
+  registeredAt: string; // ISO date
+  registeredBy: string;
+  registrationFacility: string;
 }
 
 export interface VisitLabs {
@@ -26,14 +44,24 @@ export interface VisitLabs {
   edema?: "none" | "mild" | "moderate" | "severe";
 }
 
+export type VisitType = "scheduled" | "unscheduled" | "emergency";
+
 export interface Visit {
   id: string;
-  patientId: string;
+  pregnancyId: string;
   date: string;
+  type: VisitType;
+  ancNumber?: number;
+  scheduledWeek?: number;
+  hospital: string;
+  attendingNurse: string;
   symptomIds: string[];
   riskLevel: RiskLevel;
   notes: string;
   labs?: VisitLabs;
+  treatment?: string;
+  followUpPlan?: string;
+  emergencySummary?: string;
 }
 
 export interface Referral {
@@ -49,23 +77,25 @@ export interface Referral {
 export interface Pregnancy {
   id: string;
   patientId: string;
+  pregnancyNumber: number;
   gravidity: number;
   parity: number;
   previousCS: number;
   previousPPH: boolean;
   previousEclampsia: boolean;
   previousStillbirth: boolean;
-  lmpDate: string; // ISO date, e.g. "2026-01-15"
-  eddDate: string; // ISO date, computed = lmpDate + 280 days
-  status: "active";
+  lmpDate: string;
+  eddDate: string;
+  startDate: string;
+  status: "open" | "closed";
   createdAt: string; // ISO datetime
-}
-
-export interface AncVisit {
-  id: string;
-  pregnancyId: string;
-  date: string; // ISO date
-  ancNumber: number; // 1, 2, 3, ...
-  provider: string;
-  notes: string;
+  delivery?: {
+    outcome: "live-birth" | "stillbirth" | "maternal-death";
+    date: string;
+    method: "vaginal" | "cesarean" | "assisted";
+    babyStatus: "alive" | "deceased";
+    birthWeightKg: number;
+    motherCondition: string;
+    summary: string;
+  };
 }
