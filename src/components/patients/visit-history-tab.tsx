@@ -51,10 +51,12 @@ export function VisitHistoryTab({
       .map((v) => v.scheduledWeek as number),
   );
   const scheduleRows = ANC_SCHEDULE.map((s) => {
-    const status: "completed" | "due" | "missed" | "upcoming" = loggedWeeks.has(s.dueByWeek)
+    const status: "completed" | "due" | "overdue" | "missed" | "upcoming" = loggedWeeks.has(s.dueByWeek)
       ? "completed"
       : due?.week === s.dueByWeek
-        ? "due"
+        ? currentWeeks > s.dueByWeek
+          ? "overdue"
+          : "due"
         : s.dueByWeek < currentWeeks
           ? "missed"
           : "upcoming";
@@ -97,29 +99,35 @@ export function VisitHistoryTab({
                 ? "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-400"
                 : row.status === "due"
                   ? "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                  : row.status === "missed"
-                    ? "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
-                    : "border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
+                  : row.status === "overdue"
+                    ? "border-red-400 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950/40 dark:text-red-400"
+                    : row.status === "missed"
+                      ? "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
+                      : "border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
             }`;
             const label =
               row.status === "completed"
                 ? "Completed"
                 : row.status === "due"
                   ? "Due now"
-                  : row.status === "missed"
-                    ? "Missed"
-                    : "Upcoming";
+                  : row.status === "overdue"
+                    ? "Overdue"
+                    : row.status === "missed"
+                      ? "Missed"
+                      : "Upcoming";
 
             if (row.status !== "completed") {
               return (
                 <div key={row.visitNumber} className={chipClasses}>
                   <span>Week {row.dueByWeek}</span>
                   <span className="text-[10px] uppercase tracking-wide opacity-80">{label}</span>
-                  {row.status === "due" && (
+                  {(row.status === "due" || row.status === "overdue") && (
                     <button
                       type="button"
                       onClick={() => onLogScheduledVisit(row.dueByWeek)}
-                      className="ml-1 rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-700"
+                      className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white ${
+                        row.status === "overdue" ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"
+                      }`}
                     >
                       Log
                     </button>
