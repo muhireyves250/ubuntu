@@ -8,6 +8,7 @@ import {
   addPregnancy,
   updatePatient as storageUpdatePatient,
   updatePregnancy as storageUpdatePregnancy,
+  updateReferral as storageUpdateReferral,
   getPatientsSnapshot,
   getReferralsSnapshot,
   getServerPatientsSnapshot,
@@ -34,6 +35,7 @@ import { findDemoUserById } from "../auth/demo-users";
 import type {
   Patient,
   Referral,
+  ReferralOutcome,
   RiskLevel,
   Visit,
   VisitLabs,
@@ -133,21 +135,91 @@ export function useReferrals(): Referral[] {
 export function useActiveReferrals(): Referral[] {
   const referrals = useReferrals();
   return useMemo(
-    () => referrals.filter((r) => r.status === "active"),
+    () => referrals.filter((r) => r.status === "accepted"),
     [referrals],
   );
 }
 
-export function acceptReferral(
-  patientId: string,
-  extra?: Partial<Omit<Referral, "id" | "patientId" | "acceptedAt" | "status">>,
-): Referral {
+const REFERRAL_ROUTING: Record<string, string> = {
+  "Nyamata Health Center": "Bugesera District Hospital",
+};
+const DEFAULT_RECEIVING_FACILITY = "Bugesera District Hospital";
+
+function getOrCreateEmergencyReferral(patientId: string, reason: string): Referral {
+  const existing = getReferralsSnapshot().find(
+    (r) => r.patientId === patientId && (r.status === "pending" || r.status === "accepted"),
+  );
+  if (existing) return existing;
+
+  const { name, facility } = getCurrentUserSnapshot();
   const referral: Referral = {
     id: `referral-${crypto.randomUUID()}`,
     patientId,
+    createdAt: new Date().toISOString(),
+    status: "pending",
+    receivingFacility: REFERRAL_ROUTING[facility] ?? DEFAULT_RECEIVING_FACILITY,
+    reason,
+    urgency: "emergency",
+    referredByNurse: name,
+    referredByFacility: facility,
+  };
+  addReferral(referral);
+  return referral;
+}
+
+export function acceptEmergencyReferral(referralId: string): Referral {
+  const referral = getReferralsSnapshot().find((r) => r.id === referralId);
+  if (!referral || referral.status !== "pending") {
+    throw new Error("Referral is not pending");
+  }
+  const { name, facility } = getCurrentUserSnapshot();
+  storageUpdateReferral(referralId, {
+    status: "accepted",
     acceptedAt: new Date().toISOString(),
-    status: "active",
-    ...extra,
+    acceptedByNurse: name,
+    acceptedByFacility: facility,
+  });
+  return getReferralsSnapshot().find((r) => r.id === referralId)!;
+}
+
+export function closeReferral(
+  referralId: string,
+  data: { outcome: ReferralOutcome; outcomeStatement: string },
+): Referral {
+  const referral = getReferralsSnapshot().find((r) => r.id === referralId);
+  if (!referral || referral.status !== "accepted") {
+    throw new Error("Referral is not accepted");
+  }
+  storageUpdateReferral(referralId, {
+    status: "closed",
+    closedAt: new Date().toISOString(),
+    outcome: data.outcome,
+    outcomeStatement: data.outcomeStatement,
+  });
+  return getReferralsSnapshot().find((r) => r.id === referralId)!;
+}
+
+export function createReferral(data: {
+  patientId: string;
+  receivingFacility: string;
+  reason: string;
+  urgency: "routine" | "urgent" | "emergency";
+}): Referral {
+  const { name, facility } = getCurrentUserSnapshot();
+  const now = new Date().toISOString();
+  const referral: Referral = {
+    id: `referral-${crypto.randomUUID()}`,
+    patientId: data.patientId,
+    createdAt: now,
+    status: "accepted",
+    receivingFacility: data.receivingFacility,
+    reason: data.reason,
+    urgency: data.urgency,
+    referredByNurse: name,
+    referredByFacility: facility,
+    acceptedAt: now,
+    acceptedByNurse: name,
+    acceptedByFacility: facility,
   };
   addReferral(referral);
   return referral;
@@ -278,8 +350,11 @@ export function recordVisit(data: {
   notes: string;
   labs?: VisitLabs;
   emergencySummary?: string;
+  treatment?: string;
+  followUpPlan?: string;
 }): Visit {
   const { name, facility } = getCurrentUserSnapshot();
+  const riskLevel = data.type === "emergency" ? "red" : classifyRiskLevel(data.symptomIds);
   const visit: Visit = {
     id: `visit-${crypto.randomUUID()}`,
     pregnancyId: data.pregnancyId,
@@ -291,11 +366,25 @@ export function recordVisit(data: {
     attendingNurse: name,
     symptomIds: data.symptomIds,
     notes: data.notes,
-    riskLevel: data.type === "emergency" ? "red" : classifyRiskLevel(data.symptomIds),
+    riskLevel,
     labs: data.labs,
     emergencySummary: data.emergencySummary,
+    treatment: data.treatment,
+    followUpPlan: data.followUpPlan,
   };
   addVisit(visit);
+
+  if (riskLevel === "red") {
+    const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
+    if (pregnancy) {
+      const reason =
+        data.type === "emergency"
+          ? (data.emergencySummary ?? data.notes)
+          : `Classified RED during ${data.type} visit`;
+      getOrCreateEmergencyReferral(pregnancy.patientId, reason);
+    }
+  }
+
   return visit;
 }
 
@@ -363,7 +452,7 @@ export function createEmergencyVisit(
     emergencySummary: summary,
   });
 
-  const referral = acceptReferral(patientId, { urgency: "emergency", reason: summary });
+  const referral = getOrCreateEmergencyReferral(patientId, summary);
 
   return { pregnancy, visit, referral };
 }
