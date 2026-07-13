@@ -125,7 +125,7 @@ export function SidePanel({
                     </p>
                   </div>
                   <p className="ml-2 shrink-0 text-xs text-zinc-400 dark:text-zinc-500">
-                    {relativeTime(referral.acceptedAt)}
+                    {relativeTime(referral.acceptedAt ?? referral.createdAt)}
                   </p>
                 </Link>
               );
