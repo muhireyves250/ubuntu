@@ -8,6 +8,7 @@ import {
   HIGH_FEVER_CELSIUS,
 } from "@/lib/patients/danger-signs";
 import { createEmergencyVisit } from "@/lib/patients/use-patients";
+import { IconAlert } from "@/components/dashboard/icons";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
 
 const DANGER_SIGN_LABEL = new Map(DANGER_SIGNS.map((s) => [s.id, s.label]));
@@ -56,105 +57,156 @@ export function SignsSymptomsTab({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-sm text-zinc-600 dark:text-zinc-300">
-        Quick triage for obvious maternal danger signs that require immediate emergency care.
-        This does not replace a full assessment — use it only to identify emergencies fast.
-      </p>
-
-      <fieldset className="flex flex-col gap-3">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          Quick vitals
-        </legend>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            BP systolic
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              placeholder="mmHg"
-              value={bpSystolic}
-              onChange={(e) => setBpSystolic(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            BP diastolic
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              placeholder="mmHg"
-              value={bpDiastolic}
-              onChange={(e) => setBpDiastolic(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Temperature (°C)
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.1"
-              placeholder="e.g. 36.8"
-              value={temperature}
-              onChange={(e) => setTemperature(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
+    <div className="flex flex-col gap-5">
+      <div className="overflow-hidden rounded-2xl border border-red-200 dark:border-red-900/50">
+        <div className="flex items-center gap-3 bg-red-50 px-5 py-4 dark:bg-red-950/30">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-600 text-white">
+            <IconAlert className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="font-semibold text-red-900 dark:text-red-300">
+              Emergency Danger-Sign Triage
+            </h3>
+            <p className="text-sm text-red-700/80 dark:text-red-400/80">
+              Quick triage for obvious maternal danger signs — this does not replace a full
+              assessment, use it only to identify emergencies fast.
+            </p>
+          </div>
         </div>
-      </fieldset>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          Danger signs
-        </legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {DANGER_SIGNS.map((sign) => {
-            if (sign.autoDetected) {
-              const isActive = sign.autoDetected === "bp" ? isVeryHighBp : isHighFever;
-              return (
-                <label
-                  key={sign.id}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                    isActive
-                      ? "border-red-400 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
-                      : "border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
-                  }`}
-                >
-                  <input type="checkbox" checked={isActive} disabled className="h-4 w-4 rounded border-zinc-300" />
-                  {sign.label}
-                </label>
-              );
-            }
-            return (
-              <label
-                key={sign.id}
-                className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
-              >
+        <div className="flex flex-col gap-5 bg-white p-5 dark:bg-zinc-900">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Quick vitals
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                BP systolic
                 <input
-                  type="checkbox"
-                  checked={manualCheckedIds.includes(sign.id)}
-                  onChange={() => toggleManual(sign.id)}
-                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="mmHg"
+                  value={bpSystolic}
+                  onChange={(e) => setBpSystolic(e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
                 />
-                {sign.label}
               </label>
-            );
-          })}
-        </div>
-      </fieldset>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                BP diastolic
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="mmHg"
+                  value={bpDiastolic}
+                  onChange={(e) => setBpDiastolic(e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Temperature (°C)
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.1"
+                  placeholder="e.g. 36.8"
+                  value={temperature}
+                  onChange={(e) => setTemperature(e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                />
+              </label>
+            </div>
+          </div>
 
-      <button
-        type="button"
-        disabled={activeDangerSignIds.length === 0}
-        onClick={handleFlagEmergency}
-        className="w-fit rounded-lg bg-red-600 px-4 py-2.5 font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Flag Emergency
-      </button>
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Danger signs
+              </p>
+              {activeDangerSignIds.length > 0 && (
+                <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
+                  {activeDangerSignIds.length} selected
+                </span>
+              )}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {DANGER_SIGNS.map((sign) => {
+                if (sign.autoDetected) {
+                  const isActive = sign.autoDetected === "bp" ? isVeryHighBp : isHighFever;
+                  return (
+                    <div
+                      key={sign.id}
+                      className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition-colors ${
+                        isActive
+                          ? "border-red-400 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+                          : "border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
+                      }`}
+                    >
+                      <span className="font-medium">{sign.label}</span>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                          isActive
+                            ? "bg-red-600 text-white"
+                            : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800"
+                        }`}
+                      >
+                        {isActive ? "Detected" : "Auto"}
+                      </span>
+                    </div>
+                  );
+                }
+                const checked = manualCheckedIds.includes(sign.id);
+                return (
+                  <button
+                    key={sign.id}
+                    type="button"
+                    onClick={() => toggleManual(sign.id)}
+                    className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition-colors ${
+                      checked
+                        ? "border-red-400 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+                        : "border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                        checked
+                          ? "border-red-600 bg-red-600"
+                          : "border-zinc-300 dark:border-zinc-600"
+                      }`}
+                    >
+                      {checked && (
+                        <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 text-white" fill="none">
+                          <path
+                            d="M5 13l4 4L19 7"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </span>
+                    {sign.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={activeDangerSignIds.length === 0}
+            onClick={handleFlagEmergency}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3.5 font-semibold text-white shadow-sm transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <IconAlert className="h-4.5 w-4.5" />
+            Flag Emergency
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
