@@ -6,12 +6,13 @@ import {
   usePatients,
   useVisits,
   usePregnancies,
-  useActiveReferrals,
-  acceptReferral,
+  useReferrals,
+  acceptEmergencyReferral,
 } from "@/lib/patients/use-patients";
+import { useAuth } from "@/lib/auth/auth-context";
 import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { fullName } from "@/lib/format";
-import type { Patient } from "@/lib/patients/types";
+import type { Patient, Visit } from "@/lib/patients/types";
 import { ConfirmModal } from "./confirm-modal";
 import { PatientEmergencyInfoModal } from "./patient-emergency-info-modal";
 
@@ -51,20 +52,20 @@ function IconClock({ className = "h-4 w-4" }: { className?: string }) {
 interface RedCaseCardProps {
   patient: Patient;
   latestVisitDate: string;
-  hospital: string;
+  referredFrom: string;
   gaWeeks: number | null;
-  onAccept: (patientId: string) => void;
-  onViewInfo: (patientId: string) => void;
+  onAccept: () => void;
+  onViewInfo: () => void;
 }
 
-function RedCaseCard({ patient, latestVisitDate, hospital, gaWeeks, onAccept, onViewInfo }: RedCaseCardProps) {
+function RedCaseCard({ patient, latestVisitDate, referredFrom, gaWeeks, onAccept, onViewInfo }: RedCaseCardProps) {
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onViewInfo(patient.id)}
+      onClick={onViewInfo}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") onViewInfo(patient.id);
+        if (event.key === "Enter" || event.key === " ") onViewInfo();
       }}
       className="animate-pulse-ring-urgent flex cursor-pointer items-start gap-4 rounded-xl border border-red-200 bg-red-50 p-4 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:hover:bg-red-950/50"
     >
@@ -81,7 +82,7 @@ function RedCaseCard({ patient, latestVisitDate, hospital, gaWeeks, onAccept, on
           </span>
         </div>
         <p className="mt-0.5 text-xs text-red-700/70 dark:text-red-400/70">
-          {gaWeeks !== null ? `${gaWeeks}w gestation · ` : ""}{hospital}
+          {gaWeeks !== null ? `${gaWeeks}w gestation · ` : ""}Referred from {referredFrom}
         </p>
         <div className="mt-1 flex items-center gap-1 text-xs text-red-600/60 dark:text-red-400/60">
           <IconClock className="h-3.5 w-3.5" />
@@ -92,7 +93,7 @@ function RedCaseCard({ patient, latestVisitDate, hospital, gaWeeks, onAccept, on
         type="button"
         onClick={(event) => {
           event.stopPropagation();
-          onAccept(patient.id);
+          onAccept();
         }}
         className="mt-0.5 shrink-0 flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-700 active:scale-95"
       >
@@ -105,43 +106,50 @@ function RedCaseCard({ patient, latestVisitDate, hospital, gaWeeks, onAccept, on
 
 export function RedCaseAlertPanel() {
   const router = useRouter();
+  const { user } = useAuth();
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
-  const activeReferrals = useActiveReferrals();
-  const [pendingAccept, setPendingAccept] = useState<Patient | null>(null);
-  const [viewInfoPatientId, setViewInfoPatientId] = useState<string | null>(null);
+  const referrals = useReferrals();
+  const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
+  const [viewInfoReferralId, setViewInfoReferralId] = useState<string | null>(null);
 
-  const acceptedPatientIds = useMemo(
-    () => new Set(activeReferrals.map((r) => r.patientId)),
-    [activeReferrals],
-  );
-
+  const patientById = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
   const patientIdByPregnancyId = useMemo(
     () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
     [pregnancies],
   );
 
-  const redCases = useMemo(() => {
-    return patients
-      .filter((patient) => !acceptedPatientIds.has(patient.id))
-      .map((patient) => {
-        const latestVisit = visits
-          .filter((v) => patientIdByPregnancyId.get(v.pregnancyId) === patient.id)
-          .sort((a, b) => b.date.localeCompare(a.date))[0];
-        const openPregnancy = pregnancies.find(
-          (p) => p.patientId === patient.id && p.status === "open",
-        );
-        const gaWeeks = openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null;
-        return { patient, latestVisit, gaWeeks };
-      })
-      .filter(({ latestVisit }) => latestVisit?.riskLevel === "red")
-      .sort((a, b) =>
-        (b.latestVisit?.date ?? "").localeCompare(a.latestVisit?.date ?? ""),
-      );
-  }, [patients, visits, pregnancies, patientIdByPregnancyId, acceptedPatientIds]);
+  const pendingCases = useMemo(() => {
+    if (!user) return [];
+    const results: {
+      referral: (typeof referrals)[number];
+      patient: Patient;
+      latestVisit: Visit | undefined;
+      gaWeeks: number | null;
+    }[] = [];
 
-  if (redCases.length === 0) return null;
+    for (const referral of referrals) {
+      if (referral.status !== "pending" || referral.receivingFacility !== user.facility) continue;
+      const patient = patientById.get(referral.patientId);
+      if (!patient) continue;
+      const latestVisit = visits
+        .filter((v) => patientIdByPregnancyId.get(v.pregnancyId) === referral.patientId)
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+      const openPregnancy = pregnancies.find(
+        (p) => p.patientId === referral.patientId && p.status === "open",
+      );
+      const gaWeeks = openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null;
+      results.push({ referral, patient, latestVisit, gaWeeks });
+    }
+
+    return results.sort((a, b) => b.referral.createdAt.localeCompare(a.referral.createdAt));
+  }, [referrals, patientById, visits, pregnancies, patientIdByPregnancyId, user]);
+
+  if (pendingCases.length === 0) return null;
+
+  const pendingAccept = pendingCases.find(({ referral }) => referral.id === pendingAcceptId);
+  const viewInfo = pendingCases.find(({ referral }) => referral.id === viewInfoReferralId);
 
   return (
     <div className="rounded-[1.25rem] border border-red-300 bg-white p-6 shadow-[0_2px_12px_rgba(220,38,38,0.08)] dark:border-red-900/50 dark:bg-red-950/20">
@@ -155,31 +163,28 @@ export function RedCaseAlertPanel() {
             Pending Emergency Referrals
           </h2>
           <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
-            {redCases.length}
+            {pendingCases.length}
           </span>
         </div>
         <span className="text-xs text-red-600/70 dark:text-red-400/70">
-          Visible to all staff
+          Referred to {user?.facility}
         </span>
       </div>
 
       <p className="mt-2 text-sm text-red-700/80 dark:text-red-400/80">
-        The following patients have been classified as obstetric emergencies and require immediate referral acceptance.
+        The following emergency cases have been referred to your facility and require acceptance.
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
-        {redCases.map(({ patient, latestVisit, gaWeeks }) => (
+        {pendingCases.map(({ referral, patient, latestVisit, gaWeeks }) => (
           <RedCaseCard
-            key={patient.id}
+            key={referral.id}
             patient={patient}
             latestVisitDate={latestVisit?.date ?? "Unknown"}
-            hospital={latestVisit?.hospital ?? patient.registrationFacility}
+            referredFrom={referral.referredByFacility}
             gaWeeks={gaWeeks}
-            onAccept={(id) => {
-              const target = redCases.find(({ patient: p }) => p.id === id)?.patient;
-              if (target) setPendingAccept(target);
-            }}
-            onViewInfo={setViewInfoPatientId}
+            onAccept={() => setPendingAcceptId(referral.id)}
+            onViewInfo={() => setViewInfoReferralId(referral.id)}
           />
         ))}
       </div>
@@ -187,32 +192,28 @@ export function RedCaseAlertPanel() {
       {pendingAccept && (
         <ConfirmModal
           title="Accept this emergency referral?"
-          description={`${fullName(pendingAccept)} will be assigned to you and marked as an accepted referral.`}
+          description={`${fullName(pendingAccept.patient)} will be assigned to you and marked as an accepted referral.`}
           confirmLabel="Accept"
           tone="danger"
           onConfirm={() => {
-            acceptReferral(pendingAccept.id);
-            router.push(`/dashboard/nurse/patients/${pendingAccept.id}`);
+            acceptEmergencyReferral(pendingAccept.referral.id);
+            router.push(`/dashboard/nurse/patients/${pendingAccept.patient.id}`);
           }}
-          onCancel={() => setPendingAccept(null)}
+          onCancel={() => setPendingAcceptId(null)}
         />
       )}
 
-      {viewInfoPatientId && (() => {
-        const viewed = redCases.find(({ patient }) => patient.id === viewInfoPatientId);
-        if (!viewed) return null;
-        return (
-          <PatientEmergencyInfoModal
-            patient={viewed.patient}
-            latestVisit={viewed.latestVisit}
-            onClose={() => setViewInfoPatientId(null)}
-            onAccept={() => {
-              setViewInfoPatientId(null);
-              setPendingAccept(viewed.patient);
-            }}
-          />
-        );
-      })()}
+      {viewInfo && (
+        <PatientEmergencyInfoModal
+          patient={viewInfo.patient}
+          latestVisit={viewInfo.latestVisit}
+          onClose={() => setViewInfoReferralId(null)}
+          onAccept={() => {
+            setViewInfoReferralId(null);
+            setPendingAcceptId(viewInfo.referral.id);
+          }}
+        />
+      )}
     </div>
   );
 }
