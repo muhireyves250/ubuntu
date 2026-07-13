@@ -1,7 +1,17 @@
-import type { Visit } from "./patients/types";
+import type { Patient, Visit } from "./patients/types";
 
 export function shortId(id: string): string {
   return id.replace(/^patient-/, "PT-").slice(0, 14).toUpperCase();
+}
+
+export function computeAge(dateOfBirth: string): number {
+  const dob = new Date(`${dateOfBirth}T00:00:00`);
+  const diffMs = Date.now() - dob.getTime();
+  return Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000));
+}
+
+export function fullName(patient: Pick<Patient, "firstName" | "lastName">): string {
+  return `${patient.firstName} ${patient.lastName}`.trim();
 }
 
 export function getInitials(name: string): string {
