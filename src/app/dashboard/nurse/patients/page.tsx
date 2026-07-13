@@ -7,9 +7,10 @@ import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { RegisterPatientModal } from "@/components/patients/register-patient-modal";
 import { useAuth } from "@/lib/auth/auth-context";
-import { usePatients, useVisits } from "@/lib/patients/use-patients";
+import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
+import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import type { RiskLevel } from "@/lib/patients/types";
-import { getInitials, shortId } from "@/lib/format";
+import { getInitials, fullName, computeAge } from "@/lib/format";
 import {
   IconChevronDown,
   IconRefresh,
@@ -30,36 +31,47 @@ function PatientsPageContent() {
   const { user } = useAuth();
   const patients = usePatients();
   const visits = useVisits();
+  const pregnancies = usePregnancies();
   const searchParams = useSearchParams();
   const [nameFilter, setNameFilter] = useState(() => searchParams.get("q") ?? "");
   const [idFilter, setIdFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
+  const patientIdByPregnancyId = useMemo(
+    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
+    [pregnancies],
+  );
+
   const allRows = useMemo(() => {
     return patients.map((patient) => {
       const patientVisits = visits
-        .filter((visit) => visit.patientId === patient.id)
+        .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
         .sort((a, b) => b.date.localeCompare(a.date));
       const latestVisit = patientVisits[0];
+      const openPregnancy = pregnancies.find(
+        (p) => p.patientId === patient.id && p.status === "open",
+      );
       return {
         patient,
         latestRisk: latestVisit?.riskLevel ?? ("green" as RiskLevel),
         lastVisitDate: latestVisit?.date,
+        hospital: latestVisit?.hospital,
+        gaWeeks: openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null,
       };
     });
-  }, [patients, visits]);
+  }, [patients, visits, pregnancies, patientIdByPregnancyId]);
 
   const rows = useMemo(() => {
     return allRows
       .filter((row) =>
-        row.patient.name.toLowerCase().includes(nameFilter.toLowerCase()),
+        fullName(row.patient).toLowerCase().includes(nameFilter.toLowerCase()),
       )
       .filter((row) =>
-        shortId(row.patient.id).toLowerCase().includes(idFilter.toLowerCase()),
+        row.patient.nationalId.toLowerCase().includes(idFilter.toLowerCase()),
       )
       .filter((row) => riskFilter === "all" || row.latestRisk === riskFilter)
-      .sort((a, b) => a.patient.name.localeCompare(b.patient.name));
+      .sort((a, b) => fullName(a.patient).localeCompare(fullName(b.patient)));
   }, [allRows, nameFilter, idFilter, riskFilter]);
 
   const hasActiveFilters = nameFilter !== "" || idFilter !== "" || riskFilter !== "all";
@@ -176,7 +188,7 @@ function PatientsPageContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {rows.map(({ patient, latestRisk, lastVisitDate }) => (
+              {rows.map(({ patient, latestRisk, lastVisitDate, hospital, gaWeeks }) => (
                 <tr
                   key={patient.id}
                   className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
@@ -185,7 +197,7 @@ function PatientsPageContent() {
                     <input type="checkbox" disabled className="h-4 w-4 rounded border-zinc-300" />
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                    {shortId(patient.id)}
+                    {patient.nationalId}
                   </td>
                   <td className="px-4 py-3">
                     <Link
@@ -193,19 +205,19 @@ function PatientsPageContent() {
                       className="flex items-center gap-2.5 font-medium text-zinc-900 hover:text-teal-900 dark:text-zinc-50 dark:hover:text-teal-300"
                     >
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                        {getInitials(patient.name)}
+                        {getInitials(fullName(patient))}
                       </span>
-                      {patient.name}
+                      {fullName(patient)}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    {patient.facility}
+                    {hospital ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    {patient.age}
+                    {computeAge(patient.dateOfBirth)}
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    {patient.gestationalAgeWeeks} wks
+                    {gaWeeks !== null ? `${gaWeeks} wks` : "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                     {user?.name ?? "—"}
