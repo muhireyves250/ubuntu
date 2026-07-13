@@ -12,7 +12,7 @@ import {
   usePatients,
   useFollowUpPatients,
 } from "@/lib/patients/use-patients";
-import { getInitials, relativeTime } from "@/lib/format";
+import { getInitials, relativeTime, fullName } from "@/lib/format";
 
 function DhDashboardContent() {
   const summary = useRiskSummary();
@@ -92,11 +92,11 @@ function DhDashboardContent() {
                       className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-900"
                     >
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                        {getInitials(patient.name)}
+                        {getInitials(fullName(patient))}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                          {patient.name}
+                          {fullName(patient)}
                         </p>
                         <p className="text-xs text-zinc-500">{relativeTime(referral.acceptedAt)}</p>
                       </div>
@@ -144,7 +144,7 @@ function DhDashboardContent() {
                       className="flex items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
                     >
                       <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                        {patient.name}
+                        {fullName(patient)}
                       </p>
                       <RiskBadge level={latestRiskLevel} size="sm" />
                     </div>

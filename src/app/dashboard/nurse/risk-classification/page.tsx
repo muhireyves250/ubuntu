@@ -4,10 +4,10 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { usePatients, useVisits } from "@/lib/patients/use-patients";
+import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import type { Patient, RiskLevel } from "@/lib/patients/types";
-import { getInitials, shortId } from "@/lib/format";
+import { getInitials, shortId, fullName } from "@/lib/format";
 
 const RISK_LEVEL_ORDER: RiskLevel[] = ["red", "orange", "yellow", "green"];
 
@@ -44,6 +44,11 @@ const RISK_LEVEL_META: Record<
 function RiskClassificationContent() {
   const patients = usePatients();
   const visits = useVisits();
+  const pregnancies = usePregnancies();
+  const patientIdByPregnancyId = useMemo(
+    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
+    [pregnancies],
+  );
 
   const symptomsByLevel = useMemo(() => {
     const map = new Map<RiskLevel, string[]>();
@@ -61,13 +66,13 @@ function RiskClassificationContent() {
 
     for (const patient of patients) {
       const latestVisit = visits
-        .filter((visit) => visit.patientId === patient.id)
+        .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
         .sort((a, b) => b.date.localeCompare(a.date))[0];
       const level = latestVisit?.riskLevel ?? "green";
       map.get(level)!.push(patient);
     }
     return map;
-  }, [patients, visits]);
+  }, [patients, visits, patientIdByPregnancyId]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -131,10 +136,10 @@ function RiskClassificationContent() {
                           className="flex items-center gap-2.5 text-sm font-medium text-zinc-900 hover:text-teal-900 dark:text-zinc-50 dark:hover:text-teal-300"
                         >
                           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                            {getInitials(patient.name)}
+                            {getInitials(fullName(patient))}
                           </span>
                           <span>
-                            {patient.name}
+                            {fullName(patient)}
                             <span className="ml-2 font-mono text-xs text-zinc-400">
                               {shortId(patient.id)}
                             </span>

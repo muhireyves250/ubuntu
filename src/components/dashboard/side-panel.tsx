@@ -3,13 +3,15 @@
 import Link from "next/link";
 import type { DemoUser } from "@/lib/auth/types";
 import type { RoleOverviewCopy } from "@/lib/dashboard/role-copy";
-import { getInitials, relativeTime } from "@/lib/format";
+import { getInitials, relativeTime, fullName } from "@/lib/format";
 import {
   useActiveReferrals,
   useFollowUpPatients,
   usePatients,
+  usePregnancies,
   useTodaysVisits,
 } from "@/lib/patients/use-patients";
+import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { RiskBadge } from "@/components/patients/risk-badge";
 
 export function SidePanel({
@@ -21,6 +23,7 @@ export function SidePanel({
 }) {
   const activeReferrals = useActiveReferrals();
   const patients = usePatients();
+  const pregnancies = usePregnancies();
   const followUps = useFollowUpPatients();
   const todaysVisits = useTodaysVisits();
 
@@ -65,7 +68,7 @@ export function SidePanel({
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                      {patient.name}
+                      {fullName(patient)}
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
                       {reason === "high-risk"
@@ -103,6 +106,10 @@ export function SidePanel({
             {activeReferrals.map((referral) => {
               const patient = patients.find((p) => p.id === referral.patientId);
               if (!patient) return null;
+              const openPregnancy = pregnancies.find(
+                (p) => p.patientId === patient.id && p.status === "open",
+              );
+              const gaWeeks = openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null;
               return (
                 <Link
                   key={referral.id}
@@ -111,10 +118,10 @@ export function SidePanel({
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                      {patient.name}
+                      {fullName(patient)}
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {patient.gestationalAgeWeeks}w gestation
+                      {gaWeeks !== null ? `${gaWeeks}w gestation` : "—"}
                     </p>
                   </div>
                   <p className="ml-2 shrink-0 text-xs text-zinc-400 dark:text-zinc-500">
@@ -155,7 +162,7 @@ export function SidePanel({
                   className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
                 >
                   <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                    {patient.name}
+                    {fullName(patient)}
                   </p>
                   <RiskBadge level={visit.riskLevel} size="sm" />
                 </Link>

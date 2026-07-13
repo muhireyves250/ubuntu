@@ -2,9 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePatients, useVisits } from "@/lib/patients/use-patients";
+import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { getInitials, shortId } from "@/lib/format";
+import { getInitials, shortId, fullName } from "@/lib/format";
 import { IconSearch } from "./icons";
 
 const MAX_RESULTS = 6;
@@ -13,9 +13,15 @@ export function PatientSearch() {
   const router = useRouter();
   const patients = usePatients();
   const visits = useVisits();
+  const pregnancies = usePregnancies();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const patientIdByPregnancyId = useMemo(
+    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
+    [pregnancies],
+  );
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -24,17 +30,17 @@ export function PatientSearch() {
     return patients
       .filter(
         (patient) =>
-          patient.name.toLowerCase().includes(q) ||
+          fullName(patient).toLowerCase().includes(q) ||
           shortId(patient.id).toLowerCase().includes(q),
       )
       .slice(0, MAX_RESULTS)
       .map((patient) => {
         const latestVisit = visits
-          .filter((visit) => visit.patientId === patient.id)
+          .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
           .sort((a, b) => b.date.localeCompare(a.date))[0];
         return { patient, latestRisk: latestVisit?.riskLevel ?? "green" };
       });
-  }, [patients, visits, query]);
+  }, [patients, visits, patientIdByPregnancyId, query]);
 
   function goToPatient(id: string) {
     setQuery("");
@@ -96,10 +102,10 @@ export function PatientSearch() {
                 className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800"
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                  {getInitials(patient.name)}
+                  {getInitials(fullName(patient))}
                 </span>
                 <span className="flex-1 text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                  {patient.name}
+                  {fullName(patient)}
                 </span>
                 <RiskBadge level={latestRisk} size="sm" />
               </button>

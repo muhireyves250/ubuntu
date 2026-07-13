@@ -4,10 +4,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { usePatients, useVisits } from "@/lib/patients/use-patients";
+import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import type { RiskLevel } from "@/lib/patients/types";
-import { formatLabs, getInitials, shortId } from "@/lib/format";
+import { formatLabs, getInitials, shortId, fullName } from "@/lib/format";
 import { IconSearch } from "@/components/dashboard/icons";
 
 const SYMPTOM_LABEL = new Map(
@@ -25,6 +25,7 @@ const RISK_FILTERS: { value: "all" | RiskLevel; label: string }[] = [
 function VisitsPageContent() {
   const patients = usePatients();
   const visits = useVisits();
+  const pregnancies = usePregnancies();
   const [nameFilter, setNameFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
 
@@ -32,17 +33,24 @@ function VisitsPageContent() {
     () => new Map(patients.map((patient) => [patient.id, patient])),
     [patients],
   );
+  const patientIdByPregnancyId = useMemo(
+    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
+    [pregnancies],
+  );
 
   const rows = useMemo(() => {
     return visits
-      .map((visit) => ({ visit, patient: patientById.get(visit.patientId) }))
+      .map((visit) => ({
+        visit,
+        patient: patientById.get(patientIdByPregnancyId.get(visit.pregnancyId) ?? ""),
+      }))
       .filter((row) => row.patient)
       .filter((row) =>
-        row.patient!.name.toLowerCase().includes(nameFilter.toLowerCase()),
+        fullName(row.patient!).toLowerCase().includes(nameFilter.toLowerCase()),
       )
       .filter((row) => riskFilter === "all" || row.visit.riskLevel === riskFilter)
       .sort((a, b) => b.visit.date.localeCompare(a.visit.date));
-  }, [visits, patientById, nameFilter, riskFilter]);
+  }, [visits, patientById, patientIdByPregnancyId, nameFilter, riskFilter]);
 
   const hasActiveFilters = nameFilter !== "" || riskFilter !== "all";
 
@@ -121,10 +129,10 @@ function VisitsPageContent() {
                       className="flex items-center gap-2.5 font-medium text-zinc-900 hover:text-teal-900 dark:text-zinc-50 dark:hover:text-teal-300"
                     >
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                        {getInitials(patient!.name)}
+                        {getInitials(fullName(patient!))}
                       </span>
                       <span>
-                        {patient!.name}
+                        {fullName(patient!)}
                         <span className="ml-2 font-mono text-xs text-zinc-400">
                           {shortId(patient!.id)}
                         </span>
