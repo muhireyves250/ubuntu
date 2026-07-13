@@ -22,12 +22,21 @@ const RISK_FILTERS: { value: "all" | RiskLevel; label: string }[] = [
   { value: "green", label: "Green" },
 ];
 
+const DATE_FILTERS: { value: "today" | "all"; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "all", label: "All" },
+];
+
 function VisitsPageContent() {
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
   const [nameFilter, setNameFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
+  const [dateFilter, setDateFilter] = useState<"today" | "all">("today");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const todaysCount = visits.filter((v) => v.date === today).length;
 
   const patientById = useMemo(
     () => new Map(patients.map((patient) => [patient.id, patient])),
@@ -45,12 +54,13 @@ function VisitsPageContent() {
         patient: patientById.get(patientIdByPregnancyId.get(visit.pregnancyId) ?? ""),
       }))
       .filter((row) => row.patient)
+      .filter((row) => dateFilter === "all" || row.visit.date === today)
       .filter((row) =>
         fullName(row.patient!).toLowerCase().includes(nameFilter.toLowerCase()),
       )
       .filter((row) => riskFilter === "all" || row.visit.riskLevel === riskFilter)
       .sort((a, b) => b.visit.date.localeCompare(a.visit.date));
-  }, [visits, patientById, patientIdByPregnancyId, nameFilter, riskFilter]);
+  }, [visits, patientById, patientIdByPregnancyId, nameFilter, riskFilter, dateFilter, today]);
 
   const hasActiveFilters = nameFilter !== "" || riskFilter !== "all";
 
@@ -61,8 +71,36 @@ function VisitsPageContent() {
           ANC Visits
         </h2>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          {visits.length} visit{visits.length === 1 ? "" : "s"} logged
+          {todaysCount} today · {visits.length} total
         </span>
+      </div>
+
+      <div className="flex w-fit gap-1 rounded-full border border-zinc-300 bg-[#ffeedb] p-1 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+        {DATE_FILTERS.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            onClick={() => setDateFilter(filter.value)}
+            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              dateFilter === filter.value
+                ? "bg-[#0f766e] text-white shadow-sm"
+                : "text-zinc-600 hover:bg-white/60 dark:text-zinc-300"
+            }`}
+          >
+            {filter.label}
+            {filter.value === "today" && (
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
+                  dateFilter === "today"
+                    ? "bg-white/20 text-white"
+                    : "bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+                }`}
+              >
+                {todaysCount}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-[#ffeedb] p-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
@@ -167,7 +205,9 @@ function VisitsPageContent() {
                     colSpan={6}
                     className="px-4 py-10 text-center text-zinc-500 dark:text-zinc-400"
                   >
-                    No visits match these filters.
+                    {dateFilter === "today" && !hasActiveFilters
+                      ? "No visits logged today yet."
+                      : "No visits match these filters."}
                   </td>
                 </tr>
               )}
