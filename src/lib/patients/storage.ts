@@ -66,11 +66,20 @@ function loadVisits(): Visit[] {
   return visitsCache;
 }
 
+function isCurrentShapeReferral(referral: Referral): boolean {
+  return (
+    typeof referral.createdAt === "string" &&
+    typeof referral.referredByNurse === "string" &&
+    typeof referral.referredByFacility === "string"
+  );
+}
+
 function loadReferrals(): Referral[] {
   if (referralsCache) return referralsCache;
   const stored = readList<Referral>(REFERRALS_KEY);
-  referralsCache = stored ?? [];
-  if (!stored) writeList(REFERRALS_KEY, referralsCache);
+  const usable = stored && stored.every(isCurrentShapeReferral) ? stored : null;
+  referralsCache = usable ?? [];
+  if (!usable) writeList(REFERRALS_KEY, referralsCache);
   return referralsCache;
 }
 
@@ -165,6 +174,14 @@ export function updatePregnancy(pregnancyId: string, updates: Partial<Pregnancy>
   );
   writeList(PREGNANCIES_KEY, pregnanciesCache);
   pregnancyListeners.forEach((listener) => listener());
+}
+
+export function updateReferral(referralId: string, updates: Partial<Referral>) {
+  referralsCache = loadReferrals().map((r) =>
+    r.id === referralId ? { ...r, ...updates } : r,
+  );
+  writeList(REFERRALS_KEY, referralsCache);
+  referralListeners.forEach((listener) => listener());
 }
 
 export function updatePatient(
