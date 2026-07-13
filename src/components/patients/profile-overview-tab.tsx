@@ -5,9 +5,23 @@ import { RiskBadge } from "@/components/patients/risk-badge";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import { formatLabs, fullName, computeAge } from "@/lib/format";
 import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
-import type { Patient, Visit, Pregnancy } from "@/lib/patients/types";
+import {
+  IconUsers,
+  IconCalendar,
+  IconReport,
+  IconClipboard,
+  IconAlert,
+} from "@/components/dashboard/icons";
+import type { Patient, Visit, Pregnancy, RiskLevel } from "@/lib/patients/types";
 
 const SYMPTOM_LABEL = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s.label]));
+
+const RISK_HERO_STYLES: Record<RiskLevel, string> = {
+  green: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/50",
+  yellow: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-900/50",
+  orange: "bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/50",
+  red: "bg-red-50 border-red-300 dark:bg-red-950/20 dark:border-red-900/50",
+};
 
 function fmt(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString("en-GB", {
@@ -17,26 +31,40 @@ function fmt(isoDate: string): string {
   });
 }
 
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-zinc-400">{label}</dt>
+      <dd className="font-medium text-zinc-900 dark:text-zinc-50">{value}</dd>
+    </div>
+  );
+}
+
 function SectionCard({
+  icon,
   title,
   children,
 }: {
+  icon: React.ReactNode;
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-        {title}
-      </p>
-      {children}
+    <div className="overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">
+      <div className="flex items-center gap-2.5 border-b border-zinc-200 bg-[#ffeedb] px-4 py-3 dark:border-zinc-800 dark:bg-orange-950/40">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-teal-700 dark:bg-zinc-900 dark:text-teal-400">
+          {icon}
+        </span>
+        <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">{title}</h3>
+      </div>
+      <div className="bg-white p-4 dark:bg-zinc-900">{children}</div>
     </div>
   );
 }
 
 function SkeletonCard({ lines = 3 }: { lines?: number }) {
   return (
-    <div className="animate-pulse rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="animate-pulse rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mb-3 h-3 w-24 rounded bg-zinc-200 dark:bg-zinc-800" />
       <div className="flex flex-col gap-2">
         {Array.from({ length: lines }).map((_, i) => (
@@ -104,144 +132,97 @@ export function ProfileOverviewTab({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Risk card */}
-      <SectionCard title="Current risk">
-        <div className="flex flex-col items-center gap-2 py-2">
-          <RiskBadge level={currentRisk} size="lg" />
-          <p className="text-xs text-zinc-400">
-            {latestVisit
-              ? `Last assessed: ${latestVisit.date}`
-              : "No assessments yet"}
-          </p>
-        </div>
-      </SectionCard>
+      {/* Risk hero */}
+      <div
+        className={`flex flex-col items-center gap-2 rounded-2xl border p-6 text-center ${RISK_HERO_STYLES[currentRisk]}`}
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Current Risk Level
+        </p>
+        <RiskBadge level={currentRisk} size="lg" />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          {latestVisit ? `Last assessed: ${latestVisit.date}` : "No assessments yet"}
+        </p>
+      </div>
 
-      {/* Demographics card */}
-      <SectionCard title="Demographics">
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <div>
-            <dt className="text-xs text-zinc-400">Full name</dt>
-            <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {fullName(patient)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-zinc-400">Age</dt>
-            <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {computeAge(patient.dateOfBirth)} years
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-zinc-400">Gestational age</dt>
-            <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {gaWeeks !== null ? `${gaWeeks} weeks` : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-zinc-400">Current hospital</dt>
-            <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {latestVisit?.hospital ?? "Not yet seen"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-zinc-400">Current assigned nurse</dt>
-            <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {latestVisit?.attendingNurse ?? "Not yet seen"}
-            </dd>
-          </div>
-          <div className="col-span-2">
-            <dt className="text-xs text-zinc-400">Registered</dt>
-            <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {patient.registeredAt}
-            </dd>
-          </div>
-        </dl>
-      </SectionCard>
-
-      {/* Active pregnancy card */}
-      <SectionCard title="Active pregnancy">
-        {pregnancy ? (
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <div>
-              <dt className="text-xs text-zinc-400">Gestational age</dt>
-              <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-                {gaWeeks} weeks
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-zinc-400">EDD</dt>
-              <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-                {fmt(pregnancy.eddDate)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-zinc-400">Obstetric</dt>
-              <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-                G{pregnancy.gravidity} P{pregnancy.parity}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-zinc-400">ANC visits</dt>
-              <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-                {ancVisitCount} visit{ancVisitCount !== 1 ? "s" : ""} recorded
-              </dd>
-            </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Demographics */}
+        <SectionCard icon={<IconUsers className="h-4 w-4" />} title="Demographics">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <Field label="Full name" value={fullName(patient)} />
+            <Field label="Age" value={`${computeAge(patient.dateOfBirth)} years`} />
+            <Field
+              label="Gestational age"
+              value={gaWeeks !== null ? `${gaWeeks} weeks` : "—"}
+            />
+            <Field label="Current hospital" value={latestVisit?.hospital ?? "Not yet seen"} />
+            <Field
+              label="Current assigned nurse"
+              value={latestVisit?.attendingNurse ?? "Not yet seen"}
+            />
+            <Field label="Registered" value={patient.registeredAt} />
           </dl>
-        ) : (
-          <p className="text-sm text-zinc-400">No active pregnancy on record.</p>
-        )}
-      </SectionCard>
+        </SectionCard>
 
-      {/* Latest assessment card */}
-      <SectionCard title="Latest assessment">
-        {latestVisit ? (
-          <div className="flex flex-col gap-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-500 dark:text-zinc-400">
-                {latestVisit.date}
-              </span>
-              <RiskBadge level={latestVisit.riskLevel} size="sm" />
+        {/* Active pregnancy */}
+        <SectionCard icon={<IconCalendar className="h-4 w-4" />} title="Active Pregnancy">
+          {pregnancy ? (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              <Field label="Gestational age" value={`${gaWeeks} weeks`} />
+              <Field label="EDD" value={fmt(pregnancy.eddDate)} />
+              <Field label="Obstetric" value={`G${pregnancy.gravidity} P${pregnancy.parity}`} />
+              <Field
+                label="ANC visits"
+                value={`${ancVisitCount} visit${ancVisitCount !== 1 ? "s" : ""} recorded`}
+              />
+            </dl>
+          ) : (
+            <p className="text-sm text-zinc-400">No active pregnancy on record.</p>
+          )}
+        </SectionCard>
+
+        {/* Latest assessment */}
+        <SectionCard icon={<IconReport className="h-4 w-4" />} title="Latest Assessment">
+          {latestVisit ? (
+            <div className="flex flex-col gap-2.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500 dark:text-zinc-400">{latestVisit.date}</span>
+                <RiskBadge level={latestVisit.riskLevel} size="sm" />
+              </div>
+              <Field label="Symptoms" value={topSymptoms} />
+              <Field label="Labs" value={formatLabs(latestVisit)} />
             </div>
-            <div>
-              <span className="text-xs text-zinc-400">Symptoms: </span>
-              <span className="text-zinc-700 dark:text-zinc-300">
-                {topSymptoms}
-              </span>
-            </div>
-            <div>
-              <span className="text-xs text-zinc-400">Labs: </span>
-              <span className="text-zinc-700 dark:text-zinc-300">
-                {formatLabs(latestVisit)}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-zinc-400">No assessments recorded yet.</p>
-        )}
-      </SectionCard>
+          ) : (
+            <p className="text-sm text-zinc-400">No assessments recorded yet.</p>
+          )}
+        </SectionCard>
+      </div>
 
       {/* Quick actions */}
       <div className="flex gap-3">
         <button
           type="button"
           onClick={() => onAction("New Assessment")}
-          className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-300 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
+          <IconClipboard className="h-4 w-4" />
           New Assessment
         </button>
         <button
           type="button"
           onClick={() => onAction("Visit History")}
-          className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-300 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
+          <IconCalendar className="h-4 w-4" />
           View History
         </button>
         <button
           type="button"
           disabled
           title="Coming soon"
-          className="flex-1 cursor-not-allowed rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-400 dark:border-zinc-800 dark:text-zinc-600"
+          className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-2.5 text-sm font-medium text-zinc-400 dark:border-zinc-800 dark:text-zinc-600"
         >
+          <IconAlert className="h-4 w-4" />
           New Referral
         </button>
       </div>
