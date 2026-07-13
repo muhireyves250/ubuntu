@@ -4,10 +4,9 @@ import { useMemo, useState } from "react";
 import { deriveMilestones } from "@/lib/patients/pregnancy";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { formatLabs } from "@/lib/format";
-import type { AncVisit, Pregnancy, Referral, Visit } from "@/lib/patients/types";
+import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
 
 type TimelineItem =
-  | { kind: "anc-visit"; id: string; date: string; data: AncVisit }
   | { kind: "assessment"; id: string; date: string; data: Visit }
   | { kind: "referral"; id: string; date: string; data: Referral }
   | {
@@ -19,32 +18,34 @@ type TimelineItem =
 
 function itemLabel(item: TimelineItem): string {
   switch (item.kind) {
-    case "anc-visit":
-      return `ANC visit ${item.data.ancNumber} logged`;
     case "assessment":
-      return `Assessment recorded — classified ${item.data.riskLevel}`;
+      if (item.data.type === "emergency") {
+        return "Emergency visit — classified RED";
+      }
+      if (item.data.type === "scheduled") {
+        return `Scheduled ANC visit — classified ${item.data.riskLevel}`;
+      }
+      return `Unscheduled visit — classified ${item.data.riskLevel}`;
     case "referral":
       return "Referral accepted";
     case "milestone":
-      return `ANC visit ${item.data.visitNumber} of 4 recommended — due by week ${item.data.dueByWeek}`;
+      return `ANC visit ${item.data.visitNumber} of 10 recommended — due by week ${item.data.dueByWeek}`;
   }
 }
 
 export function PregnancyTimeline({
   pregnancy,
-  ancVisits,
   visits,
   referrals,
 }: {
   pregnancy: Pregnancy;
-  ancVisits: AncVisit[];
   visits: Visit[];
   referrals: Referral[];
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const items = useMemo<TimelineItem[]>(() => {
-    const milestones = deriveMilestones(pregnancy, ancVisits).map(
+    const milestones = deriveMilestones(pregnancy, visits).map(
       (milestone) =>
         ({
           kind: "milestone",
@@ -55,15 +56,6 @@ export function PregnancyTimeline({
     );
 
     const dated: TimelineItem[] = [
-      ...ancVisits.map(
-        (visit) =>
-          ({
-            kind: "anc-visit",
-            id: visit.id,
-            date: visit.date,
-            data: visit,
-          }) satisfies TimelineItem,
-      ),
       ...visits.map(
         (visit) =>
           ({
@@ -85,7 +77,7 @@ export function PregnancyTimeline({
     ].sort((a, b) => b.date.localeCompare(a.date));
 
     return [...milestones, ...dated];
-  }, [pregnancy, ancVisits, visits, referrals]);
+  }, [pregnancy, visits, referrals]);
 
   if (items.length === 0) {
     return (
@@ -106,7 +98,9 @@ export function PregnancyTimeline({
               className={`absolute -left-[1.05rem] top-1.5 h-2 w-2 rounded-full ${
                 item.kind === "milestone" && item.data.overdue
                   ? "bg-orange-500"
-                  : "bg-teal-700"
+                  : item.kind === "assessment" && item.data.type === "emergency"
+                    ? "bg-red-600"
+                    : "bg-teal-700"
               }`}
             />
             <button
@@ -125,14 +119,13 @@ export function PregnancyTimeline({
 
             {expanded && (
               <div className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-                {item.kind === "anc-visit" && (
-                  <>
-                    <p>Provider: {item.data.provider || "—"}</p>
-                    <p>Notes: {item.data.notes || "—"}</p>
-                  </>
-                )}
                 {item.kind === "assessment" && (
-                  <p>Labs: {formatLabs(item.data)}</p>
+                  <>
+                    {item.data.type === "emergency" && (
+                      <p>Summary: {item.data.emergencySummary}</p>
+                    )}
+                    <p>Labs: {formatLabs(item.data)}</p>
+                  </>
                 )}
                 {item.kind === "referral" && (
                   <p>Accepted at: {item.data.acceptedAt}</p>
