@@ -11,6 +11,15 @@ export const DEMO_USERS: DemoUser[] = [
     password: "nurse123",
   },
   {
+    id: "nurse-kagame",
+    name: "Nurse Kagame",
+    title: "In charge of ANC",
+    facility: "Bugesera District Hospital",
+    role: "nurse",
+    facilityLevel: "dh",
+    password: "nurse123",
+  },
+  {
     id: "hc-head-mukamana",
     name: "Dr. Mukamana",
     title: "Head of Health Center",
