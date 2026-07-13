@@ -5,7 +5,6 @@ import {
   computeBmi,
   type VitalSigns,
 } from "@/components/patients/assessment/vital-signs-step";
-import type { LabValues } from "@/components/patients/assessment/labs-step";
 import { recordVisit } from "@/lib/patients/use-patients";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import type { Visit, VisitLabs } from "@/lib/patients/types";
@@ -25,7 +24,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 export function SummaryStep({
   vitals,
   symptoms,
-  labs,
+  labsOrdered,
   pregnancyId,
   type,
   scheduledWeek,
@@ -34,7 +33,7 @@ export function SummaryStep({
 }: {
   vitals: VitalSigns;
   symptoms: string[];
-  labs: LabValues;
+  labsOrdered: boolean;
   pregnancyId: string;
   type: "scheduled" | "unscheduled";
   scheduledWeek?: number;
@@ -46,8 +45,6 @@ export function SummaryStep({
   const [followUpPlan, setFollowUpPlan] = useState("");
 
   const bmi = computeBmi(vitals);
-  const hasLabs =
-    labs.hemoglobin || labs.platelets || labs.bloodSugar || labs.urineProtein;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,11 +54,6 @@ export function SummaryStep({
       temperature: vitals.temperature ? Number(vitals.temperature) : undefined,
       pulse: vitals.pulse ? Number(vitals.pulse) : undefined,
       weight: vitals.weight ? Number(vitals.weight) : undefined,
-      hemoglobin: labs.hemoglobin ? Number(labs.hemoglobin) : undefined,
-      platelets: labs.platelets ? Number(labs.platelets) : undefined,
-      bloodSugar: labs.bloodSugar ? Number(labs.bloodSugar) : undefined,
-      urineProtein:
-        (labs.urineProtein as VisitLabs["urineProtein"]) || undefined,
     };
     const hasVisitLabs = Object.values(visitLabs).some((v) => v !== undefined);
     const visit = recordVisit({
@@ -72,6 +64,7 @@ export function SummaryStep({
       symptomIds: symptoms,
       notes,
       labs: hasVisitLabs ? visitLabs : undefined,
+      labStatus: labsOrdered ? "pending" : undefined,
       treatment: treatment.trim() || undefined,
       followUpPlan: followUpPlan.trim() || undefined,
     });
@@ -160,47 +153,22 @@ export function SummaryStep({
         )}
       </section>
 
-      {hasLabs && (
-        <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-            Labs
-          </p>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-            {labs.hemoglobin && (
-              <div>
-                <dt className="inline text-zinc-400">Hb </dt>
-                <dd className="inline text-zinc-900 dark:text-zinc-50">
-                  {labs.hemoglobin} g/dL
-                </dd>
-              </div>
-            )}
-            {labs.platelets && (
-              <div>
-                <dt className="inline text-zinc-400">Plt </dt>
-                <dd className="inline text-zinc-900 dark:text-zinc-50">
-                  {labs.platelets}k
-                </dd>
-              </div>
-            )}
-            {labs.bloodSugar && (
-              <div>
-                <dt className="inline text-zinc-400">BG </dt>
-                <dd className="inline text-zinc-900 dark:text-zinc-50">
-                  {labs.bloodSugar} mmol/L
-                </dd>
-              </div>
-            )}
-            {labs.urineProtein && (
-              <div>
-                <dt className="inline text-zinc-400">Urine protein </dt>
-                <dd className="inline text-zinc-900 dark:text-zinc-50">
-                  {labs.urineProtein}
-                </dd>
-              </div>
-            )}
-          </dl>
-        </section>
-      )}
+      <section
+        className={`rounded-lg border p-4 text-sm ${
+          labsOrdered
+            ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-400"
+            : "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+        }`}
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
+          Laboratory Tests
+        </p>
+        <p className="mt-1">
+          {labsOrdered
+            ? "Sent to the laboratory nurse — results will appear once completed."
+            : "No lab tests ordered for this visit."}
+        </p>
+      </section>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
         Notes

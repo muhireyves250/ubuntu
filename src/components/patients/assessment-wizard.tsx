@@ -8,11 +8,7 @@ import {
   type VitalSigns,
 } from "@/components/patients/assessment/vital-signs-step";
 import { SymptomsStep } from "@/components/patients/assessment/symptoms-step";
-import {
-  LabsStep,
-  emptyLabValues,
-  type LabValues,
-} from "@/components/patients/assessment/labs-step";
+import { LabsStep } from "@/components/patients/assessment/labs-step";
 import { SummaryStep } from "@/components/patients/assessment/summary-step";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
@@ -44,17 +40,13 @@ export function AssessmentWizard({
   const [maxReachedStep, setMaxReachedStep] = useState<StepNumber>(1);
   const [vitals, setVitals] = useState<VitalSigns>(emptyVitalSigns());
   const [symptoms, setSymptoms] = useState<string[]>([]);
-  const [labs, setLabs] = useState<LabValues>(emptyLabValues());
+  const [labsOrdered, setLabsOrdered] = useState(false);
   const [savedVisit, setSavedVisit] = useState<Visit | null>(null);
 
   const canAdvance = currentStep === 1 ? isVitalSignsComplete(vitals) : true;
 
   function handleVitalsChange(field: keyof VitalSigns, value: string) {
     setVitals((current) => ({ ...current, [field]: value }));
-  }
-
-  function handleLabsChange(field: keyof LabValues, value: string) {
-    setLabs((current) => ({ ...current, [field]: value }));
   }
 
   function goToStep(step: StepNumber) {
@@ -80,7 +72,7 @@ export function AssessmentWizard({
     setMaxReachedStep(1);
     setVitals(emptyVitalSigns());
     setSymptoms([]);
-    setLabs(emptyLabValues());
+    setLabsOrdered(false);
     setSavedVisit(null);
   }
 
@@ -168,13 +160,13 @@ export function AssessmentWizard({
         <SymptomsStep selectedIds={symptoms} onChange={setSymptoms} />
       )}
       {currentStep === 3 && (
-        <LabsStep values={labs} onChange={handleLabsChange} />
+        <LabsStep labsOrdered={labsOrdered} onChange={setLabsOrdered} />
       )}
       {currentStep === 4 && (
         <SummaryStep
           vitals={vitals}
           symptoms={symptoms}
-          labs={labs}
+          labsOrdered={labsOrdered}
           pregnancyId={pregnancyId}
           type={type}
           scheduledWeek={scheduledWeek}
