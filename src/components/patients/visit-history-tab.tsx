@@ -37,6 +37,7 @@ export function VisitHistoryTab({
   onLogUnscheduledVisit: () => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedScheduleWeek, setExpandedScheduleWeek] = useState<number | null>(null);
 
   const due = nextDueVisit(pregnancy, visits);
   const missed = missedVisits(pregnancy, visits);
@@ -90,41 +91,78 @@ export function VisitHistoryTab({
           ANC Schedule
         </p>
         <div className="flex flex-wrap gap-2">
-          {scheduleRows.map((row) => (
-            <div
-              key={row.visitNumber}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
-                row.status === "completed"
-                  ? "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-400"
-                  : row.status === "due"
-                    ? "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                    : row.status === "missed"
-                      ? "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
-                      : "border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
-              }`}
-            >
-              <span>Week {row.dueByWeek}</span>
-              <span className="text-[10px] uppercase tracking-wide opacity-80">
-                {row.status === "completed"
-                  ? "Completed"
-                  : row.status === "due"
-                    ? "Due now"
-                    : row.status === "missed"
-                      ? "Missed"
-                      : "Upcoming"}
-              </span>
-              {row.status === "due" && (
-                <button
-                  type="button"
-                  onClick={() => onLogScheduledVisit(row.dueByWeek)}
-                  className="ml-1 rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-700"
-                >
-                  Log
-                </button>
-              )}
-            </div>
-          ))}
+          {scheduleRows.map((row) => {
+            const chipClasses = `flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+              row.status === "completed"
+                ? "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-400"
+                : row.status === "due"
+                  ? "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                  : row.status === "missed"
+                    ? "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
+                    : "border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
+            }`;
+            const label =
+              row.status === "completed"
+                ? "Completed"
+                : row.status === "due"
+                  ? "Due now"
+                  : row.status === "missed"
+                    ? "Missed"
+                    : "Upcoming";
+
+            if (row.status !== "completed") {
+              return (
+                <div key={row.visitNumber} className={chipClasses}>
+                  <span>Week {row.dueByWeek}</span>
+                  <span className="text-[10px] uppercase tracking-wide opacity-80">{label}</span>
+                  {row.status === "due" && (
+                    <button
+                      type="button"
+                      onClick={() => onLogScheduledVisit(row.dueByWeek)}
+                      className="ml-1 rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-700"
+                    >
+                      Log
+                    </button>
+                  )}
+                </div>
+              );
+            }
+
+            const isExpanded = expandedScheduleWeek === row.dueByWeek;
+            return (
+              <button
+                key={row.visitNumber}
+                type="button"
+                onClick={() => setExpandedScheduleWeek(isExpanded ? null : row.dueByWeek)}
+                className={`${chipClasses} cursor-pointer hover:opacity-80`}
+              >
+                <span>Week {row.dueByWeek}</span>
+                <span className="text-[10px] uppercase tracking-wide opacity-80">{label}</span>
+              </button>
+            );
+          })}
         </div>
+
+        {expandedScheduleWeek !== null && (() => {
+          const visit = visits.find(
+            (v) => v.type !== "emergency" && v.scheduledWeek === expandedScheduleWeek,
+          );
+          if (!visit) return null;
+          return (
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+              <p className="mb-1 font-semibold uppercase tracking-wide text-zinc-400">
+                Week {expandedScheduleWeek} visit — {visit.date}
+              </p>
+              <p>Hospital: {visit.hospital}</p>
+              <p>Nurse: {visit.attendingNurse}</p>
+              <p>Risk: {visit.riskLevel}</p>
+              {visit.notes && <p>Notes: {visit.notes}</p>}
+              <p>Labs: {formatLabs(visit)}</p>
+              {visit.treatment && <p>Treatment: {visit.treatment}</p>}
+              {visit.followUpPlan && <p>Follow-up plan: {visit.followUpPlan}</p>}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="scrollbar-hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">

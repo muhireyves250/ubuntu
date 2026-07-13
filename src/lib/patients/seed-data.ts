@@ -136,6 +136,7 @@ function buildVisit(
   id: string,
   pregnancyId: string,
   date: string,
+  scheduledWeek: number,
   symptomIds: string[],
   notes: string,
 ): Visit {
@@ -144,6 +145,7 @@ function buildVisit(
     pregnancyId,
     date,
     type: "scheduled",
+    scheduledWeek,
     hospital: "Nyamata Health Center",
     attendingNurse: "Nurse Uwase",
     symptomIds,
@@ -153,9 +155,9 @@ function buildVisit(
 }
 
 export const SEED_VISITS: Visit[] = [
-  buildVisit("visit-uwimana-1", "pregnancy-uwimana-1", "2026-06-10", ["prev-pph"], "Routine ANC visit, monitoring for recurrence given history."),
-  buildVisit("visit-mukeshimana-1", "pregnancy-mukeshimana-1", "2026-06-15", ["teenage", "controlled-htn"], "Blood pressure stable on current medication."),
-  buildVisit("visit-ingabire-1", "pregnancy-ingabire-1", "2026-06-20", ["multiple-gestation"], "Twin pregnancy confirmed on ultrasound, growth tracking normally."),
-  buildVisit("visit-nyiraneza-1", "pregnancy-nyiraneza-1", "2026-06-05", ["prev-pph"], "Routine ANC visit, flagged for history of postpartum hemorrhage."),
-  buildVisit("visit-nyiraneza-2", "pregnancy-nyiraneza-1", "2026-06-29", ["severe-anemia", "prev-pph"], "Hb dropped to 6.4 g/dl, referred for urgent management."),
+  buildVisit("visit-uwimana-1", "pregnancy-uwimana-1", "2026-06-10", 28, ["prev-pph"], "Routine ANC visit, monitoring for recurrence given history."),
+  buildVisit("visit-mukeshimana-1", "pregnancy-mukeshimana-1", "2026-06-15", 28, ["teenage", "controlled-htn"], "Blood pressure stable on current medication."),
+  buildVisit("visit-ingabire-1", "pregnancy-ingabire-1", "2026-06-20", 20, ["multiple-gestation"], "Twin pregnancy confirmed on ultrasound, growth tracking normally."),
+  buildVisit("visit-nyiraneza-1", "pregnancy-nyiraneza-1", "2026-06-05", 32, ["prev-pph"], "Routine ANC visit, flagged for history of postpartum hemorrhage."),
+  buildVisit("visit-nyiraneza-2", "pregnancy-nyiraneza-1", "2026-06-29", 36, ["severe-anemia", "prev-pph"], "Hb dropped to 6.4 g/dl, referred for urgent management."),
 ];
