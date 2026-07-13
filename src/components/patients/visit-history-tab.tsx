@@ -235,7 +235,13 @@ export function VisitHistoryTab({
                         : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
-                      {formatLabs(visit)}
+                      {visit.labStatus === "pending" ? (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                          Pending labs
+                        </span>
+                      ) : (
+                        formatLabs(visit)
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
                       {visit.hospital}
