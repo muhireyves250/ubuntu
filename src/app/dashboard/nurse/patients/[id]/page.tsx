@@ -23,13 +23,7 @@ import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
-import {
-  IconChevronDown,
-  IconChevronLeft,
-  IconChevronRight,
-  IconMore,
-  IconPrint,
-} from "@/components/dashboard/icons";
+import { IconChevronDown } from "@/components/dashboard/icons";
 
 const TABS = [
   "Overview",
@@ -96,23 +90,44 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <h1 className="font-mono text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          {patient.id.toUpperCase()}
-        </h1>
+      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-300 bg-[#ffeedb] p-5 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xl font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+          {getInitials(fullName(patient))}
+        </span>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+              {fullName(patient)}
+            </h2>
+            <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+              {patient.nationalId}
+            </span>
+          </div>
+          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+            {computeAge(patient.dateOfBirth)} years •{" "}
+            {openPregnancy
+              ? `${gestationalAgeWeeks(openPregnancy.lmpDate)} weeks gestation`
+              : "no active pregnancy"}
+          </p>
+          <span className="mt-1.5 inline-flex rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            {patient.registrationFacility}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <RiskBadge level={currentRisk} />
           <div className="relative">
             <button
               type="button"
               onClick={() => setActionsOpen((o) => !o)}
-              className="flex items-center gap-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-white/60 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
+              className="flex items-center gap-1 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Actions
               <IconChevronDown className="h-3.5 w-3.5" />
             </button>
             {actionsOpen && (
-              <div className="absolute left-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+              <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                 <button
                   type="button"
                   onClick={() => { setActionsOpen(false); setShowEditModal(true); }}
@@ -130,71 +145,6 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               </div>
             )}
           </div>
-          <button
-            type="button"
-            disabled
-            className="flex items-center gap-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
-          >
-            View
-            <IconChevronDown className="h-3.5 w-3.5" />
-          </button>
-          <span className="rounded-full bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-            {patient.registrationFacility}
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled
-              title="Previous"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 dark:border-zinc-800"
-            >
-              <IconChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              disabled
-              title="Next"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 dark:border-zinc-800"
-            >
-              <IconChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <button
-            type="button"
-            disabled
-            title="Print"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 dark:border-zinc-800"
-          >
-            <IconPrint className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            disabled
-            title="More"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 dark:border-zinc-800"
-          >
-            <IconMore className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4 rounded-xl border border-zinc-300 bg-[#ffeedb] p-4 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-teal-100 text-lg font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-          {getInitials(fullName(patient))}
-        </span>
-        <div className="flex flex-1 flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
-              {fullName(patient)}
-            </h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {computeAge(patient.dateOfBirth)} years •{" "}
-              {openPregnancy
-                ? `${gestationalAgeWeeks(openPregnancy.lmpDate)} weeks gestation`
-                : "no active pregnancy"}
-            </p>
-          </div>
-          <RiskBadge level={currentRisk} />
         </div>
       </div>
 
