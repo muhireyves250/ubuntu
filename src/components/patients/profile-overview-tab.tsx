@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import { formatLabs } from "@/lib/format";
+import { formatLabs, fullName, computeAge } from "@/lib/format";
 import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
-import type { Patient, Visit, Pregnancy, AncVisit } from "@/lib/patients/types";
+import type { Patient, Visit, Pregnancy } from "@/lib/patients/types";
 
 const SYMPTOM_LABEL = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s.label]));
 
@@ -55,13 +55,11 @@ export function ProfileOverviewTab({
   patient,
   visits,
   pregnancy,
-  ancVisits,
   onAction,
 }: {
   patient: Patient;
   visits: Visit[];
   pregnancy: Pregnancy | null;
-  ancVisits: AncVisit[];
   onAction: (tab: string) => void;
 }) {
   const [loading, setLoading] = useState(true);
@@ -72,9 +70,10 @@ export function ProfileOverviewTab({
 
   const latestVisit = visits[0] ?? null;
   const currentRisk = latestVisit?.riskLevel ?? "green";
-  const gaWeeks = pregnancy
-    ? gestationalAgeWeeks(pregnancy.lmpDate)
-    : patient.gestationalAgeWeeks;
+  const gaWeeks = pregnancy ? gestationalAgeWeeks(pregnancy.lmpDate) : null;
+  const ancVisitCount = pregnancy
+    ? visits.filter((v) => v.pregnancyId === pregnancy.id && v.type !== "emergency").length
+    : 0;
 
   if (loading) {
     return (
@@ -123,25 +122,31 @@ export function ProfileOverviewTab({
           <div>
             <dt className="text-xs text-zinc-400">Full name</dt>
             <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {patient.name}
+              {fullName(patient)}
             </dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-400">Age</dt>
             <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {patient.age} years
+              {computeAge(patient.dateOfBirth)} years
             </dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-400">Gestational age</dt>
             <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {gaWeeks} weeks
+              {gaWeeks !== null ? `${gaWeeks} weeks` : "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-400">Facility</dt>
+            <dt className="text-xs text-zinc-400">Current hospital</dt>
             <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-              {patient.facility}
+              {latestVisit?.hospital ?? "Not yet seen"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-zinc-400">Current assigned nurse</dt>
+            <dd className="font-medium text-zinc-900 dark:text-zinc-50">
+              {latestVisit?.attendingNurse ?? "Not yet seen"}
             </dd>
           </div>
           <div className="col-span-2">
@@ -178,8 +183,7 @@ export function ProfileOverviewTab({
             <div>
               <dt className="text-xs text-zinc-400">ANC visits</dt>
               <dd className="font-medium text-zinc-900 dark:text-zinc-50">
-                {ancVisits.length} visit{ancVisits.length !== 1 ? "s" : ""}{" "}
-                recorded
+                {ancVisitCount} visit{ancVisitCount !== 1 ? "s" : ""} recorded
               </dd>
             </div>
           </dl>
