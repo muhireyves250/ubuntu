@@ -68,7 +68,7 @@ function PatientsPageContent() {
         fullName(row.patient).toLowerCase().includes(nameFilter.toLowerCase()),
       )
       .filter((row) =>
-        row.patient.nationalId.toLowerCase().includes(idFilter.toLowerCase()),
+        (row.patient.nationalId ?? "").toLowerCase().includes(idFilter.toLowerCase()),
       )
       .filter((row) => riskFilter === "all" || row.latestRisk === riskFilter)
       .sort((a, b) => fullName(a.patient).localeCompare(fullName(b.patient)));
