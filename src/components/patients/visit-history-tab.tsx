@@ -30,11 +30,13 @@ export function VisitHistoryTab({
   visits,
   onLogScheduledVisit,
   onLogUnscheduledVisit,
+  readOnly = false,
 }: {
   pregnancy: Pregnancy;
   visits: Visit[];
-  onLogScheduledVisit: (week: number) => void;
-  onLogUnscheduledVisit: () => void;
+  onLogScheduledVisit?: (week: number) => void;
+  onLogUnscheduledVisit?: () => void;
+  readOnly?: boolean;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedScheduleWeek, setExpandedScheduleWeek] = useState<number | null>(null);
@@ -127,7 +129,7 @@ export function VisitHistoryTab({
                   <span>Week {row.dueByWeek}</span>
                   <span className="text-[10px] uppercase tracking-wide opacity-80">{label}</span>
                 </button>
-                {row.status === "due" && (
+                {!readOnly && row.status === "due" && onLogScheduledVisit && (
                   <button
                     type="button"
                     onClick={() => onLogScheduledVisit(row.dueByWeek)}
@@ -316,23 +318,25 @@ export function VisitHistoryTab({
         </table>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={!due}
-          onClick={() => due && onLogScheduledVisit(due.week)}
-          className="w-fit rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-        >
-          Log Scheduled Visit
-        </button>
-        <button
-          type="button"
-          onClick={onLogUnscheduledVisit}
-          className="w-fit rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-        >
-          Log Unscheduled Visit
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!due}
+            onClick={() => due && onLogScheduledVisit?.(due.week)}
+            className="w-fit rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            Log Scheduled Visit
+          </button>
+          <button
+            type="button"
+            onClick={onLogUnscheduledVisit}
+            className="w-fit rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            Log Unscheduled Visit
+          </button>
+        </div>
+      )}
     </div>
   );
 }

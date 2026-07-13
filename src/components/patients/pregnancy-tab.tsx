@@ -10,6 +10,7 @@ import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { NewPregnancyModal } from "@/components/patients/pregnancy/new-pregnancy-modal";
 import { ClosePregnancyModal } from "@/components/patients/pregnancy/close-pregnancy-modal";
 import { PregnancyTimeline } from "@/components/patients/pregnancy/pregnancy-timeline";
+import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
 import type { Pregnancy } from "@/lib/patients/types";
 
 function PregnancySummaryCard({ pregnancy }: { pregnancy: Pregnancy }) {
@@ -92,6 +93,7 @@ function PregnancySection({ pregnancy }: { pregnancy: Pregnancy }) {
   return (
     <div className="flex flex-col gap-5">
       <PregnancySummaryCard pregnancy={pregnancy} />
+      <VisitHistoryTab pregnancy={pregnancy} visits={visits} readOnly />
       <PregnancyTimeline visits={visits} referrals={referrals} />
     </div>
   );
