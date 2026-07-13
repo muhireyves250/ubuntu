@@ -16,13 +16,14 @@ import { EditPatientModal } from "@/components/patients/edit-patient-modal";
 import { CreateReferralModal } from "@/components/patients/create-referral-modal";
 import {
   usePatient,
-  useVisitsForPatient,
-  usePregnancyForPatient,
-  useAncVisitsForPregnancy,
+  usePregnanciesForPatient,
+  useAllVisitsForPatient,
+  useVisitsForPregnancy,
 } from "@/lib/patients/use-patients";
 import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
-import { getInitials } from "@/lib/format";
+import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
+import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
 import {
   IconChevronDown,
   IconChevronLeft,
@@ -44,19 +45,31 @@ const TABS = [
 
 type Tab = (typeof TABS)[number];
 
+type AssessmentContext = {
+  type: "scheduled" | "unscheduled";
+  scheduledWeek?: number;
+  ancNumber?: number;
+};
+
+type EmergencyResult = { pregnancy: Pregnancy; visit: Visit; referral: Referral };
+
 function PatientDetailContent({ patientId }: { patientId: string }) {
   const patient = usePatient(patientId);
-  const visits = useVisitsForPatient(patientId);
-  const pregnancy = usePregnancyForPatient(patientId);
-  const ancVisits = useAncVisitsForPregnancy(pregnancy?.id ?? "");
+  const pregnancies = usePregnanciesForPatient(patientId);
+  const openPregnancy = pregnancies.find((p) => p.status === "open") ?? null;
+  const allVisits = useAllVisitsForPatient(patientId);
+  const pregnancyVisits = useVisitsForPregnancy(openPregnancy?.id ?? "");
+
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [showEditModal, setShowEditModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [assessmentContext, setAssessmentContext] = useState<AssessmentContext | null>(null);
+  const [emergencyResult, setEmergencyResult] = useState<EmergencyResult | null>(null);
 
   if (!patient) return notFound();
 
-  const currentRisk = visits[0]?.riskLevel ?? "green";
+  const currentRisk = allVisits[0]?.riskLevel ?? "green";
 
   return (
     <div className="flex flex-col gap-5">
@@ -70,7 +83,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         <CreateReferralModal
           patient={patient}
           currentRisk={currentRisk}
-          clinicalSummary={visits[0]?.notes ?? ""}
+          clinicalSummary={allVisits[0]?.notes ?? ""}
           onClose={() => setShowReferralModal(false)}
           onCreated={() => setActiveTab("Visit History")}
         />
@@ -128,7 +141,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             <IconChevronDown className="h-3.5 w-3.5" />
           </button>
           <span className="rounded-full bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-            {patient.facility}
+            {patient.registrationFacility}
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -169,19 +182,18 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
 
       <div className="flex items-center gap-4 rounded-xl border border-zinc-300 bg-[#ffeedb] p-4 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-teal-100 text-lg font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-          {getInitials(patient.name)}
+          {getInitials(fullName(patient))}
         </span>
         <div className="flex flex-1 flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
-              {patient.name}
+              {fullName(patient)}
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {patient.age} years •{" "}
-              {pregnancy
-                ? gestationalAgeWeeks(pregnancy.lmpDate)
-                : patient.gestationalAgeWeeks}{" "}
-              weeks gestation
+              {computeAge(patient.dateOfBirth)} years •{" "}
+              {openPregnancy
+                ? `${gestationalAgeWeeks(openPregnancy.lmpDate)} weeks gestation`
+                : "no active pregnancy"}
             </p>
           </div>
           <RiskBadge level={currentRisk} />
@@ -209,9 +221,8 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         {activeTab === "Overview" && (
           <ProfileOverviewTab
             patient={patient}
-            visits={visits}
-            pregnancy={pregnancy}
-            ancVisits={ancVisits}
+            visits={allVisits}
+            pregnancy={openPregnancy}
             onAction={(tab) => setActiveTab(tab as Tab)}
           />
         )}
@@ -219,23 +230,88 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           <PatientDetailsTab patient={patient} />
         )}
         {activeTab === "Signs & Symptoms" && (
-          <SignsSymptomsTab patientId={patient.id} />
+          <>
+            {emergencyResult ? (
+              <div className="flex flex-col items-center gap-6 py-4 text-center">
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
+                    Emergency Flagged
+                  </p>
+                  <RiskBadge level={emergencyResult.visit.riskLevel} />
+                </div>
+                <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                    Summary
+                  </p>
+                  <p className="text-zinc-700 dark:text-zinc-300">
+                    {emergencyResult.visit.emergencySummary}
+                  </p>
+                </div>
+                <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                    Referral
+                  </p>
+                  <p className="text-zinc-700 dark:text-zinc-300">
+                    Urgency: {emergencyResult.referral.urgency}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEmergencyResult(null)}
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Back to Patient
+                </button>
+              </div>
+            ) : (
+              <SignsSymptomsTab patientId={patient.id} onFlagged={setEmergencyResult} />
+            )}
+          </>
         )}
         {activeTab === "New Assessment" && (
-          <AssessmentWizard patientId={patient.id} />
+          <>
+            {openPregnancy && assessmentContext ? (
+              <AssessmentWizard
+                pregnancyId={openPregnancy.id}
+                type={assessmentContext.type}
+                scheduledWeek={assessmentContext.scheduledWeek}
+                ancNumber={assessmentContext.ancNumber}
+              />
+            ) : (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Select or create a visit from Visit History first.
+              </p>
+            )}
+          </>
         )}
         {activeTab === "Pregnancy" && <PregnancyTab patientId={patient.id} />}
         {activeTab === "Classification" && (
-          <ClassificationTab currentRisk={currentRisk} visits={visits} />
+          <ClassificationTab currentRisk={currentRisk} visits={allVisits} />
         )}
         {activeTab === "Visit History" && (
-          <VisitHistoryTab
-            visits={visits}
-            onAddVisit={() => setActiveTab("Signs & Symptoms")}
-          />
+          <>
+            {openPregnancy ? (
+              <VisitHistoryTab
+                pregnancy={openPregnancy}
+                visits={pregnancyVisits}
+                onLogScheduledVisit={(week) => {
+                  setAssessmentContext({ type: "scheduled", scheduledWeek: week });
+                  setActiveTab("New Assessment");
+                }}
+                onLogUnscheduledVisit={() => {
+                  setAssessmentContext({ type: "unscheduled" });
+                  setActiveTab("New Assessment");
+                }}
+              />
+            ) : (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                This patient has no active pregnancy on record.
+              </p>
+            )}
+          </>
         )}
         {activeTab === "AI Prediction" && (
-          <AiPredictionTab visits={visits} />
+          <AiPredictionTab visits={allVisits} />
         )}
       </div>
 
@@ -259,7 +335,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
       </div>
 
       <div className="rounded-xl border border-zinc-300 bg-[#ffeedb] p-5 dark:border-zinc-700 dark:bg-orange-950/40">
-        <ActivityTimeline patient={patient} visits={visits} />
+        <ActivityTimeline patient={patient} visits={allVisits} />
       </div>
     </div>
   );
