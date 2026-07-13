@@ -22,6 +22,7 @@ export function NewPregnancyModal({
   const [previousEclampsia, setPreviousEclampsia] = useState(false);
   const [previousStillbirth, setPreviousStillbirth] = useState(false);
   const [lmpDate, setLmpDate] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,6 +35,11 @@ export function NewPregnancyModal({
 
   const edd = lmpDate ? computeEdd(lmpDate) : null;
   const weeks = lmpDate ? gestationalAgeWeeks(lmpDate) : null;
+
+  function handleLmpChange(value: string) {
+    setLmpDate(value);
+    if (!startDate) setStartDate(value);
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,6 +54,7 @@ export function NewPregnancyModal({
         previousEclampsia,
         previousStillbirth,
         lmpDate,
+        startDate,
       });
       onCreated(pregnancy);
     } catch (err) {
@@ -172,7 +179,18 @@ export function NewPregnancyModal({
               type="date"
               required
               value={lmpDate}
-              onChange={(event) => setLmpDate(event.target.value)}
+              onChange={(event) => handleLmpChange(event.target.value)}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Pregnancy start date
+            <input
+              type="date"
+              required
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
               className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
           </label>
