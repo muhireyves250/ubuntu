@@ -9,14 +9,7 @@ import { getInitials } from "@/lib/format";
 import { ConfirmModal } from "./confirm-modal";
 import { SlideOverPanel } from "./slide-over-panel";
 
-const SWITCHABLE_ROLES: Role[] = [
-  "nurse",
-  "hc_head",
-  "dh_clinical_director",
-  "th_gynecologist",
-  "central_control",
-  "admin",
-];
+const SWITCHABLE_ROLES: Role[] = ["nurse", "lab_nurse"];
 
 export function ProfilePanel({ onClose }: { onClose: () => void }) {
   const router = useRouter();
