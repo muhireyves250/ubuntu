@@ -8,14 +8,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { findDemoUserById } from "@/lib/auth/demo-users";
 import { ROLE_LABEL, dashboardPathForRole } from "@/lib/auth/role-routes";
 
-const TAB_USER_IDS = ["nurse-uwase", "hc-head-mukamana", "dh-director-niyonsenga"] as const;
-const MORE_USER_IDS = [
-  "nurse-kagame",
-  "lab-nurse-mugisha",
-  "th-gyn-ingabire",
-  "central-control",
-  "admin",
-] as const;
+const TAB_USER_IDS = ["nurse-uwase", "nurse-kagame", "lab-nurse-mugisha"] as const;
 
 function EyeIcon({ open }: { open: boolean }) {
   if (open) {
@@ -51,7 +44,6 @@ export default function LoginPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>(TAB_USER_IDS[0]);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,7 +61,6 @@ export default function LoginPage() {
     setSelectedUserId(userId);
     setPassword("");
     setError(null);
-    setIsMoreOpen(false);
   }
 
   function resetToDefault() {
@@ -103,49 +94,6 @@ export default function LoginPage() {
       </div>
 
       {/* ── Top-right: Login Options dropdown ── */}
-      <div className="absolute top-4 right-4 z-30 sm:right-6">
-        <div className="relative">
-          <button
-            type="button"
-            id="login-options-btn"
-            onClick={() => setIsMoreOpen((open) => !open)}
-            className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-teal-700">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
-              <path d="M12 8v4l2.5 2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            Login Options
-            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-
-          {isMoreOpen && (
-            <div className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-xl">
-              <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                More roles (demo)
-              </p>
-              {MORE_USER_IDS.map((userId) => {
-                const moreUser = findDemoUserById(userId);
-                if (!moreUser) return null;
-                return (
-                  <button
-                    key={userId}
-                    type="button"
-                    onClick={() => chooseUser(userId)}
-                    className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 transition-colors hover:bg-teal-50 hover:text-teal-900"
-                  >
-                    {moreUser.title}
-                    <span className="block text-xs text-zinc-400">{moreUser.facility}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* ════════════════════════════════════════
           LEFT PANEL — photo background + role tabs
       ════════════════════════════════════════ */}
@@ -196,20 +144,14 @@ export default function LoginPage() {
                 }`}
               >
                 {/* Small icon per role */}
-                {userId === "nurse-uwase" && (
+                {(userId === "nurse-uwase" || userId === "nurse-kagame") && (
                   <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
                     <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                   </svg>
                 )}
-                {userId === "hc-head-mukamana" && (
+                {userId === "lab-nurse-mugisha" && (
                   <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
-                    <path d="M3 12h18M12 3l9 9-9 9-9-9 9-9Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-                {userId === "dh-director-niyonsenga" && (
-                  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
-                    <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
-                    <path d="M9 12h6M12 9v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    <path d="M9 2v6.5L4.5 17a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L15 8.5V2M9 2h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
                 {tabUser.title}
