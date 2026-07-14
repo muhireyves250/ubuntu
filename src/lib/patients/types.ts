@@ -44,6 +44,18 @@ export interface VisitLabs {
   edema?: "none" | "mild" | "moderate" | "severe";
 }
 
+export interface LabTestResult {
+  id: string;
+  testName: string;
+  result: string;
+  unit: string;
+  referenceRange: string;
+  interpretation: "Normal" | "Abnormal" | "Critical";
+  comments?: string;
+  completedAt?: string;
+  completedBy?: string;
+}
+
 export type VisitType = "scheduled" | "unscheduled" | "emergency";
 
 export interface Visit {
@@ -59,10 +71,16 @@ export interface Visit {
   riskLevel: RiskLevel;
   notes: string;
   labs?: VisitLabs;
-  labStatus?: "pending" | "completed";
+  labResults?: LabTestResult[];
+  labStatus?: "pending" | "in_progress" | "completed";
+  hasCriticalLabResults?: boolean;
+  acceptedByLabNurse?: string;
+  labAcceptedAt?: string;
   treatment?: string;
   followUpPlan?: string;
   emergencySummary?: string;
+  assessmentFinalized?: boolean;
+  createdAt?: string;
 }
 
 export type ReferralStatus = "pending" | "accepted" | "closed";
