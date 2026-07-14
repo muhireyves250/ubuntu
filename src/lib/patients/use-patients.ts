@@ -56,51 +56,31 @@ function getCurrentUserSnapshot(): { name: string; facility: string } {
 }
 
 export function usePatients(): Patient[] {
-  return useSyncExternalStore(
+  const allPatients = useSyncExternalStore(
     subscribeToPatients,
     getPatientsSnapshot,
     getServerPatientsSnapshot,
   );
+  const currentUser = getCurrentUserSnapshot();
+  return useMemo(() => {
+    if (!currentUser.facility || currentUser.facility === "Unknown facility") return allPatients;
+    return allPatients.filter((p) => p.registrationFacility === currentUser.facility);
+  }, [allPatients, currentUser.facility]);
 }
 
 export function useVisits(): Visit[] {
-  return useSyncExternalStore(
+  const allVisits = useSyncExternalStore(
     subscribeToVisits,
     getVisitsSnapshot,
     getServerVisitsSnapshot,
   );
+  const currentUser = getCurrentUserSnapshot();
+  return useMemo(() => {
+    if (!currentUser.facility || currentUser.facility === "Unknown facility") return allVisits;
+    return allVisits.filter((v) => v.hospital === currentUser.facility);
+  }, [allVisits, currentUser.facility]);
 }
 
-export function useLabQueue(): Visit[] {
-  const visits = useVisits();
-  return useMemo(
-    () =>
-      visits
-        .filter((v) => v.labStatus === "pending")
-        .sort((a, b) => a.date.localeCompare(b.date)),
-    [visits],
-  );
-}
-
-export function completeLabWork(
-  visitId: string,
-  results: {
-    hemoglobin?: number;
-    platelets?: number;
-    bloodSugar?: number;
-    urineProtein?: VisitLabs["urineProtein"];
-  },
-): Visit {
-  const visit = getVisitsSnapshot().find((v) => v.id === visitId);
-  if (!visit || visit.labStatus !== "pending") {
-    throw new Error("Visit has no pending lab request");
-  }
-  storageUpdateVisit(visitId, {
-    labStatus: "completed",
-    labs: { ...visit.labs, ...results },
-  });
-  return getVisitsSnapshot().find((v) => v.id === visitId)!;
-}
 
 export function usePatient(patientId: string): Patient | undefined {
   const patients = usePatients();
@@ -135,7 +115,13 @@ export function useVisitsForPregnancy(pregnancyId: string): Visit[] {
     () =>
       visits
         .filter((v) => v.pregnancyId === pregnancyId)
-        .sort((a, b) => b.date.localeCompare(a.date)),
+        .sort((a, b) => {
+          const dateCompare = b.date.localeCompare(a.date);
+          if (dateCompare !== 0) return dateCompare;
+          const timeA = a.createdAt ?? "";
+          const timeB = b.createdAt ?? "";
+          return timeB.localeCompare(timeA);
+        }),
     [visits, pregnancyId],
   );
 }
@@ -147,7 +133,13 @@ export function useAllVisitsForPatient(patientId: string): Visit[] {
     const pregnancyIds = new Set(pregnancies.map((p) => p.id));
     return visits
       .filter((v) => pregnancyIds.has(v.pregnancyId))
-      .sort((a, b) => b.date.localeCompare(a.date));
+      .sort((a, b) => {
+        const dateCompare = b.date.localeCompare(a.date);
+        if (dateCompare !== 0) return dateCompare;
+        const timeA = a.createdAt ?? "";
+        const timeB = b.createdAt ?? "";
+        return timeB.localeCompare(timeA);
+      });
   }, [pregnancies, visits]);
 }
 
@@ -157,11 +149,18 @@ export function useLatestRiskLevel(patientId: string): RiskLevel {
 }
 
 export function useReferrals(): Referral[] {
-  return useSyncExternalStore(
+  const allReferrals = useSyncExternalStore(
     subscribeToReferrals,
     getReferralsSnapshot,
     getServerReferralsSnapshot,
   );
+  const currentUser = getCurrentUserSnapshot();
+  return useMemo(() => {
+    if (!currentUser.facility || currentUser.facility === "Unknown facility") return allReferrals;
+    return allReferrals.filter(
+      (r) => r.referredByFacility === currentUser.facility || r.receivingFacility === currentUser.facility
+    );
+  }, [allReferrals, currentUser.facility]);
 }
 
 export function useActiveReferrals(): Referral[] {
@@ -176,6 +175,14 @@ const REFERRAL_ROUTING: Record<string, string> = {
   "Nyamata Health Center": "Bugesera District Hospital",
 };
 const DEFAULT_RECEIVING_FACILITY = "Bugesera District Hospital";
+
+export function finalizeAssessment(visitId: string, treatment: string, followUpPlan: string) {
+  storageUpdateVisit(visitId, {
+    treatment,
+    followUpPlan,
+    assessmentFinalized: true,
+  });
+}
 
 function getOrCreateEmergencyReferral(patientId: string, reason: string): Referral {
   const existing = getReferralsSnapshot().find(
@@ -405,8 +412,24 @@ export function recordVisit(data: {
     emergencySummary: data.emergencySummary,
     treatment: data.treatment,
     followUpPlan: data.followUpPlan,
+    assessmentFinalized: data.labStatus === "pending" ? false : true,
+    createdAt: new Date().toISOString(),
   };
   addVisit(visit);
+
+  if (visit.labStatus === "pending") {
+    // We need to resolve patient and pregnancy to push a full mock request
+    const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
+    if (pregnancy) {
+      const patient = getPatientsSnapshot().find((p) => p.id === pregnancy.patientId);
+      if (patient) {
+        // dynamic import of lab_requests to avoid circular issues
+        import("./lab-requests").then((m) => {
+          m.pushNewLabRequest(visit, patient, pregnancy);
+        });
+      }
+    }
+  }
 
   if (riskLevel === "red") {
     const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
@@ -519,3 +542,70 @@ export function useUnacknowledgedCount(): number {
 export function acknowledgeAlert(patientId: string, note: string): void {
   storageAcknowledgeAlert(patientId, note);
 }
+
+export interface NotificationAlert {
+  id: string; // visitId
+  type: "lab_request" | "lab_completed";
+  patientId: string;
+  patientName: string;
+  title: string;
+  message: string;
+  date: string;
+  priority: "Normal" | "Urgent" | "Emergency";
+}
+
+export function useNotificationAlerts(role: string): NotificationAlert[] {
+  const visits = useVisits();
+  const patients = usePatients();
+  const pregnancies = usePregnancies();
+
+  return useMemo(() => {
+    const alerts: NotificationAlert[] = [];
+    const pregnancyIdMap = new Map(pregnancies.map((p) => [p.id, p]));
+
+    for (const v of visits) {
+      const preg = pregnancyIdMap.get(v.pregnancyId);
+      if (!preg) continue;
+      const patient = patients.find((p) => p.id === preg.patientId);
+      if (!patient) continue;
+
+      const patientName = `${patient.firstName} ${patient.lastName}`;
+
+      if (role === "nurse" && v.labStatus === "completed" && v.assessmentFinalized === false) {
+        let hbStr = "";
+        if (v.labs?.hemoglobin != null) {
+          hbStr = ` (Hb: ${v.labs.hemoglobin} g/dL)`;
+        }
+        alerts.push({
+          id: v.id,
+          type: "lab_completed",
+          patientId: patient.id,
+          patientName,
+          title: "Laboratory Results Completed",
+          message: `Lab investigations resolved for ${patientName}${hbStr}. Action required: Review and finalize ANC assessment.`,
+          date: v.date,
+          priority: v.type === "emergency" ? "Emergency" : "Normal",
+        });
+      } else if (role === "lab_nurse" && v.labStatus === "pending") {
+        alerts.push({
+          id: v.id,
+          type: "lab_request",
+          patientId: patient.id,
+          patientName,
+          title: "New Lab Request Submitted",
+          message: `Attending nurse ${v.attendingNurse} requested a lab screen for ${patientName}.`,
+          date: v.date,
+          priority: v.type === "emergency" ? "Emergency" : "Normal",
+        });
+      }
+    }
+
+    // Sort by priority (Emergency first) and then by date (descending)
+    return alerts.sort((a, b) => {
+      if (a.priority === "Emergency" && b.priority !== "Emergency") return -1;
+      if (a.priority !== "Emergency" && b.priority === "Emergency") return 1;
+      return b.date.localeCompare(a.date);
+    });
+  }, [visits, patients, pregnancies, role]);
+}
+
