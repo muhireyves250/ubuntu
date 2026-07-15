@@ -15,14 +15,20 @@ import { EditPatientModal } from "@/components/patients/edit-patient-modal";
 import { CreateReferralModal } from "@/components/patients/create-referral-modal";
 import { AwaitingLabsBlocker } from "@/components/patients/awaiting-labs-blocker";
 import { FinalizeAssessmentBlocker } from "@/components/patients/finalize-assessment-blocker";
+import { ActiveReferralBlocker, ActiveReferralBanner } from "@/components/patients/active-referral-blocker";
+import { PatientLockedBlocker } from "@/components/patients/patient-locked-blocker";
+import { SpecialistNotesTab } from "@/components/patients/specialist-notes-tab";
+import { useAuth } from "@/lib/auth/auth-context";
 import {
   usePatient,
   usePregnanciesForPatient,
   useAllVisitsForPatient,
   useVisitsForPregnancy,
   finalizeAssessment,
+  useActiveEmergencyReferral,
+  usePatientLock,
 } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { gestationalAgeWeeks, matchScheduledVisit } from "@/lib/patients/pregnancy";
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
@@ -36,6 +42,7 @@ const TABS = [
   "Visit History",
   "New Assessment",
   "AI Prediction",
+  "Specialist Notes",
 ] as const;
 
 type Tab = (typeof TABS)[number];
@@ -61,10 +68,27 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [assessmentContext, setAssessmentContext] = useState<AssessmentContext | null>(null);
   const [emergencyResult, setEmergencyResult] = useState<EmergencyResult | null>(null);
+  const activeReferral = useActiveEmergencyReferral(patientId);
+  const lock = usePatientLock(patientId);
+  const { user } = useAuth();
+  const isReadOnlyAdmin = user?.role === "hospital_admin";
+  const isManagingReferral =
+    !!activeReferral &&
+    (activeReferral.referredByFacility === user?.facility ||
+      activeReferral.acceptedByFacility === user?.facility);
 
   if (!patient) return notFound();
+  if (lock.locked) return <PatientLockedBlocker patient={patient} lockedByFacility={lock.lockedByFacility!} />;
+  if (activeReferral && !isManagingReferral) {
+    return <ActiveReferralBlocker patient={patient} referral={activeReferral} />;
+  }
 
-  const currentRisk = allVisits[0]?.riskLevel ?? "green";
+  const today = new Date().toISOString().slice(0, 10);
+  const todayScheduledMatch = openPregnancy
+    ? matchScheduledVisit(openPregnancy, pregnancyVisits, today)
+    : null;
+
+  const currentRisk = activeReferral ? "red" : (allVisits[0]?.riskLevel ?? "green");
   const latestVisit = allVisits[0];
   const isWaitingForLabs = latestVisit?.labStatus === "pending" || latestVisit?.labStatus === "in_progress";
   const needsFinalization = latestVisit?.labStatus === "completed" && latestVisit?.assessmentFinalized === false;
@@ -86,16 +110,6 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           onCreated={() => setActiveTab("Visit History")}
         />
       )}
-      {currentRisk === "red" && (
-        <div className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-sm">
-          <span>⚠</span>
-          <span>
-            HIGH RISK — This patient is currently classified Red. Immediate
-            review recommended.
-          </span>
-        </div>
-      )}
-
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-300 bg-[#ffeedb] p-5 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xl font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
           {getInitials(fullName(patient))}
@@ -123,34 +137,36 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
 
         <div className="flex items-center gap-2.5">
           <RiskBadge level={currentRisk} />
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setActionsOpen((o) => !o)}
-              className="flex items-center gap-1 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              Actions
-              <IconChevronDown className="h-3.5 w-3.5" />
-            </button>
-            {actionsOpen && (
-              <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                <button
-                  type="button"
-                  onClick={() => { setActionsOpen(false); setShowEditModal(true); }}
-                  className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
-                >
-                  Edit patient
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setActionsOpen(false); setShowReferralModal(true); }}
-                  className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
-                >
-                  Create referral
-                </button>
-              </div>
-            )}
-          </div>
+          {!isReadOnlyAdmin && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setActionsOpen((o) => !o)}
+                className="flex items-center gap-1 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Actions
+                <IconChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {actionsOpen && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                  <button
+                    type="button"
+                    onClick={() => { setActionsOpen(false); setShowEditModal(true); }}
+                    className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
+                  >
+                    Edit patient
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActionsOpen(false); setShowReferralModal(true); }}
+                    className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
+                  >
+                    Create referral
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -162,8 +178,9 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         <FinalizeAssessmentBlocker patient={patient} visit={latestVisit!} onFinalized={finalizeAssessment} />
       ) : (
         <>
+          {activeReferral && <ActiveReferralBanner patient={patient} referral={activeReferral} />}
           <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-300 bg-[#ffeedb] p-1 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-            {TABS.map((tab) => (
+            {TABS.filter((tab) => !(isReadOnlyAdmin && tab === "New Assessment")).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -193,7 +210,27 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "Signs & Symptoms" && (
           <>
-            {emergencyResult ? (
+            {isReadOnlyAdmin ? (
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  View-only access
+                </p>
+                <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
+                  Hospital Administrators can review clinical records but cannot flag emergencies
+                  or perform assessments.
+                </p>
+              </div>
+            ) : activeReferral ? (
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center dark:border-red-900/50 dark:bg-red-950/30">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+                  Close the active emergency case first
+                </p>
+                <p className="max-w-sm text-xs text-red-700/80 dark:text-red-400/80">
+                  A new emergency can&apos;t be flagged while this patient has an unresolved red case.
+                  Use the banner above to close it with an outcome statement.
+                </p>
+              </div>
+            ) : emergencyResult ? (
               <div className="flex flex-col items-center gap-6 py-4 text-center">
                 <div className="flex flex-col items-center gap-2">
                   <p className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
@@ -232,7 +269,27 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "New Assessment" && (
           <>
-            {openPregnancy && assessmentContext ? (
+            {isReadOnlyAdmin ? (
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  View-only access
+                </p>
+                <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
+                  Hospital Administrators can review clinical records but cannot start a new
+                  visit.
+                </p>
+              </div>
+            ) : activeReferral ? (
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center dark:border-red-900/50 dark:bg-red-950/30">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+                  Close the active emergency case first
+                </p>
+                <p className="max-w-sm text-xs text-red-700/80 dark:text-red-400/80">
+                  A new visit can&apos;t be started while this patient has an unresolved red case. Use
+                  the banner above to close it with an outcome statement.
+                </p>
+              </div>
+            ) : openPregnancy && assessmentContext ? (
               <AssessmentWizard
                 pregnancyId={openPregnancy.id}
                 type={assessmentContext.type}
@@ -242,21 +299,51 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               />
             ) : openPregnancy && !assessmentContext ? (
               <div className="flex flex-col items-center gap-4 py-6 text-center">
-                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">What type of visit are you recording?</p>
+                {todayScheduledMatch ? (
+                  <div className="flex flex-col items-center gap-2 rounded-xl border border-teal-300 bg-teal-50 px-5 py-4 dark:border-teal-800 dark:bg-teal-950/30">
+                    <p className="text-sm font-semibold text-teal-800 dark:text-teal-300">
+                      Today matches the Week {todayScheduledMatch.dueByWeek} scheduled visit
+                    </p>
+                    <p className="text-xs text-teal-700/80 dark:text-teal-400/80">
+                      Calendar date: {todayScheduledMatch.dueDate}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 dark:border-amber-800 dark:bg-amber-950/30">
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                      No scheduled visit falls on today&apos;s date
+                    </p>
+                    <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+                      This will be recorded as an unscheduled visit.
+                    </p>
+                  </div>
+                )}
                 <div className="flex flex-wrap justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setAssessmentContext({ type: "unscheduled" })}
-                    className="rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                  >
-                    Unscheduled / Walk-in Visit
-                  </button>
+                  {todayScheduledMatch ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAssessmentContext({ type: "scheduled", scheduledWeek: todayScheduledMatch.dueByWeek })
+                      }
+                      className="rounded-xl bg-[#0f766e] px-5 py-3 text-sm font-medium text-white shadow-sm hover:bg-teal-800"
+                    >
+                      Start Scheduled Visit — Week {todayScheduledMatch.dueByWeek}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setAssessmentContext({ type: "unscheduled" })}
+                      className="rounded-xl bg-[#0f766e] px-5 py-3 text-sm font-medium text-white shadow-sm hover:bg-teal-800"
+                    >
+                      Log Unscheduled Visit
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => { setActiveTab("Visit History"); }}
-                    className="rounded-xl border border-teal-300 bg-teal-50 px-5 py-3 text-sm font-medium text-teal-800 shadow-sm hover:bg-teal-100 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:bg-teal-950/60"
+                    className="rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                   >
-                    Log Scheduled ANC Visit →
+                    Choose a different week →
                   </button>
                 </div>
               </div>
@@ -271,6 +358,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           <PregnancyTab
             patientId={patient.id}
             onGoToVisitHistory={() => setActiveTab("Visit History")}
+            readOnly={isReadOnlyAdmin}
           />
         )}
         {activeTab === "Visit History" && (
@@ -279,14 +367,22 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               <VisitHistoryTab
                 pregnancy={openPregnancy}
                 visits={pregnancyVisits}
-                onLogScheduledVisit={(week) => {
-                  setAssessmentContext({ type: "scheduled", scheduledWeek: week });
-                  setActiveTab("New Assessment");
-                }}
-                onLogUnscheduledVisit={() => {
-                  setAssessmentContext({ type: "unscheduled" });
-                  setActiveTab("New Assessment");
-                }}
+                onLogScheduledVisit={
+                  activeReferral || isReadOnlyAdmin
+                    ? undefined
+                    : (week) => {
+                        setAssessmentContext({ type: "scheduled", scheduledWeek: week });
+                        setActiveTab("New Assessment");
+                      }
+                }
+                onLogUnscheduledVisit={
+                  activeReferral || isReadOnlyAdmin
+                    ? undefined
+                    : () => {
+                        setAssessmentContext({ type: "unscheduled" });
+                        setActiveTab("New Assessment");
+                      }
+                }
               />
             ) : (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -297,6 +393,9 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "AI Prediction" && (
           <AiPredictionTab visits={allVisits} />
+        )}
+        {activeTab === "Specialist Notes" && (
+          <SpecialistNotesTab patientId={patient.id} currentRiskLevel={currentRisk} />
         )}
       </div>
 
@@ -336,7 +435,7 @@ export default function PatientDetailPage({
   const { id } = use(params);
 
   return (
-    <RoleGuard path="/dashboard/nurse">
+    <RoleGuard roles={["nurse", "gynecologist", "hospital_admin"]}>
       <PatientDetailContent patientId={id} />
     </RoleGuard>
   );

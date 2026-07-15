@@ -1,5 +1,7 @@
 "use client";
 
+import { IconAlert } from "@/components/dashboard/icons";
+
 export interface VitalSigns {
   bpSystolic: string;
   bpDiastolic: string;
@@ -46,6 +48,13 @@ export function computeBmi(values: VitalSigns): number | null {
   return weight / (heightMeters * heightMeters);
 }
 
+function bmiCategory(bmi: number): string {
+  if (bmi < 18.5) return "Underweight";
+  if (bmi < 25) return "Normal weight";
+  if (bmi < 30) return "Overweight";
+  return "Obese";
+}
+
 interface VitalFieldProps {
   label: string;
   value: string;
@@ -65,7 +74,10 @@ function VitalField({
 }: VitalFieldProps) {
   return (
     <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-      {label}
+      <span className="flex items-center gap-1.5">
+        {label}
+        {abnormal && <IconAlert className="h-3.5 w-3.5 text-orange-500" />}
+      </span>
       <input
         type="number"
         inputMode="decimal"
@@ -177,7 +189,16 @@ export function VitalSignsStep({
         }`}
       >
         <span>BMI</span>
-        <span>{bmi !== null ? bmi.toFixed(1) : "—"}</span>
+        <span>
+          {bmi !== null ? (
+            <>
+              {bmi.toFixed(1)}
+              <span className="ml-2 text-xs font-normal opacity-80">{bmiCategory(bmi)}</span>
+            </>
+          ) : (
+            "—"
+          )}
+        </span>
       </div>
     </div>
   );

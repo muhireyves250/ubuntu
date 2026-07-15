@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/auth/auth-context";
-import { useNotificationAlerts } from "@/lib/patients/use-patients";
+import { useNotificationAlerts, type NotificationAlert } from "@/lib/patients/use-patients";
 import { useRouter } from "next/navigation";
 import { SlideOverPanel } from "./slide-over-panel";
 import { IconBell, IconClipboard, IconAlert } from "./icons";
@@ -15,12 +15,14 @@ export function NotificationPanel({
   const router = useRouter();
   const alerts = useNotificationAlerts(user?.role ?? "");
 
-  const handleAlertClick = (type: "lab_request" | "lab_completed", patientId: string) => {
+  const handleAlertClick = (type: NotificationAlert["type"], patientId: string) => {
     onClose();
-    if (type === "lab_completed") {
-      router.push(`/dashboard/nurse/patients/${patientId}`);
-    } else {
+    if (type === "lab_request") {
       router.push("/dashboard/lab/requests");
+    } else if (type === "facility_full") {
+      router.push("/dashboard/hospital-admin");
+    } else {
+      router.push(`/dashboard/nurse/patients/${patientId}`);
     }
   };
 

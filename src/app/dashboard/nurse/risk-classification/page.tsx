@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
+import { usePatients, useVisits, usePregnancies, useActiveEmergencyPatientIds } from "@/lib/patients/use-patients";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import type { Patient, RiskLevel } from "@/lib/patients/types";
 import { getInitials, shortId, fullName } from "@/lib/format";
@@ -45,6 +45,7 @@ function RiskClassificationContent() {
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
+  const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const patientIdByPregnancyId = useMemo(
     () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
     [pregnancies],
@@ -67,12 +68,16 @@ function RiskClassificationContent() {
     for (const patient of patients) {
       const latestVisit = visits
         .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
-        .sort((a, b) => b.date.localeCompare(a.date))[0];
-      const level = latestVisit?.riskLevel ?? "green";
+        .sort((a, b) => {
+          const dateCompare = b.date.localeCompare(a.date);
+          if (dateCompare !== 0) return dateCompare;
+          return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+        })[0];
+      const level = activeEmergencyPatientIds.has(patient.id) ? "red" : (latestVisit?.riskLevel ?? "green");
       map.get(level)!.push(patient);
     }
     return map;
-  }, [patients, visits, patientIdByPregnancyId]);
+  }, [patients, visits, patientIdByPregnancyId, activeEmergencyPatientIds]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -161,7 +166,7 @@ function RiskClassificationContent() {
 
 export default function RiskClassificationPage() {
   return (
-    <RoleGuard path="/dashboard/nurse">
+    <RoleGuard roles={["nurse", "gynecologist", "hospital_admin"]}>
       <RiskClassificationContent />
     </RoleGuard>
   );

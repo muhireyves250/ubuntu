@@ -10,15 +10,14 @@ import {
   LabRequest,
 } from "@/lib/patients/lab-requests";
 import type { LabTestResult } from "@/lib/patients/types";
-import type { DemoUser } from "@/lib/auth/types";
-import { findDemoUserById } from "@/lib/auth/demo-users";
+import { findUserById, type DirectoryUser } from "@/lib/auth/user-directory";
 import { CriticalAlertModal } from "@/components/dashboard/critical-alert-modal";
 import Link from "next/link";
 
-function readSessionUser(): DemoUser | null {
+function readSessionUser(): DirectoryUser | null {
   if (typeof window === "undefined") return null;
   const sessionUserId = window.localStorage.getItem("ubuntumed.session");
-  return sessionUserId ? findDemoUserById(sessionUserId) ?? null : null;
+  return sessionUserId ? findUserById(sessionUserId) ?? null : null;
 }
 
 type ResultForm = { result: string; unit: string; interp: LabTestResult["interpretation"] };
@@ -39,7 +38,7 @@ function RequestDetailContent({
   user,
 }: {
   requestId: string;
-  user: DemoUser;
+  user: DirectoryUser;
 }) {
   const router = useRouter();
   const [request, setRequest] = useState<LabRequest | null>(() => {
@@ -328,7 +327,7 @@ export default function LabRequestDetailPage() {
   const requestId = typeof params.id === "string" ? params.id : "";
 
   return (
-    <RoleGuard path="/dashboard/lab">
+    <RoleGuard roles={["lab_nurse"]}>
       {user && requestId ? (
         <RequestDetailContent key={requestId} requestId={requestId} user={user} />
       ) : (

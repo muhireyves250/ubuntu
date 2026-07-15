@@ -8,7 +8,8 @@ import { RiskBadge } from "@/components/patients/risk-badge";
 import { fullName } from "@/lib/format";
 import type { Patient, RiskLevel } from "@/lib/patients/types";
 
-const RECEIVING_FACILITIES = [
+export const RECEIVING_FACILITIES = [
+  "Nyanza District Hospital",
   "Kigali University Teaching Hospital",
   "King Faisal Hospital",
   "Rwanda Military Hospital",

@@ -16,4 +16,14 @@ export const ROLE_OVERVIEW_COPY: Record<Role, RoleOverviewCopy> = {
     description:
       "Pending lab requests sent by ANC nurses will appear here for you to fill in.",
   },
+  gynecologist: {
+    scope: "Specialist Care",
+    description:
+      "Emergency referrals and high-risk pregnancies at your facility appear here for specialist review.",
+  },
+  hospital_admin: {
+    scope: "Hospital Operations",
+    description:
+      "Monitor performance, configure emergency capacity, and review records for your facility — read-only for clinical data.",
+  },
 };

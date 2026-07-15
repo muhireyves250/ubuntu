@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Patient Registry",
     icon: IconUsers,
     href: "/dashboard/nurse/patients",
-    enabledRoles: ["nurse"],
+    enabledRoles: ["nurse", "gynecologist", "hospital_admin"],
   },
   {
     label: "ANC Visits",
@@ -44,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Risk Classification",
     icon: IconClipboard,
     href: "/dashboard/nurse/risk-classification",
-    enabledRoles: ["nurse"],
+    enabledRoles: ["nurse", "gynecologist", "hospital_admin"],
   },
   {
     label: "Active Alerts",
@@ -56,7 +56,19 @@ const NAV_ITEMS: NavItem[] = [
     label: "Referral Log",
     icon: IconReport,
     href: "/dashboard/nurse/referrals",
-    enabledRoles: ["nurse"],
+    enabledRoles: ["nurse", "gynecologist", "hospital_admin"],
+  },
+  {
+    label: "Reports",
+    icon: IconClipboard,
+    href: "/dashboard/hospital-admin/reports",
+    enabledRoles: ["hospital_admin"],
+  },
+  {
+    label: "Staff Management",
+    icon: IconUsers,
+    href: "/dashboard/hospital-admin/staff",
+    enabledRoles: ["hospital_admin"],
   },
   {
     label: "Lab Requests",
@@ -107,7 +119,11 @@ export function Sidebar() {
           if (isEnabled) {
             const isActive =
               item.href === "/dashboard"
-                ? pathname === "/dashboard" || pathname === "/dashboard/nurse"
+                ? pathname === "/dashboard" ||
+                  pathname === "/dashboard/nurse" ||
+                  pathname === "/dashboard/gynecologist" ||
+                  pathname === "/dashboard/lab" ||
+                  pathname === "/dashboard/hospital-admin"
                 : pathname.startsWith(item.href || "");
 
             return (

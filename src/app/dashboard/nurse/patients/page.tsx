@@ -7,7 +7,7 @@ import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { RegisterPatientModal } from "@/components/patients/register-patient-modal";
 import { useAuth } from "@/lib/auth/auth-context";
-import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
+import { usePatients, useVisits, usePregnancies, useActiveEmergencyPatientIds } from "@/lib/patients/use-patients";
 import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import type { RiskLevel } from "@/lib/patients/types";
 import { getInitials, fullName, computeAge } from "@/lib/format";
@@ -32,6 +32,7 @@ function PatientsPageContent() {
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
+  const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const searchParams = useSearchParams();
   const [nameFilter, setNameFilter] = useState(() => searchParams.get("q") ?? "");
   const [idFilter, setIdFilter] = useState("");
@@ -47,26 +48,29 @@ function PatientsPageContent() {
     return patients.map((patient) => {
       const patientVisits = visits
         .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
-        .sort((a, b) => b.date.localeCompare(a.date));
+        .sort((a, b) => {
+          const dateCompare = b.date.localeCompare(a.date);
+          if (dateCompare !== 0) return dateCompare;
+          return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+        });
       const latestVisit = patientVisits[0];
       const openPregnancy = pregnancies.find(
         (p) => p.patientId === patient.id && p.status === "open",
       );
       return {
         patient,
-        latestRisk: latestVisit?.riskLevel ?? ("green" as RiskLevel),
+        latestRisk: activeEmergencyPatientIds.has(patient.id)
+          ? ("red" as RiskLevel)
+          : (latestVisit?.riskLevel ?? ("green" as RiskLevel)),
         lastVisitDate: latestVisit?.date,
         hospital: latestVisit?.hospital,
         gaWeeks: openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null,
       };
     });
-  }, [patients, visits, pregnancies, patientIdByPregnancyId]);
+  }, [patients, visits, pregnancies, patientIdByPregnancyId, activeEmergencyPatientIds]);
 
   const rows = useMemo(() => {
     return allRows
-      .filter((row) => {
-        return row.patient.registrationFacility === user?.facility || row.hospital === user?.facility;
-      })
       .filter((row) =>
         fullName(row.patient).toLowerCase().includes(nameFilter.toLowerCase()),
       )
@@ -75,7 +79,7 @@ function PatientsPageContent() {
       )
       .filter((row) => riskFilter === "all" || row.latestRisk === riskFilter)
       .sort((a, b) => fullName(a.patient).localeCompare(fullName(b.patient)));
-  }, [allRows, nameFilter, idFilter, riskFilter, user]);
+  }, [allRows, nameFilter, idFilter, riskFilter]);
 
   const hasActiveFilters = nameFilter !== "" || idFilter !== "" || riskFilter !== "all";
 
@@ -286,7 +290,7 @@ function PatientsPageContent() {
 
 export default function PatientsPage() {
   return (
-    <RoleGuard path="/dashboard/nurse">
+    <RoleGuard roles={["nurse", "gynecologist", "hospital_admin"]}>
       <PatientsPageContent />
     </RoleGuard>
   );

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { IconActivity, IconAlert } from "@/components/dashboard/icons";
-import type { Patient, Visit, LabTestResult } from "@/lib/patients/types";
+import type { Patient, Visit, LabTestResult, Referral } from "@/lib/patients/types";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import { computePrediction } from "@/lib/patients/ai-prediction";
+import { escalateVisitIfCritical } from "@/lib/patients/use-patients";
 
 /* ─── Standardized SectionCard Component ─────────────────────────────────── */
 
@@ -136,6 +137,19 @@ function AssessmentSummaryStep({
   const labResults: LabTestResult[] = visit.labResults ?? [];
   const pred = computePrediction(visit);
 
+  const [escalation, setEscalation] = useState<Referral | null>(null);
+  const hasEscalatedRef = useRef(false);
+
+  useEffect(() => {
+    if (pred.riskLevel === "red" && !hasEscalatedRef.current) {
+      hasEscalatedRef.current = true;
+      // escalateVisitIfCritical writes to the shared store and notifies other
+      // subscribed components (e.g. Topbar) — that must happen after commit,
+      // not during this component's render, so it belongs in an effect.
+      setEscalation(escalateVisitIfCritical(visit, pred.riskLevel));
+    }
+  }, [pred.riskLevel, visit]);
+
   const symptomLabels = visit.symptomIds
     .map((id) => SYMPTOM_CHECKLIST.find((s) => s.id === id)?.label ?? id)
     .filter(Boolean);
@@ -168,6 +182,42 @@ function AssessmentSummaryStep({
           {pred.riskLevel} CASE
         </span>
       </div>
+
+      {escalation && (() => {
+        const selfAccepted =
+          escalation.status === "accepted" &&
+          escalation.acceptedByFacility === escalation.referredByFacility;
+        const acceptedElsewhere =
+          escalation.status === "accepted" && !selfAccepted;
+
+        return (
+          <div
+            className={`flex items-start gap-2.5 rounded-xl border p-4 shadow-sm ${
+              escalation.status === "accepted"
+                ? "border-teal-300 bg-teal-50 text-teal-800 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-300"
+                : "border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-950/30 dark:text-red-300"
+            }`}
+          >
+            <IconAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="text-sm">
+              <p className="font-bold uppercase tracking-wide text-xs">
+                {selfAccepted
+                  ? "Emergency case accepted at this facility"
+                  : acceptedElsewhere
+                    ? "Emergency referral already accepted"
+                    : "Emergency referral sent"}
+              </p>
+              <p className="mt-1 text-xs opacity-90">
+                {selfAccepted
+                  ? `${escalation.referredByFacility} has the capability to manage this case directly — the case has been self-accepted and can proceed to treatment here.`
+                  : acceptedElsewhere
+                    ? `${escalation.acceptedByFacility} has already accepted this emergency referral and is managing the case.`
+                    : `This facility cannot manage a critical case alone. A pending emergency referral was automatically created to ${escalation.receivingFacility} for acceptance.`}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Progress navigation */}
       <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-300 bg-[#ffeedb] p-1 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">

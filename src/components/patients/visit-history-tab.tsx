@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import { nextDueVisit, missedVisits, ANC_SCHEDULE, gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { nextDueVisit, missedVisits, ancCalendar, gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { formatLabs } from "@/lib/format";
 import type { Pregnancy, Visit, VisitType } from "@/lib/patients/types";
 
@@ -60,13 +60,14 @@ export function VisitHistoryTab({
       .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
       .map((v) => v.scheduledWeek as number),
   );
-  const arrivedUnloggedWeeks = ANC_SCHEDULE.filter(
+  const calendar = ancCalendar(pregnancy);
+  const arrivedUnloggedWeeks = calendar.filter(
     (s) => s.dueByWeek <= currentWeeks && !loggedWeeks.has(s.dueByWeek),
   ).map((s) => s.dueByWeek);
   const currentDueWeek =
     !readOnly && arrivedUnloggedWeeks.length > 0 ? Math.max(...arrivedUnloggedWeeks) : null;
 
-  const scheduleRows = ANC_SCHEDULE.map((s) => {
+  const scheduleRows = calendar.map((s) => {
     const status: "completed" | "due" | "missed" | "upcoming" = loggedWeeks.has(s.dueByWeek)
       ? "completed"
       : s.dueByWeek > currentWeeks
@@ -86,14 +87,20 @@ export function VisitHistoryTab({
       <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm dark:border-zinc-800 dark:bg-zinc-900">
         <span className="font-medium text-zinc-800 dark:text-zinc-200">
           {readOnly
-            ? `${completedCount} of ${ANC_SCHEDULE.length} scheduled visits completed`
+            ? `${completedCount} of ${calendar.length} scheduled visits completed`
             : due
               ? `Next due: Week ${due.week}${due.overdue ? " (overdue)" : ""}`
               : "All scheduled visits logged"}
         </span>
         {missed.length > 0 && (
-          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
-            {missed.length} missed
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+              readOnly
+                ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                : "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400"
+            }`}
+          >
+            {missed.length} {readOnly ? "closed" : "missed"}
           </span>
         )}
         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
@@ -110,23 +117,29 @@ export function VisitHistoryTab({
         </p>
         <div className="flex flex-wrap gap-2">
           {scheduleRows.map((row) => {
+            // A concluded pregnancy has nothing left pending — every
+            // non-completed slot reads as closed rather than missed/upcoming.
             const chipClasses = `flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
               row.status === "completed"
                 ? "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-400"
-                : row.status === "due"
-                  ? "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                  : row.status === "missed"
-                    ? "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
-                    : "border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
+                : readOnly
+                  ? "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500"
+                  : row.status === "due"
+                    ? "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                    : row.status === "missed"
+                      ? "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
+                      : "border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
             }`;
             const label =
               row.status === "completed"
                 ? "Completed"
-                : row.status === "due"
-                  ? "Due now"
-                  : row.status === "missed"
-                    ? "Missed"
-                    : "Upcoming";
+                : readOnly
+                  ? "Closed"
+                  : row.status === "due"
+                    ? "Due now"
+                    : row.status === "missed"
+                      ? "Missed"
+                      : "Upcoming";
 
             const isExpanded = expandedScheduleWeek === row.dueByWeek;
             return (
@@ -137,6 +150,7 @@ export function VisitHistoryTab({
                   className="flex items-center gap-1.5"
                 >
                   <span>Week {row.dueByWeek}</span>
+                  <span className="text-[10px] opacity-70">{row.dueDate}</span>
                   <span className="text-[10px] uppercase tracking-wide opacity-80">{label}</span>
                 </button>
                 {!readOnly && row.status === "due" && onLogScheduledVisit && (
@@ -191,7 +205,7 @@ export function VisitHistoryTab({
           return (
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
               <p className="mb-1 font-semibold uppercase tracking-wide text-zinc-400">
-                ANC visit {row.visitNumber} of {ANC_SCHEDULE.length} — Week {row.dueByWeek}
+                ANC visit {row.visitNumber} of {calendar.length} — Week {row.dueByWeek} ({row.dueDate})
               </p>
               <p>{explanation}</p>
             </div>

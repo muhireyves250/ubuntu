@@ -30,7 +30,7 @@ export function Topbar() {
         </p>
       </div>
 
-      {user.role === "nurse" ? (
+      {user.role === "nurse" || user.role === "gynecologist" ? (
         <PatientSearch />
       ) : (
         <div className="hidden flex-1 max-w-sm items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm text-zinc-400 shadow-sm dark:bg-zinc-900 sm:flex">

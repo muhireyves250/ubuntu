@@ -1,20 +1,23 @@
-import type { Patient, Visit, Referral, Pregnancy } from "./types";
+import type { Patient, Visit, Referral, Pregnancy, Recommendation } from "./types";
 import { SEED_PATIENTS, SEED_VISITS, SEED_PREGNANCIES } from "./seed-data";
 
 const PATIENTS_KEY = "ubuntumed.patients";
 const VISITS_KEY = "ubuntumed.visits";
 const REFERRALS_KEY = "ubuntumed.referrals";
 const PREGNANCIES_KEY = "ubuntumed.pregnancies";
+const RECOMMENDATIONS_KEY = "ubuntumed.recommendations";
 
 let patientsCache: Patient[] | null = null;
 let visitsCache: Visit[] | null = null;
 let referralsCache: Referral[] | null = null;
 let pregnanciesCache: Pregnancy[] | null = null;
+let recommendationsCache: Recommendation[] | null = null;
 
 const patientListeners = new Set<() => void>();
 const visitListeners = new Set<() => void>();
 const referralListeners = new Set<() => void>();
 const pregnancyListeners = new Set<() => void>();
+const recommendationListeners = new Set<() => void>();
 
 function readList<T>(key: string): T[] | null {
   const raw = window.localStorage.getItem(key);
@@ -83,6 +86,23 @@ function loadReferrals(): Referral[] {
   return referralsCache;
 }
 
+function isCurrentShapeRecommendation(rec: Recommendation): boolean {
+  return (
+    typeof rec.createdAt === "string" &&
+    typeof rec.createdByGynecologist === "string" &&
+    typeof rec.message === "string"
+  );
+}
+
+function loadRecommendations(): Recommendation[] {
+  if (recommendationsCache) return recommendationsCache;
+  const stored = readList<Recommendation>(RECOMMENDATIONS_KEY);
+  const usable = stored && stored.every(isCurrentShapeRecommendation) ? stored : null;
+  recommendationsCache = usable ?? [];
+  if (!usable) writeList(RECOMMENDATIONS_KEY, recommendationsCache);
+  return recommendationsCache;
+}
+
 function loadPregnancies(): Pregnancy[] {
   if (pregnanciesCache) return pregnanciesCache;
   const stored = readList<Pregnancy>(PREGNANCIES_KEY);
@@ -112,6 +132,11 @@ export function subscribeToPregnancies(onChange: () => void) {
   return () => pregnancyListeners.delete(onChange);
 }
 
+export function subscribeToRecommendations(onChange: () => void) {
+  recommendationListeners.add(onChange);
+  return () => recommendationListeners.delete(onChange);
+}
+
 export function getPatientsSnapshot(): Patient[] {
   return loadPatients();
 }
@@ -128,6 +153,10 @@ export function getPregnanciesSnapshot(): Pregnancy[] {
   return loadPregnancies();
 }
 
+export function getRecommendationsSnapshot(): Recommendation[] {
+  return loadRecommendations();
+}
+
 export function getServerPatientsSnapshot(): Patient[] {
   return [];
 }
@@ -141,6 +170,10 @@ export function getServerReferralsSnapshot(): Referral[] {
 }
 
 export function getServerPregnanciesSnapshot(): Pregnancy[] {
+  return [];
+}
+
+export function getServerRecommendationsSnapshot(): Recommendation[] {
   return [];
 }
 
@@ -192,6 +225,20 @@ export function updateReferral(referralId: string, updates: Partial<Referral>) {
   referralListeners.forEach((listener) => listener());
 }
 
+export function addRecommendation(recommendation: Recommendation) {
+  recommendationsCache = [...loadRecommendations(), recommendation];
+  writeList(RECOMMENDATIONS_KEY, recommendationsCache);
+  recommendationListeners.forEach((listener) => listener());
+}
+
+export function updateRecommendation(id: string, updates: Partial<Recommendation>) {
+  recommendationsCache = loadRecommendations().map((r) =>
+    r.id === id ? { ...r, ...updates } : r,
+  );
+  writeList(RECOMMENDATIONS_KEY, recommendationsCache);
+  recommendationListeners.forEach((listener) => listener());
+}
+
 export function updatePatient(
   patientId: string,
   updates: Partial<Omit<Patient, "id" | "registeredAt">>,
@@ -201,4 +248,38 @@ export function updatePatient(
   );
   writeList(PATIENTS_KEY, patientsCache);
   patientListeners.forEach((listener) => listener());
+}
+
+const CAPACITY_OVERRIDES_KEY = "ubuntumed.capacityOverrides";
+let capacityOverridesCache: Record<string, number> | null = null;
+const capacityOverrideListeners = new Set<() => void>();
+
+function loadCapacityOverrides(): Record<string, number> {
+  if (capacityOverridesCache) return capacityOverridesCache;
+  const raw = window.localStorage.getItem(CAPACITY_OVERRIDES_KEY);
+  try {
+    capacityOverridesCache = raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    capacityOverridesCache = {};
+  }
+  return capacityOverridesCache;
+}
+
+export function subscribeToCapacityOverrides(onChange: () => void) {
+  capacityOverrideListeners.add(onChange);
+  return () => capacityOverrideListeners.delete(onChange);
+}
+
+export function getCapacityOverridesSnapshot(): Record<string, number> {
+  return loadCapacityOverrides();
+}
+
+export function getServerCapacityOverridesSnapshot(): Record<string, number> {
+  return {};
+}
+
+export function setCapacityOverride(facility: string, max: number) {
+  capacityOverridesCache = { ...loadCapacityOverrides(), [facility]: max };
+  window.localStorage.setItem(CAPACITY_OVERRIDES_KEY, JSON.stringify(capacityOverridesCache));
+  capacityOverrideListeners.forEach((listener) => listener());
 }

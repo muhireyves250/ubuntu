@@ -10,7 +10,7 @@ type TimelineItem =
   | { kind: "assessment"; id: string; date: string; data: Visit }
   | { kind: "referral"; id: string; date: string; data: Referral };
 
-function itemLabel(item: TimelineItem): string {
+function itemLabel(item: TimelineItem, readOnly: boolean): string {
   switch (item.kind) {
     case "assessment":
       if (item.data.type === "emergency") {
@@ -21,17 +21,22 @@ function itemLabel(item: TimelineItem): string {
       }
       return `Unscheduled visit — classified ${item.data.riskLevel}`;
     case "referral":
+      // The pregnancy has concluded, so there's nothing left to action —
+      // show every referral tied to it as resolved rather than still
+      // pending/awaiting acceptance.
+      if (readOnly) return "Referral closed";
       if (item.data.status === "pending") return "Referral sent — pending acceptance";
       if (item.data.status === "accepted") return "Referral accepted";
       return "Referral closed";
   }
 }
 
-function markerClasses(item: TimelineItem): string {
+function markerClasses(item: TimelineItem, readOnly: boolean): string {
   if (item.kind === "assessment" && item.data.type === "emergency") {
     return "bg-red-600 text-white";
   }
   if (item.kind === "referral") {
+    if (readOnly) return "bg-zinc-400 text-white dark:bg-zinc-600";
     if (item.data.status === "pending") return "bg-amber-500 text-white";
     if (item.data.status === "closed") return "bg-zinc-400 text-white dark:bg-zinc-600";
     return "bg-teal-700 text-white";
@@ -42,9 +47,11 @@ function markerClasses(item: TimelineItem): string {
 export function PregnancyTimeline({
   visits,
   referrals,
+  readOnly = false,
 }: {
   visits: Visit[];
   referrals: Referral[];
+  readOnly?: boolean;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -97,7 +104,7 @@ export function PregnancyTimeline({
                 />
               )}
               <span
-                className={`z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${markerClasses(item)}`}
+                className={`z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${markerClasses(item, readOnly)}`}
               >
                 {item.kind === "assessment" && item.data.type === "emergency" ? (
                   <IconAlert className="h-4 w-4" />
@@ -114,7 +121,7 @@ export function PregnancyTimeline({
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                      {itemLabel(item)}
+                      {itemLabel(item, readOnly)}
                     </p>
                     <p className="text-xs text-zinc-400">{item.date}</p>
                   </div>

@@ -7,8 +7,9 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react";
-import { DEMO_USERS, findDemoUserById, findDemoUserByRole } from "./demo-users";
-import type { DemoUser, Role } from "./types";
+import { DEMO_USERS, findDemoUserByRole } from "./demo-users";
+import { findUserById, type DirectoryUser } from "./user-directory";
+import type { Role } from "./types";
 
 const SESSION_STORAGE_KEY = "ubuntumed.session";
 
@@ -44,9 +45,9 @@ function getIsClientServerSnapshot() {
 }
 
 interface AuthContextValue {
-  user: DemoUser | null;
+  user: DirectoryUser | null;
   isHydrated: boolean;
-  login: (userId: string, password: string) => boolean;
+  login: (userId: string, password: string) => "ok" | "invalid" | "suspended";
   logout: () => void;
   switchRole: (role: Role) => void;
 }
@@ -65,17 +66,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getIsClientServerSnapshot,
   );
 
-  const user = useMemo(
-    () => (sessionUserId ? findDemoUserById(sessionUserId) ?? null : null),
-    [sessionUserId],
-  );
+  const user = useMemo(() => {
+    if (!sessionUserId) return null;
+    const candidate = findUserById(sessionUserId);
+    if (!candidate || candidate.status === "suspended") return null;
+    return candidate;
+  }, [sessionUserId]);
 
-  const login = useCallback((userId: string, password: string) => {
-    const candidate = findDemoUserById(userId);
-    if (!candidate || candidate.password !== password) return false;
+  const login = useCallback((userId: string, password: string): "ok" | "invalid" | "suspended" => {
+    const candidate = findUserById(userId);
+    if (!candidate) return "invalid";
+    if (candidate.status === "suspended") return "suspended";
+    if (candidate.password !== password) return "invalid";
     window.localStorage.setItem(SESSION_STORAGE_KEY, candidate.id);
     emitSessionChange();
-    return true;
+    return "ok";
   }, []);
 
   const logout = useCallback(() => {
