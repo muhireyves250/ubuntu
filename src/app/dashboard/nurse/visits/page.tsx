@@ -251,7 +251,7 @@ function VisitsPageContent() {
 
 export default function VisitsPage() {
   return (
-    <RoleGuard path="/dashboard/nurse">
+    <RoleGuard roles={["nurse"]}>
       <VisitsPageContent />
     </RoleGuard>
   );

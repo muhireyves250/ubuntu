@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
+import { usePatients, useVisits, usePregnancies, useActiveEmergencyPatientIds } from "@/lib/patients/use-patients";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { getInitials, shortId, fullName } from "@/lib/format";
 import { IconSearch } from "./icons";
@@ -14,6 +14,7 @@ export function PatientSearch() {
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
+  const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,10 +38,17 @@ export function PatientSearch() {
       .map((patient) => {
         const latestVisit = visits
           .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
-          .sort((a, b) => b.date.localeCompare(a.date))[0];
-        return { patient, latestRisk: latestVisit?.riskLevel ?? "green" };
+          .sort((a, b) => {
+            const dateCompare = b.date.localeCompare(a.date);
+            if (dateCompare !== 0) return dateCompare;
+            return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+          })[0];
+        const latestRisk = activeEmergencyPatientIds.has(patient.id)
+          ? "red"
+          : (latestVisit?.riskLevel ?? "green");
+        return { patient, latestRisk };
       });
-  }, [patients, visits, patientIdByPregnancyId, query]);
+  }, [patients, visits, patientIdByPregnancyId, query, activeEmergencyPatientIds]);
 
   function goToPatient(id: string) {
     setQuery("");

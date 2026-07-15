@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 
 import { RoleGuard } from "@/components/role-guard";
 import { getLabRequests, subscribeToLabRequests, LabRequest } from "@/lib/patients/lab-requests";
-import { findDemoUserById } from "@/lib/auth/demo-users";
+import { findUserById } from "@/lib/auth/user-directory";
 import Link from "next/link";
 
 import {
@@ -17,7 +17,7 @@ import {
 function readSessionUser() {
   if (typeof window === "undefined") return null;
   const sessionUserId = window.localStorage.getItem("ubuntumed.session");
-  return sessionUserId ? findDemoUserById(sessionUserId) : null;
+  return sessionUserId ? findUserById(sessionUserId) ?? null : null;
 }
 
 export default function LabNurseDashboard() {
@@ -51,7 +51,7 @@ export default function LabNurseDashboard() {
   }, [requests]);
 
   return (
-    <RoleGuard path="/dashboard/lab">
+    <RoleGuard roles={["lab_nurse"]}>
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
           <div>

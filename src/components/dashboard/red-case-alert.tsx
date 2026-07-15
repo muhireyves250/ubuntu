@@ -8,6 +8,7 @@ import {
   usePregnancies,
   useReferrals,
   acceptEmergencyReferral,
+  useFacilityCapacity,
 } from "@/lib/patients/use-patients";
 import { useAuth } from "@/lib/auth/auth-context";
 import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
@@ -113,6 +114,8 @@ export function RedCaseAlertPanel() {
   const referrals = useReferrals();
   const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
   const [viewInfoReferralId, setViewInfoReferralId] = useState<string | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+  const capacity = useFacilityCapacity(user?.facility ?? "");
 
   const patientById = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
   const patientIdByPregnancyId = useMemo(
@@ -130,7 +133,19 @@ export function RedCaseAlertPanel() {
     }[] = [];
 
     for (const referral of referrals) {
-      if (referral.status !== "pending" || referral.receivingFacility !== user.facility) continue;
+      // Broadcast to every facility capable of handling an obstetric emergency
+      // (not just the one it was originally routed to) — whichever capable
+      // hospital sees it first can accept it. The facility that referred the
+      // case out never sees it as something to accept, even if it's capable.
+      if (
+        referral.status !== "pending" ||
+        referral.urgency !== "emergency" ||
+        user.facilityLevel === "hc" ||
+        referral.referredByFacility === user.facility ||
+        capacity.status === "full"
+      ) {
+        continue;
+      }
       const patient = patientById.get(referral.patientId);
       if (!patient) continue;
       const latestVisit = visits
@@ -144,8 +159,9 @@ export function RedCaseAlertPanel() {
     }
 
     return results.sort((a, b) => b.referral.createdAt.localeCompare(a.referral.createdAt));
-  }, [referrals, patientById, visits, pregnancies, patientIdByPregnancyId, user]);
+  }, [referrals, patientById, visits, pregnancies, patientIdByPregnancyId, user, capacity]);
 
+  if (user?.role === "hospital_admin") return null;
   if (pendingCases.length === 0) return null;
 
   const pendingAccept = pendingCases.find(({ referral }) => referral.id === pendingAcceptId);
@@ -167,13 +183,23 @@ export function RedCaseAlertPanel() {
           </span>
         </div>
         <span className="text-xs text-red-600/70 dark:text-red-400/70">
-          Referred to {user?.facility}
+          Visible to all capable facilities
         </span>
       </div>
 
       <p className="mt-2 text-sm text-red-700/80 dark:text-red-400/80">
-        The following emergency cases have been referred to your facility and require acceptance.
+        These emergency cases need a facility equipped to manage them. Accept one to take
+        responsibility for the patient.
       </p>
+
+      {acceptError && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-red-300 bg-red-100 px-3 py-2 text-xs font-medium text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
+          <span>{acceptError}</span>
+          <button type="button" onClick={() => setAcceptError(null)} className="shrink-0 font-bold">
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-col gap-3">
         {pendingCases.map(({ referral, patient, latestVisit, gaWeeks }) => (
@@ -196,8 +222,14 @@ export function RedCaseAlertPanel() {
           confirmLabel="Accept"
           tone="danger"
           onConfirm={() => {
-            acceptEmergencyReferral(pendingAccept.referral.id);
-            router.push(`/dashboard/nurse/patients/${pendingAccept.patient.id}`);
+            try {
+              acceptEmergencyReferral(pendingAccept.referral.id);
+              setPendingAcceptId(null);
+              router.push(`/dashboard/nurse/patients/${pendingAccept.patient.id}`);
+            } catch (err) {
+              setPendingAcceptId(null);
+              setAcceptError(err instanceof Error ? err.message : "Could not accept this referral.");
+            }
           }}
           onCancel={() => setPendingAcceptId(null)}
         />
@@ -207,6 +239,8 @@ export function RedCaseAlertPanel() {
         <PatientEmergencyInfoModal
           patient={viewInfo.patient}
           latestVisit={viewInfo.latestVisit}
+          referral={viewInfo.referral}
+          gaWeeks={viewInfo.gaWeeks}
           onClose={() => setViewInfoReferralId(null)}
           onAccept={() => {
             setViewInfoReferralId(null);

@@ -84,7 +84,25 @@ export interface Visit {
 }
 
 export type ReferralStatus = "pending" | "accepted" | "closed";
-export type ReferralOutcome = "recovered" | "died";
+export type ReferralOutcome =
+  | "stable"
+  | "improved"
+  | "recovered"
+  | "admitted"
+  | "delivered"
+  | "referred"
+  | "discharged"
+  | "maternal_death"
+  | "fetal_death";
+
+export type FacilityCapacityStatus = "available" | "nearly_full" | "full";
+
+export interface FacilityCapacity {
+  max: number;
+  active: number;
+  remaining: number;
+  status: FacilityCapacityStatus;
+}
 
 export interface Referral {
   id: string;
@@ -102,6 +120,23 @@ export interface Referral {
   closedAt?: string;
   outcome?: ReferralOutcome;
   outcomeStatement?: string;
+}
+
+export type RecommendationStatus = "open" | "responded";
+
+export interface Recommendation {
+  id: string;
+  patientId: string;
+  createdAt: string;
+  createdByGynecologist: string;
+  createdByFacility: string;
+  riskLevelAtCreation: RiskLevel;
+  message: string;
+  status: RecommendationStatus;
+  nurseResponse?: string;
+  respondedByNurse?: string;
+  respondedAt?: string;
+  acknowledgedByGynecologistAt?: string;
 }
 
 export interface Pregnancy {

@@ -243,6 +243,27 @@ export function IconCheckCircle({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+export function IconBuilding({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="4" y="3" width="12" height="18" rx="1.2" stroke="currentColor" strokeWidth="2" />
+      <path d="M16 21V9l4 2v10" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M8 7h.01M12 7h.01M8 11h.01M12 11h.01M8 15h.01M12 15h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconLock({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="4" y="10.5" width="16" height="10" rx="2.2" stroke="currentColor" strokeWidth="2" />
+      <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="15" r="1.6" fill="currentColor" />
+      <path d="M12 16.6V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconClock({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>

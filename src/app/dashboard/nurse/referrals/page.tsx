@@ -7,7 +7,7 @@ import { useReferrals, usePatients } from "@/lib/patients/use-patients";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getInitials, relativeTime, fullName } from "@/lib/format";
 import { CloseReferralModal } from "@/components/dashboard/close-referral-modal";
-import type { ReferralStatus } from "@/lib/patients/types";
+import type { ReferralOutcome, ReferralStatus } from "@/lib/patients/types";
 
 const STATUS_FILTERS: { value: "all" | ReferralStatus; label: string }[] = [
   { value: "all", label: "All" },
@@ -20,6 +20,18 @@ const STATUS_BADGE: Record<ReferralStatus, string> = {
   pending: "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
   accepted: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
   closed: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+};
+
+const OUTCOME_TEXT_COLOR: Record<ReferralOutcome, string> = {
+  stable: "text-amber-700 dark:text-amber-400",
+  improved: "text-amber-700 dark:text-amber-400",
+  recovered: "text-emerald-700 dark:text-emerald-400",
+  admitted: "text-amber-700 dark:text-amber-400",
+  delivered: "text-emerald-700 dark:text-emerald-400",
+  referred: "text-amber-700 dark:text-amber-400",
+  discharged: "text-emerald-700 dark:text-emerald-400",
+  maternal_death: "text-red-700 dark:text-red-400",
+  fetal_death: "text-red-700 dark:text-red-400",
 };
 
 function ReferralLogContent() {
@@ -36,11 +48,17 @@ function ReferralLogContent() {
 
   const rows = useMemo(() => {
     return referrals
+      .filter(
+        (r) =>
+          r.referredByFacility === user?.facility ||
+          r.receivingFacility === user?.facility ||
+          r.acceptedByFacility === user?.facility,
+      )
       .map((referral) => ({ referral, patient: patientById.get(referral.patientId) }))
       .filter((row) => row.patient)
       .filter((row) => statusFilter === "all" || row.referral.status === statusFilter)
       .sort((a, b) => b.referral.createdAt.localeCompare(a.referral.createdAt));
-  }, [referrals, patientById, statusFilter]);
+  }, [referrals, patientById, statusFilter, user?.facility]);
 
   const closeTarget = rows.find((row) => row.referral.id === closeTargetId);
 
@@ -124,15 +142,15 @@ function ReferralLogContent() {
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                     {referral.outcome ? (
-                      <span className={referral.outcome === "died" ? "text-red-700 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}>
-                        {referral.outcome}
+                      <span className={`capitalize ${OUTCOME_TEXT_COLOR[referral.outcome]}`}>
+                        {referral.outcome.replace(/_/g, " ")}
                       </span>
                     ) : (
                       "—"
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {referral.status === "accepted" && referral.acceptedByNurse === user?.name && (
+                    {referral.status === "accepted" && referral.acceptedByFacility === user?.facility && (
                       <button
                         type="button"
                         onClick={() => setCloseTargetId(referral.id)}
@@ -162,7 +180,7 @@ function ReferralLogContent() {
 
 export default function ReferralLogPage() {
   return (
-    <RoleGuard path="/dashboard/nurse">
+    <RoleGuard roles={["nurse", "gynecologist", "hospital_admin"]}>
       <ReferralLogContent />
     </RoleGuard>
   );

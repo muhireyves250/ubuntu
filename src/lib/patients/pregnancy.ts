@@ -80,3 +80,51 @@ export function missedVisits(pregnancy: Pregnancy, visits: Visit[], asOf?: strin
     (s) => s.dueByWeek < currentWeeks && !loggedWeeks.has(s.dueByWeek),
   ).map((s) => s.dueByWeek);
 }
+
+const SCHEDULE_MATCH_TOLERANCE_DAYS = 3;
+
+export interface AncCalendarEntry {
+  visitNumber: number;
+  dueByWeek: number;
+  dueDate: string;
+}
+
+// The full visit calendar for one pregnancy, spanning from the date it
+// started (LMP) to the day she is due to give birth (EDD) — every ANC visit
+// gets a concrete date instead of just a gestational week.
+export function ancCalendar(pregnancy: Pregnancy): AncCalendarEntry[] {
+  const lmp = new Date(`${pregnancy.lmpDate}T00:00:00`);
+  return ANC_SCHEDULE.map((s) => ({
+    visitNumber: s.visitNumber,
+    dueByWeek: s.dueByWeek,
+    dueDate: new Date(lmp.getTime() + s.dueByWeek * 7 * MS_PER_DAY).toISOString().slice(0, 10),
+  }));
+}
+
+// When a mother walks in, check whether today falls within the tolerance
+// window of an unlogged scheduled visit date — if so, this is that
+// scheduled visit; otherwise it's unscheduled.
+export function matchScheduledVisit(
+  pregnancy: Pregnancy,
+  visits: Visit[],
+  date: string,
+): AncCalendarEntry | null {
+  const loggedWeeks = new Set(
+    visits
+      .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
+      .map((v) => v.scheduledWeek as number),
+  );
+  const today = new Date(`${date}T00:00:00`).getTime();
+
+  let best: { entry: AncCalendarEntry; diffDays: number } | null = null;
+  for (const entry of ancCalendar(pregnancy)) {
+    if (loggedWeeks.has(entry.dueByWeek)) continue;
+    const diffDays = Math.abs(
+      (today - new Date(`${entry.dueDate}T00:00:00`).getTime()) / MS_PER_DAY,
+    );
+    if (diffDays <= SCHEDULE_MATCH_TOLERANCE_DAYS && (!best || diffDays < best.diffDays)) {
+      best = { entry, diffDays };
+    }
+  }
+  return best?.entry ?? null;
+}

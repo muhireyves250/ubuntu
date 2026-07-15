@@ -3,19 +3,20 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { canAccessDashboardPath, dashboardPathForRole } from "@/lib/auth/role-routes";
+import { dashboardPathForRole } from "@/lib/auth/role-routes";
+import type { Role } from "@/lib/auth/types";
 
 export function RoleGuard({
-  path,
+  roles,
   children,
 }: {
-  path: string;
+  roles: Role[];
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const { user, isHydrated } = useAuth();
 
-  const isAllowed = !!user && canAccessDashboardPath(user.role, path);
+  const isAllowed = !!user && roles.includes(user.role);
 
   useEffect(() => {
     if (isHydrated && user && !isAllowed) {

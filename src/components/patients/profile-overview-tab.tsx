@@ -5,6 +5,7 @@ import { RiskBadge } from "@/components/patients/risk-badge";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import { formatLabs, fullName, computeAge, relativeTime } from "@/lib/format";
 import { gestationalAgeWeeks, nextDueVisit } from "@/lib/patients/pregnancy";
+import { useActiveEmergencyReferral } from "@/lib/patients/use-patients";
 import {
   IconUsers,
   IconCalendar,
@@ -104,7 +105,8 @@ export function ProfileOverviewTab({
   }, []);
 
   const latestVisit = visits[0] ?? null;
-  const currentRisk = latestVisit?.riskLevel ?? "green";
+  const activeEmergency = useActiveEmergencyReferral(patient.id);
+  const currentRisk = activeEmergency ? "red" : (latestVisit?.riskLevel ?? "green");
   const gaWeeks = pregnancy ? gestationalAgeWeeks(pregnancy.lmpDate) : null;
   const pregnancyVisits = pregnancy
     ? visits.filter((v) => v.pregnancyId === pregnancy.id)

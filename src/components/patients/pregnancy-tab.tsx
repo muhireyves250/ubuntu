@@ -243,6 +243,9 @@ function PastPregnancyRow({
   );
 }
 
+const ARCHIVE_TABS = ["Summary", "Visit History", "Timeline"] as const;
+type ArchiveTab = (typeof ARCHIVE_TABS)[number];
+
 function ArchivedPregnancyRecord({
   pregnancy,
   onClose,
@@ -250,6 +253,10 @@ function ArchivedPregnancyRecord({
   pregnancy: Pregnancy;
   onClose: () => void;
 }) {
+  const visits = useVisitsForPregnancy(pregnancy.id);
+  const referrals = useReferrals().filter((r) => r.patientId === pregnancy.patientId);
+  const [tab, setTab] = useState<ArchiveTab>("Summary");
+
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-300 dark:border-zinc-700">
       <div className="flex items-center justify-between gap-3 bg-zinc-100 px-5 py-3 dark:bg-zinc-800">
@@ -275,8 +282,30 @@ function ArchivedPregnancyRecord({
           <IconClose className="h-4 w-4" />
         </button>
       </div>
-      <div className="bg-zinc-50 p-4 dark:bg-zinc-950/40">
-        <PregnancySection pregnancy={pregnancy} />
+
+      <div className="flex flex-col gap-4 bg-zinc-50 p-4 dark:bg-zinc-950/40">
+        <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+          {ARCHIVE_TABS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                tab === t
+                  ? "bg-zinc-700 text-white shadow-sm dark:bg-zinc-600"
+                  : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {tab === "Summary" && <PregnancySummaryCard pregnancy={pregnancy} />}
+        {tab === "Visit History" && (
+          <VisitHistoryTab pregnancy={pregnancy} visits={visits} readOnly />
+        )}
+        {tab === "Timeline" && <PregnancyTimeline visits={visits} referrals={referrals} readOnly />}
       </div>
     </div>
   );
@@ -285,9 +314,11 @@ function ArchivedPregnancyRecord({
 export function PregnancyTab({
   patientId,
   onGoToVisitHistory,
+  readOnly = false,
 }: {
   patientId: string;
   onGoToVisitHistory: () => void;
+  readOnly?: boolean;
 }) {
   const pregnancies = usePregnanciesForPatient(patientId);
   const openPregnancy = pregnancies.find((p) => p.status === "open");
@@ -336,13 +367,15 @@ export function PregnancyTab({
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             This patient has no active pregnancy on record.
           </p>
-          <button
-            type="button"
-            onClick={() => setShowNewPregnancy(true)}
-            className="rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
-          >
-            New Pregnancy
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => setShowNewPregnancy(true)}
+              className="rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+            >
+              New Pregnancy
+            </button>
+          )}
 
           {showNewPregnancy && (
             <NewPregnancyModal
@@ -364,13 +397,15 @@ export function PregnancyTab({
             >
               Continue to Visit History
             </button>
-            <button
-              type="button"
-              onClick={() => setShowClosePregnancy(true)}
-              className="w-fit rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            >
-              Close Pregnancy
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => setShowClosePregnancy(true)}
+                className="w-fit rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                Close Pregnancy
+              </button>
+            )}
           </div>
 
           <PregnancySection pregnancy={openPregnancy} />

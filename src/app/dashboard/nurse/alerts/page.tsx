@@ -231,7 +231,7 @@ function ActiveAlertsContent() {
 
 export default function ActiveAlertsPage() {
   return (
-    <RoleGuard path="/dashboard/nurse">
+    <RoleGuard roles={["nurse"]}>
       <ActiveAlertsContent />
     </RoleGuard>
   );

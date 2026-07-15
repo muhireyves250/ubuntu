@@ -1,14 +1,50 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { findDemoUserById } from "@/lib/auth/demo-users";
-import { ROLE_LABEL, dashboardPathForRole } from "@/lib/auth/role-routes";
+import { DEMO_USERS } from "@/lib/auth/demo-users";
+import { findUserByUsername } from "@/lib/auth/user-directory";
+import { dashboardPathForRole } from "@/lib/auth/role-routes";
+import type { Role } from "@/lib/auth/types";
 
-const TAB_USER_IDS = ["nurse-uwase", "nurse-kagame", "lab-nurse-mugisha"] as const;
+const ROLE_TABS: { role: Role; label: string }[] = [
+  { role: "nurse", label: "In charge of ANC" },
+  { role: "lab_nurse", label: "Laboratory Nurse" },
+  { role: "gynecologist", label: "Gynecologist" },
+  { role: "hospital_admin", label: "Hospital Administrator" },
+];
+
+function RoleIcon({ role, className = "h-4 w-4" }: { role: Role; className?: string }) {
+  if (role === "nurse") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (role === "lab_nurse") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M9 2v6.5L4.5 17a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L15 8.5V2M9 2h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (role === "hospital_admin") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M4 21V9l8-5 8 5v12M4 21h16M9 21v-6h6v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M6 3v6a6 6 0 0 0 12 0V3M6 9a3 3 0 1 1-3 3M18 9a3 3 0 1 0 3 3M12 15v4m0 0a3 3 0 1 0 3-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 function EyeIcon({ open }: { open: boolean }) {
   if (open) {
@@ -41,7 +77,8 @@ function EyeIcon({ open }: { open: boolean }) {
 export default function LoginPage() {
   const router = useRouter();
   const { user, isHydrated, login } = useAuth();
-  const [selectedUserId, setSelectedUserId] = useState<string>(TAB_USER_IDS[0]);
+  const [selectedRole, setSelectedRole] = useState<Role>("nurse");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,48 +89,36 @@ export default function LoginPage() {
     }
   }, [isHydrated, user, router]);
 
-  const selectedUser = useMemo(
-    () => findDemoUserById(selectedUserId),
-    [selectedUserId],
-  );
+  const usernamesForRole = DEMO_USERS.filter((u) => u.role === selectedRole).map((u) => u.username);
 
-  function chooseUser(userId: string) {
-    setSelectedUserId(userId);
+  function chooseRole(role: Role) {
+    setSelectedRole(role);
+    setUsername("");
     setPassword("");
     setError(null);
   }
 
-  function resetToDefault() {
-    chooseUser(TAB_USER_IDS[0]);
-  }
-
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const success = login(selectedUserId, password);
-    if (!success) {
-      setError("Incorrect password for this demo user.");
+    const candidate = findUserByUsername(username);
+    if (!candidate || candidate.role !== selectedRole) {
+      setError(`No ${ROLE_TABS.find((t) => t.role === selectedRole)?.label} account found for that username.`);
       return;
     }
-    const loggedInUser = findDemoUserById(selectedUserId);
-    if (loggedInUser) router.replace(dashboardPathForRole(loggedInUser.role));
+    const result = login(candidate.id, password);
+    if (result === "invalid") {
+      setError("Incorrect password.");
+      return;
+    }
+    if (result === "suspended") {
+      setError("This account has been suspended. Contact your hospital administrator.");
+      return;
+    }
+    router.replace(dashboardPathForRole(candidate.role));
   }
 
   return (
     <div className="relative flex flex-1 flex-col sm:flex-row min-h-dvh">
-      {/* ── Top-left: Back button ── */}
-      <div className="absolute top-4 left-4 z-30">
-        <button
-          type="button"
-          id="back-to-selector-btn"
-          onClick={resetToDefault}
-          className="flex items-center gap-1.5 rounded-full border border-white/40 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-        >
-          <span aria-hidden>←</span>
-          Back to User Selector
-        </button>
-      </div>
-
-      {/* ── Top-right: Login Options dropdown ── */}
       {/* ════════════════════════════════════════
           LEFT PANEL — photo background + role tabs
       ════════════════════════════════════════ */}
@@ -127,34 +152,22 @@ export default function LoginPage() {
 
         {/* Role tab switcher */}
         <div className="relative flex flex-wrap justify-center gap-1 rounded-full bg-white/15 p-1.5 backdrop-blur-sm">
-          {TAB_USER_IDS.map((userId) => {
-            const tabUser = findDemoUserById(userId);
-            if (!tabUser) return null;
-            const isActive = selectedUserId === userId;
+          {ROLE_TABS.map(({ role, label }) => {
+            const isActive = selectedRole === role;
             return (
               <button
-                key={userId}
+                key={role}
                 type="button"
-                id={`role-tab-${userId}`}
-                onClick={() => chooseUser(userId)}
+                id={`role-tab-${role}`}
+                onClick={() => chooseRole(role)}
                 className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all ${
                   isActive
                     ? "bg-teal-600 text-white shadow"
                     : "text-teal-100 hover:bg-white/10"
                 }`}
               >
-                {/* Small icon per role */}
-                {(userId === "nurse-uwase" || userId === "nurse-kagame") && (
-                  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
-                    <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
-                )}
-                {userId === "lab-nurse-mugisha" && (
-                  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
-                    <path d="M9 2v6.5L4.5 17a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L15 8.5V2M9 2h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-                {tabUser.title}
+                <RoleIcon role={role} />
+                {label}
               </button>
             );
           })}
@@ -190,10 +203,8 @@ export default function LoginPage() {
 
             {/* Role badge */}
             <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800 ring-1 ring-teal-200">
-              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 text-teal-600" aria-hidden>
-                <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              {selectedUser && ROLE_LABEL[selectedUser.role]}
+              <RoleIcon role={selectedRole} className="h-3.5 w-3.5 text-teal-600" />
+              {ROLE_TABS.find((t) => t.role === selectedRole)?.label}
             </span>
 
             <h2 className="mt-4 text-2xl font-bold text-zinc-900">
@@ -208,14 +219,20 @@ export default function LoginPage() {
           {/* Form */}
           <form id="login-form" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-              Staff
+              Username
               <input
                 type="text"
-                id="staff-field"
-                readOnly
-                value={`${selectedUser?.name ?? ""} — ${selectedUser?.facility ?? ""}`}
-                className="w-full cursor-default rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-zinc-600 outline-none"
+                id="username-field"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="Enter your username"
+                autoComplete="username"
+                className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                required
               />
+              <span className="text-xs text-zinc-400">
+                Demo {ROLE_TABS.find((t) => t.role === selectedRole)?.label} usernames: {usernamesForRole.join(", ")}
+              </span>
             </label>
 
             <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
@@ -227,6 +244,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Enter your password"
+                  autoComplete="current-password"
                   className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                   required
                 />
