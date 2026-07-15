@@ -111,11 +111,16 @@ export function RegisterPatientModal({
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
       />
 
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-300 bg-[#ffeedb] p-6 shadow-2xl dark:border-zinc-700 dark:bg-orange-950/40">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-            Register Patient
-          </h2>
+      <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-zinc-300 bg-[#ffeedb] shadow-2xl dark:border-zinc-700 dark:bg-orange-950/40">
+        <div className="flex items-start justify-between gap-3 border-b border-zinc-300/70 px-6 py-5 dark:border-zinc-700/70">
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+              Register Patient
+            </h2>
+            <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+              Fields marked with an asterisk are required.
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -125,165 +130,165 @@ export function RegisterPatientModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-6 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
-          <fieldset className="flex flex-col gap-3">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Personal Information
-            </legend>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              National ID Number
-              <input type="text" required value={nationalId} onChange={(e) => setNationalId(e.target.value)} className={inputCls} />
-            </label>
-            <div className="flex gap-4">
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                First Name
-                <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Last Name
-                <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Date of Birth
-              <input type="date" required value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputCls} />
-            </label>
-            <div className="flex gap-4">
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Phone Number
-                <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Alternative Phone Number
-                <input type="text" value={altPhone} onChange={(e) => setAltPhone(e.target.value)} className={inputCls} />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Marital Status
-              <input type="text" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={inputCls} />
-            </label>
-          </fieldset>
-
-          <fieldset className="flex flex-col gap-3">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Address
-            </legend>
-            <div className="flex gap-4">
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                District
-                <input type="text" required value={district} onChange={(e) => setDistrict(e.target.value)} className={inputCls} />
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Sector
-                <input type="text" required value={sector} onChange={(e) => setSector(e.target.value)} className={inputCls} />
-              </label>
-            </div>
-            <div className="flex gap-4">
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Cell
-                <input type="text" required value={cell} onChange={(e) => setCell(e.target.value)} className={inputCls} />
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Village
-                <input type="text" required value={village} onChange={(e) => setVillage(e.target.value)} className={inputCls} />
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset className="flex flex-col gap-3">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Emergency Contact
-            </legend>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Contact Name
-              <input type="text" required value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputCls} />
-            </label>
-            <div className="flex gap-4">
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Relationship
-                <input type="text" required value={relationship} onChange={(e) => setRelationship(e.target.value)} className={inputCls} />
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Phone Number
-                <input type="text" required value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputCls} />
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset className="flex flex-col gap-3">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Basic Medical Information
-            </legend>
-            <div className="flex gap-4">
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Blood Group
-                <input type="text" placeholder="e.g. O" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={inputCls} />
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Rh Factor
-                <select value={rhFactor} onChange={(e) => setRhFactor(e.target.value as typeof rhFactor)} className={inputCls}>
-                  <option value="">Unknown</option>
-                  <option value="positive">Positive</option>
-                  <option value="negative">Negative</option>
-                </select>
-              </label>
-            </div>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Known Allergies
-              <textarea rows={2} value={allergies} onChange={(e) => setAllergies(e.target.value)} className={inputCls} />
-            </label>
-            <div>
-              <p className="mb-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Chronic Medical Conditions
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {CHRONIC_CONDITION_OPTIONS.map((condition) => (
-                  <label
-                    key={condition}
-                    className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={chronicConditions.includes(condition)}
-                      onChange={() => toggleCondition(condition)}
-                      className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
-                    />
-                    {condition}
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex flex-col gap-6 rounded-xl border border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+              <fieldset className="flex flex-col gap-3">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  Personal Information
+                </legend>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2">
+                    National ID Number *
+                    <input type="text" required value={nationalId} onChange={(e) => setNationalId(e.target.value)} className={inputCls} />
                   </label>
-                ))}
-                <label className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={hasOtherCondition}
-                    onChange={(e) => setHasOtherCondition(e.target.checked)}
-                    className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
-                  />
-                  Other
-                </label>
-              </div>
-              {hasOtherCondition && (
-                <input
-                  type="text"
-                  placeholder="Specify condition"
-                  value={otherCondition}
-                  onChange={(e) => setOtherCondition(e.target.value)}
-                  className={`${inputCls} mt-2 w-full`}
-                />
-              )}
-            </div>
-          </fieldset>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    First Name *
+                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Last Name *
+                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Date of Birth *
+                    <input type="date" required value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Phone Number *
+                    <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Alternative Phone Number
+                    <input type="text" value={altPhone} onChange={(e) => setAltPhone(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Marital Status
+                    <input type="text" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={inputCls} />
+                  </label>
+                </div>
+              </fieldset>
 
-          <div className="grid grid-cols-2 gap-2.5">
+              <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  Address
+                </legend>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    District *
+                    <input type="text" required value={district} onChange={(e) => setDistrict(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Sector *
+                    <input type="text" required value={sector} onChange={(e) => setSector(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Cell *
+                    <input type="text" required value={cell} onChange={(e) => setCell(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Village *
+                    <input type="text" required value={village} onChange={(e) => setVillage(e.target.value)} className={inputCls} />
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  Emergency Contact
+                </legend>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2">
+                    Contact Name *
+                    <input type="text" required value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Relationship *
+                    <input type="text" required value={relationship} onChange={(e) => setRelationship(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Phone Number *
+                    <input type="text" required value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputCls} />
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  Basic Medical Information
+                </legend>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Blood Group
+                    <input type="text" placeholder="e.g. O" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Rh Factor
+                    <select value={rhFactor} onChange={(e) => setRhFactor(e.target.value as typeof rhFactor)} className={inputCls}>
+                      <option value="">Unknown</option>
+                      <option value="positive">Positive</option>
+                      <option value="negative">Negative</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2">
+                    Known Allergies
+                    <textarea rows={2} value={allergies} onChange={(e) => setAllergies(e.target.value)} className={inputCls} />
+                  </label>
+                  <div className="sm:col-span-2">
+                    <p className="mb-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Chronic Medical Conditions
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {CHRONIC_CONDITION_OPTIONS.map((condition) => (
+                        <label
+                          key={condition}
+                          className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 has-checked:border-teal-600 has-checked:bg-teal-50 dark:border-zinc-800 dark:text-zinc-300 dark:has-checked:border-teal-600 dark:has-checked:bg-teal-950/40"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={chronicConditions.includes(condition)}
+                            onChange={() => toggleCondition(condition)}
+                            className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                          />
+                          {condition}
+                        </label>
+                      ))}
+                      <label className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 has-checked:border-teal-600 has-checked:bg-teal-50 dark:border-zinc-800 dark:text-zinc-300 dark:has-checked:border-teal-600 dark:has-checked:bg-teal-950/40">
+                        <input
+                          type="checkbox"
+                          checked={hasOtherCondition}
+                          onChange={(e) => setHasOtherCondition(e.target.checked)}
+                          className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                        />
+                        Other
+                      </label>
+                    </div>
+                    {hasOtherCondition && (
+                      <input
+                        type="text"
+                        placeholder="Specify condition"
+                        value={otherCondition}
+                        onChange={(e) => setOtherCondition(e.target.value)}
+                        className={`${inputCls} mt-2 w-full`}
+                      />
+                    )}
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 border-t border-zinc-300/70 bg-[#ffeedb] px-6 py-4 dark:border-zinc-700/70 dark:bg-orange-950/40">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800"
+              className="rounded-xl bg-[#0f766e] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800"
             >
               Register Patient
             </button>
