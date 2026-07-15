@@ -139,14 +139,12 @@ export { subscribeToVisits as subscribeToLabRequests };
  * extra — getLabRequests() will derive it automatically.
  * Kept for backwards compatibility.
  */
-export function pushNewLabRequest(
-  visit: Visit,
-  _patient: Patient,
-  _pregnancy: Pregnancy
-) {
+export function pushNewLabRequest(visit: Visit, patient: Patient, pregnancy: Pregnancy) {
   // No-op: the visit is already in localStorage via storage.ts.
   // getLabRequests() will pick it up automatically.
   void visit;
+  void patient;
+  void pregnancy;
 }
 
 /**

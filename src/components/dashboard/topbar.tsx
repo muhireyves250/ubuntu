@@ -8,13 +8,14 @@ import { IconBell, IconChevronDown, IconSearch } from "./icons";
 import { NotificationPanel } from "./notification-panel";
 import { PatientSearch } from "./patient-search";
 import { ProfilePanel } from "./profile-panel";
-import { useUnacknowledgedCount } from "@/lib/patients/use-patients";
+import { useNotificationAlerts } from "@/lib/patients/use-patients";
 
 export function Topbar() {
   const { user } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const unreadCount = useUnacknowledgedCount();
+  const alerts = useNotificationAlerts(user?.role ?? "");
+  const unreadCount = alerts.length;
 
   if (!user) return null;
 

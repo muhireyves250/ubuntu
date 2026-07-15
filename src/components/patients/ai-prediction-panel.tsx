@@ -238,7 +238,7 @@ export function AiPredictionTab({ visits }: { visits: Visit[] }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">AI Prediction</h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -246,9 +246,35 @@ export function AiPredictionTab({ visits }: { visits: Visit[] }) {
             <span className="font-medium">{Math.round(latest.confidence * 100)}% confidence</span>
           </p>
         </div>
-        <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300">
-          AI · Simulated
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+              latest.riskLevel === "red"
+                ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 ring-1 ring-red-300"
+                : latest.riskLevel === "orange"
+                  ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 ring-1 ring-orange-300"
+                  : latest.riskLevel === "yellow"
+                    ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 ring-1 ring-amber-300"
+                    : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 ring-1 ring-emerald-200"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                latest.riskLevel === "red"
+                  ? "bg-red-500 animate-pulse"
+                  : latest.riskLevel === "orange"
+                    ? "bg-orange-500"
+                    : latest.riskLevel === "yellow"
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+              }`}
+            />
+            {latest.riskLevel} Case
+          </span>
+          <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300">
+            AI · Simulated
+          </span>
+        </div>
       </div>
 
       {/* Alert */}

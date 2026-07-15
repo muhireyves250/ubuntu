@@ -1,4 +1,4 @@
-import type { Visit } from "./types";
+import type { Visit, RiskLevel } from "./types";
 
 export interface AiPrediction {
   eclampsiaRisk: number;   // 0–1
@@ -10,6 +10,7 @@ export interface AiPrediction {
   alert: string | null;
   visitId: string;
   date: string;
+  riskLevel: RiskLevel;
 }
 
 const ECLAMPSIA_WEIGHTS: Record<string, number> = {
@@ -25,7 +26,7 @@ const HEMORRHAGE_WEIGHTS: Record<string, number> = {
   "pph": 0.90,
   "bleeding": 0.82,
   "prev-pph": 0.55,
-  "severe-anemia": 0.42,
+  "severe-anemia": 0.88, // low Hb has high contribution
   "prev-cs-2x": 0.35,
 };
 
@@ -47,7 +48,7 @@ const EMERGENCY_WEIGHTS: Record<string, number> = {
   "chest-pain": 0.68,
   "uncontrolled-htn": 0.70,
   "preterm-labor": 0.62,
-  "severe-anemia": 0.55,
+  "severe-anemia": 0.85,
   "prev-cs-2x": 0.50,
 };
 
@@ -73,7 +74,26 @@ function topContributors(
 }
 
 export function computePrediction(visit: Visit): AiPrediction {
-  const { symptomIds } = visit;
+  const symptomIds = [...(visit.symptomIds ?? [])];
+
+  // Derive signs from labs to include them in the risk prediction
+  if (visit.labs) {
+    const { hemoglobin, bpSystolic, bpDiastolic, urineProtein } = visit.labs;
+    if (hemoglobin != null && hemoglobin < 7) {
+      symptomIds.push("severe-anemia");
+    }
+    if (bpSystolic != null && bpDiastolic != null) {
+      if (bpSystolic >= 160 || bpDiastolic >= 110) {
+        symptomIds.push("uncontrolled-htn");
+        symptomIds.push("preeclampsia");
+      } else if (bpSystolic >= 140 || bpDiastolic >= 90) {
+        symptomIds.push("controlled-htn");
+      }
+    }
+    if (urineProtein && ["2+", "3+"].includes(urineProtein)) {
+      symptomIds.push("preeclampsia");
+    }
+  }
 
   const eclampsiaRisk = aggregateRisk(symptomIds, ECLAMPSIA_WEIGHTS);
   const hemorrhageRisk = aggregateRisk(symptomIds, HEMORRHAGE_WEIGHTS);
@@ -81,7 +101,7 @@ export function computePrediction(visit: Visit): AiPrediction {
   const emergencyRisk = aggregateRisk(symptomIds, EMERGENCY_WEIGHTS);
 
   const hasHighRiskSymptoms = symptomIds.some((id) =>
-    ["convulsions", "preeclampsia", "bleeding", "pph", "difficulty-breathing"].includes(id),
+    ["convulsions", "preeclampsia", "bleeding", "pph", "difficulty-breathing", "severe-anemia"].includes(id),
   );
 
   const confidence = symptomIds.length === 0
@@ -98,9 +118,16 @@ export function computePrediction(visit: Visit): AiPrediction {
     .map((f) => ({ ...f, label: f.label.split(": ")[1] ?? f.label }))
     .map((f) => ({ label: f.label.charAt(0).toUpperCase() + f.label.slice(1), contribution: f.contribution }));
 
+  const maxRisk = Math.max(eclampsiaRisk, hemorrhageRisk, pretermRisk, emergencyRisk);
+  
+  let riskLevel: RiskLevel = "green";
+  if (maxRisk >= 0.75 || hasHighRiskSymptoms) riskLevel = "red";
+  else if (maxRisk >= 0.50) riskLevel = "orange";
+  else if (maxRisk >= 0.20) riskLevel = "yellow";
+
   const alert =
-    emergencyRisk >= 0.8
-      ? "High risk of deterioration within the next 12 hours"
+    riskLevel === "red"
+      ? "CRITICAL CASE — High risk of maternal complication detected"
       : eclampsiaRisk >= 0.7
         ? "Eclampsia warning — monitor blood pressure closely"
         : hemorrhageRisk >= 0.7
@@ -119,9 +146,11 @@ export function computePrediction(visit: Visit): AiPrediction {
     alert,
     visitId: visit.id,
     date: visit.date,
+    riskLevel,
   };
 }
 
 export function computePredictionHistory(visits: Visit[]): AiPrediction[] {
   return visits.map(computePrediction);
 }
+
