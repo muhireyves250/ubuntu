@@ -1,11 +1,4 @@
-export type Role =
-  | "nurse"
-  | "lab_nurse"
-  | "hc_head"
-  | "dh_clinical_director"
-  | "th_gynecologist"
-  | "central_control"
-  | "admin";
+export type Role = "nurse" | "lab_nurse";
 
 export type FacilityLevel = "hc" | "dh" | "th" | "central";
 

@@ -41,12 +41,20 @@ export function VisitHistoryTab({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedScheduleWeek, setExpandedScheduleWeek] = useState<number | null>(null);
 
-  const due = nextDueVisit(pregnancy, visits);
-  const missed = missedVisits(pregnancy, visits);
+  // For a closed pregnancy, "today" is meaningless — measure against the
+  // delivery date instead, so an archived record never shows a visit as
+  // "due"/"overdue" for a pregnancy that already ended.
+  const asOf = readOnly ? pregnancy.delivery?.date : undefined;
+
+  const due = nextDueVisit(pregnancy, visits, asOf);
+  const missed = missedVisits(pregnancy, visits, asOf);
   const unscheduledCount = visits.filter((v) => v.type === "unscheduled").length;
   const emergencyCount = visits.filter((v) => v.type === "emergency").length;
+  const completedCount = visits.filter(
+    (v) => v.type !== "emergency" && v.scheduledWeek != null,
+  ).length;
 
-  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate);
+  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate, asOf);
   const loggedWeeks = new Set(
     visits
       .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
@@ -56,7 +64,7 @@ export function VisitHistoryTab({
     (s) => s.dueByWeek <= currentWeeks && !loggedWeeks.has(s.dueByWeek),
   ).map((s) => s.dueByWeek);
   const currentDueWeek =
-    arrivedUnloggedWeeks.length > 0 ? Math.max(...arrivedUnloggedWeeks) : null;
+    !readOnly && arrivedUnloggedWeeks.length > 0 ? Math.max(...arrivedUnloggedWeeks) : null;
 
   const scheduleRows = ANC_SCHEDULE.map((s) => {
     const status: "completed" | "due" | "missed" | "upcoming" = loggedWeeks.has(s.dueByWeek)
@@ -72,14 +80,16 @@ export function VisitHistoryTab({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-        Antenatal Care Followup
+        {readOnly ? "Antenatal Care Summary" : "Antenatal Care Followup"}
       </p>
 
       <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm dark:border-zinc-800 dark:bg-zinc-900">
         <span className="font-medium text-zinc-800 dark:text-zinc-200">
-          {due
-            ? `Next due: Week ${due.week}${due.overdue ? " (overdue)" : ""}`
-            : "All scheduled visits logged"}
+          {readOnly
+            ? `${completedCount} of ${ANC_SCHEDULE.length} scheduled visits completed`
+            : due
+              ? `Next due: Week ${due.week}${due.overdue ? " (overdue)" : ""}`
+              : "All scheduled visits logged"}
         </span>
         {missed.length > 0 && (
           <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
@@ -168,8 +178,11 @@ export function VisitHistoryTab({
             );
           }
 
-          const explanation =
-            row.status === "missed"
+          const explanation = readOnly
+            ? row.status === "missed"
+              ? `This visit was due by week ${row.dueByWeek} and was not attended before the pregnancy concluded at week ${currentWeeks}.`
+              : `This visit was not yet due — the pregnancy concluded at week ${currentWeeks}, before week ${row.dueByWeek}.`
+            : row.status === "missed"
               ? `This visit was due by week ${row.dueByWeek} and was not logged. The patient is now at week ${currentWeeks}.`
               : row.status === "due"
                 ? `This visit was due by week ${row.dueByWeek} and has not been logged yet. Log it now to stay on schedule.`
@@ -313,7 +326,7 @@ export function VisitHistoryTab({
             {visits.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400"
                 >
                   No visits recorded yet.

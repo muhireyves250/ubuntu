@@ -30,11 +30,13 @@ export function AssessmentWizard({
   type,
   scheduledWeek,
   ancNumber,
+  onSubmitted,
 }: {
   pregnancyId: string;
   type: "scheduled" | "unscheduled";
   scheduledWeek?: number;
   ancNumber?: number;
+  onSubmitted?: () => void;
 }) {
   const [currentStep, setCurrentStep] = useState<StepNumber>(1);
   const [maxReachedStep, setMaxReachedStep] = useState<StepNumber>(1);
@@ -108,7 +110,7 @@ export function AssessmentWizard({
         <div className="flex w-full gap-3">
           <button
             type="button"
-            onClick={reset}
+            onClick={() => { reset(); onSubmitted?.(); }}
             className="flex-1 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Back to Patient

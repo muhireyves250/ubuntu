@@ -56,8 +56,9 @@ export function deriveMilestones(
 export function nextDueVisit(
   pregnancy: Pregnancy,
   visits: Visit[],
+  asOf?: string,
 ): { week: number; overdue: boolean } | null {
-  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate);
+  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate, asOf);
   const loggedWeeks = new Set(
     visits
       .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
@@ -68,8 +69,8 @@ export function nextDueVisit(
   return { week: next.dueByWeek, overdue: currentWeeks > next.dueByWeek };
 }
 
-export function missedVisits(pregnancy: Pregnancy, visits: Visit[]): number[] {
-  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate);
+export function missedVisits(pregnancy: Pregnancy, visits: Visit[], asOf?: string): number[] {
+  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate, asOf);
   const loggedWeeks = new Set(
     visits
       .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)

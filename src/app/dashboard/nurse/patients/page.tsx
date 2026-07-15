@@ -64,6 +64,9 @@ function PatientsPageContent() {
 
   const rows = useMemo(() => {
     return allRows
+      .filter((row) => {
+        return row.patient.registrationFacility === user?.facility || row.hospital === user?.facility;
+      })
       .filter((row) =>
         fullName(row.patient).toLowerCase().includes(nameFilter.toLowerCase()),
       )
@@ -72,7 +75,7 @@ function PatientsPageContent() {
       )
       .filter((row) => riskFilter === "all" || row.latestRisk === riskFilter)
       .sort((a, b) => fullName(a.patient).localeCompare(fullName(b.patient)));
-  }, [allRows, nameFilter, idFilter, riskFilter]);
+  }, [allRows, nameFilter, idFilter, riskFilter, user]);
 
   const hasActiveFilters = nameFilter !== "" || idFilter !== "" || riskFilter !== "all";
 
@@ -116,7 +119,7 @@ function PatientsPageContent() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-[#ffeedb] p-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <div className="flex min-w-[12rem] flex-1 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
           <IconSearch className="h-4 w-4 text-zinc-400" />
           <input
             type="text"
@@ -170,7 +173,7 @@ function PatientsPageContent() {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-zinc-300 bg-[#ffeedb] shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <div className="scrollbar-hidden max-h-[28rem] overflow-auto">
+        <div className="scrollbar-hidden max-h-112 overflow-auto">
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-zinc-300 bg-[#ffeedb] text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:bg-orange-950/40 dark:text-zinc-400">
               <tr>

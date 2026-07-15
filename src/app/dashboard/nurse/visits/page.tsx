@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
+import { useAuth } from "@/lib/auth/auth-context";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
@@ -47,8 +48,11 @@ function VisitsPageContent() {
     [pregnancies],
   );
 
+  const { user } = useAuth();
+
   const rows = useMemo(() => {
     return visits
+      .filter((visit) => visit.hospital === user?.facility)
       .map((visit) => ({
         visit,
         patient: patientById.get(patientIdByPregnancyId.get(visit.pregnancyId) ?? ""),
@@ -60,7 +64,7 @@ function VisitsPageContent() {
       )
       .filter((row) => riskFilter === "all" || row.visit.riskLevel === riskFilter)
       .sort((a, b) => b.visit.date.localeCompare(a.visit.date));
-  }, [visits, patientById, patientIdByPregnancyId, nameFilter, riskFilter, dateFilter, today]);
+  }, [visits, patientById, patientIdByPregnancyId, nameFilter, riskFilter, dateFilter, today, user]);
 
   const hasActiveFilters = nameFilter !== "" || riskFilter !== "all";
 
@@ -104,7 +108,7 @@ function VisitsPageContent() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-[#ffeedb] p-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <div className="flex min-w-[12rem] flex-1 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
           <IconSearch className="h-4 w-4 text-zinc-400" />
           <input
             type="text"
@@ -143,7 +147,7 @@ function VisitsPageContent() {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-zinc-300 bg-[#ffeedb] shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <div className="scrollbar-hidden max-h-[32rem] overflow-auto">
+        <div className="scrollbar-hidden max-h-128 overflow-auto">
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-zinc-300 bg-[#ffeedb] text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:bg-orange-950/40 dark:text-zinc-400">
               <tr>
@@ -190,8 +194,28 @@ function VisitsPageContent() {
                           .join(", ")
                       : "—"}
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {formatLabs(visit)}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col items-start gap-1">
+                      {visit.labStatus && (
+                        <div className="flex flex-wrap gap-1 items-center">
+                          <span className={`inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            visit.labStatus === "pending" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-400" :
+                            visit.labStatus === "in_progress" ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400" :
+                            "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-400"
+                          }`}>
+                            Lab: {visit.labStatus.replace("_", " ")}
+                          </span>
+                          {visit.hasCriticalLabResults && (
+                            <span className="inline-flex rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-800 dark:bg-red-950 dark:text-red-400">
+                              Critical Result
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <span className="text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate text-xs whitespace-normal">
+                        {formatLabs(visit)}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                     {visit.notes || "—"}
