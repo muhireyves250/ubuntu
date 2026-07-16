@@ -1,4 +1,4 @@
-import type { Patient, Visit, Referral, Pregnancy, Recommendation } from "./types";
+import type { Patient, Visit, Referral, Pregnancy, Recommendation, FollowUpAssignment } from "./types";
 import { SEED_PATIENTS, SEED_VISITS, SEED_PREGNANCIES } from "./seed-data";
 
 const PATIENTS_KEY = "ubuntumed.patients";
@@ -6,18 +6,21 @@ const VISITS_KEY = "ubuntumed.visits";
 const REFERRALS_KEY = "ubuntumed.referrals";
 const PREGNANCIES_KEY = "ubuntumed.pregnancies";
 const RECOMMENDATIONS_KEY = "ubuntumed.recommendations";
+const FOLLOWUP_ASSIGNMENTS_KEY = "ubuntumed.followUpAssignments";
 
 let patientsCache: Patient[] | null = null;
 let visitsCache: Visit[] | null = null;
 let referralsCache: Referral[] | null = null;
 let pregnanciesCache: Pregnancy[] | null = null;
 let recommendationsCache: Recommendation[] | null = null;
+let followUpAssignmentsCache: FollowUpAssignment[] | null = null;
 
 const patientListeners = new Set<() => void>();
 const visitListeners = new Set<() => void>();
 const referralListeners = new Set<() => void>();
 const pregnancyListeners = new Set<() => void>();
 const recommendationListeners = new Set<() => void>();
+const followUpAssignmentListeners = new Set<() => void>();
 
 function readList<T>(key: string): T[] | null {
   const raw = window.localStorage.getItem(key);
@@ -103,6 +106,23 @@ function loadRecommendations(): Recommendation[] {
   return recommendationsCache;
 }
 
+function isCurrentShapeFollowUpAssignment(assignment: FollowUpAssignment): boolean {
+  return (
+    typeof assignment.createdAt === "string" &&
+    typeof assignment.assignedToChwId === "string" &&
+    typeof assignment.dueDate === "string"
+  );
+}
+
+function loadFollowUpAssignments(): FollowUpAssignment[] {
+  if (followUpAssignmentsCache) return followUpAssignmentsCache;
+  const stored = readList<FollowUpAssignment>(FOLLOWUP_ASSIGNMENTS_KEY);
+  const usable = stored && stored.every(isCurrentShapeFollowUpAssignment) ? stored : null;
+  followUpAssignmentsCache = usable ?? [];
+  if (!usable) writeList(FOLLOWUP_ASSIGNMENTS_KEY, followUpAssignmentsCache);
+  return followUpAssignmentsCache;
+}
+
 function loadPregnancies(): Pregnancy[] {
   if (pregnanciesCache) return pregnanciesCache;
   const stored = readList<Pregnancy>(PREGNANCIES_KEY);
@@ -137,6 +157,11 @@ export function subscribeToRecommendations(onChange: () => void) {
   return () => recommendationListeners.delete(onChange);
 }
 
+export function subscribeToFollowUpAssignments(onChange: () => void) {
+  followUpAssignmentListeners.add(onChange);
+  return () => followUpAssignmentListeners.delete(onChange);
+}
+
 export function getPatientsSnapshot(): Patient[] {
   return loadPatients();
 }
@@ -157,6 +182,10 @@ export function getRecommendationsSnapshot(): Recommendation[] {
   return loadRecommendations();
 }
 
+export function getFollowUpAssignmentsSnapshot(): FollowUpAssignment[] {
+  return loadFollowUpAssignments();
+}
+
 export function getServerPatientsSnapshot(): Patient[] {
   return [];
 }
@@ -174,6 +203,10 @@ export function getServerPregnanciesSnapshot(): Pregnancy[] {
 }
 
 export function getServerRecommendationsSnapshot(): Recommendation[] {
+  return [];
+}
+
+export function getServerFollowUpAssignmentsSnapshot(): FollowUpAssignment[] {
   return [];
 }
 
@@ -229,6 +262,12 @@ export function addRecommendation(recommendation: Recommendation) {
   recommendationsCache = [...loadRecommendations(), recommendation];
   writeList(RECOMMENDATIONS_KEY, recommendationsCache);
   recommendationListeners.forEach((listener) => listener());
+}
+
+export function addFollowUpAssignment(assignment: FollowUpAssignment) {
+  followUpAssignmentsCache = [...loadFollowUpAssignments(), assignment];
+  writeList(FOLLOWUP_ASSIGNMENTS_KEY, followUpAssignmentsCache);
+  followUpAssignmentListeners.forEach((listener) => listener());
 }
 
 export function updateRecommendation(id: string, updates: Partial<Recommendation>) {

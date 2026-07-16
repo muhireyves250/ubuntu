@@ -22,6 +22,7 @@ export interface DirectoryUser {
   name: string;
   title: string;
   facility: string;
+  village?: string;
   role: Role;
   facilityLevel: FacilityLevel;
   status: "active" | "suspended";
@@ -40,6 +41,7 @@ function demoUserToDirectoryUser(
     name: user.name,
     title: user.title,
     facility: user.facility,
+    village: user.village,
     role: user.role,
     facilityLevel: user.facilityLevel,
     status: override?.status === "suspended" ? "suspended" : "active",
@@ -55,6 +57,7 @@ function managedStaffToDirectoryUser(account: ManagedStaffAccount): DirectoryUse
     name: account.name,
     title: account.title,
     facility: account.facility,
+    village: account.village,
     role: account.role,
     facilityLevel: account.facilityLevel,
     status: account.status,
@@ -103,4 +106,8 @@ export function useFacilityStaff(facility: string): DirectoryUser[] {
       (u) => u.facility === facility && u.role !== "hospital_admin",
     );
   }, [overrides, managedStaff, facility]);
+}
+
+export function findChwForFacility(facility: string): DirectoryUser | undefined {
+  return getAllDirectoryUsers().find((u) => u.role === "chw" && u.facility === facility);
 }

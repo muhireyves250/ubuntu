@@ -123,7 +123,8 @@ export function Sidebar() {
                   pathname === "/dashboard/nurse" ||
                   pathname === "/dashboard/gynecologist" ||
                   pathname === "/dashboard/lab" ||
-                  pathname === "/dashboard/hospital-admin"
+                  pathname === "/dashboard/hospital-admin" ||
+                  pathname === "/dashboard/chw"
                 : pathname.startsWith(item.href || "");
 
             return (

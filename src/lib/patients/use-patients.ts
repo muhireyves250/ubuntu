@@ -31,6 +31,10 @@ import {
   getCapacityOverridesSnapshot,
   getServerCapacityOverridesSnapshot,
   setCapacityOverride,
+  subscribeToFollowUpAssignments,
+  getFollowUpAssignmentsSnapshot,
+  getServerFollowUpAssignmentsSnapshot,
+  addFollowUpAssignment,
 } from "./storage";
 import {
   subscribeToAcknowledged,
@@ -42,6 +46,7 @@ import {
 import { classifyRiskLevel } from "./symptom-checklist";
 import { computeEdd, matchScheduledVisit } from "./pregnancy";
 import { findUserById } from "../auth/user-directory";
+import { FOLLOW_UP_REASON_LABELS } from "./types";
 import type {
   Patient,
   Referral,
@@ -54,20 +59,25 @@ import type {
   Recommendation,
   FacilityCapacity,
   FacilityCapacityStatus,
+  FollowUpAssignment,
+  FollowUpReason,
+  FollowUpPriority,
 } from "./types";
 
 const SESSION_STORAGE_KEY = "ubuntumed.session";
 
-function getCurrentUserSnapshot(): { name: string; facility: string; facilityLevel: string } {
+function getCurrentUserSnapshot(): { id: string; name: string; facility: string; facilityLevel: string; role: string } {
   const sessionUserId =
     typeof window !== "undefined"
       ? window.localStorage.getItem(SESSION_STORAGE_KEY)
       : null;
   const user = sessionUserId ? findUserById(sessionUserId) : null;
   return {
+    id: user?.id ?? "",
     name: user?.name ?? "Unknown",
     facility: user?.facility ?? "Unknown facility",
     facilityLevel: user?.facilityLevel ?? "hc",
+    role: user?.role ?? "nurse",
   };
 }
 
@@ -315,6 +325,59 @@ export function respondToRecommendation(id: string, response: string): Recommend
 export function acknowledgeRecommendation(id: string): Recommendation {
   updateRecommendation(id, { acknowledgedByGynecologistAt: new Date().toISOString() });
   return getRecommendationsSnapshot().find((r) => r.id === id)!;
+}
+
+export function useFollowUpAssignments(): FollowUpAssignment[] {
+  return useSyncExternalStore(
+    subscribeToFollowUpAssignments,
+    getFollowUpAssignmentsSnapshot,
+    getServerFollowUpAssignmentsSnapshot,
+  );
+}
+
+export function useFollowUpAssignmentsForChw(chwId: string): FollowUpAssignment[] {
+  const assignments = useFollowUpAssignments();
+  return useMemo(
+    () => assignments.filter((a) => a.assignedToChwId === chwId),
+    [assignments, chwId],
+  );
+}
+
+export function useFollowUpAssignmentsForPatient(patientId: string): FollowUpAssignment[] {
+  const assignments = useFollowUpAssignments();
+  return useMemo(
+    () =>
+      assignments
+        .filter((a) => a.patientId === patientId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [assignments, patientId],
+  );
+}
+
+export function createFollowUpAssignment(data: {
+  patientId: string;
+  reason: FollowUpReason;
+  priority: FollowUpPriority;
+  dueDate: string;
+  assignedToChwId: string;
+  facility: string;
+}): FollowUpAssignment {
+  const currentUser = getCurrentUserSnapshot();
+  const assignment: FollowUpAssignment = {
+    id: `followup-${crypto.randomUUID()}`,
+    patientId: data.patientId,
+    createdAt: new Date().toISOString(),
+    assignedByName: currentUser.name,
+    assignedByRole: currentUser.role as "nurse" | "gynecologist",
+    facility: data.facility,
+    assignedToChwId: data.assignedToChwId,
+    reason: data.reason,
+    priority: data.priority,
+    dueDate: data.dueDate,
+    status: "pending",
+  };
+  addFollowUpAssignment(assignment);
+  return assignment;
 }
 
 // A patient may have several red-case referrals across their history, but only
@@ -879,7 +942,8 @@ export interface NotificationAlert {
     | "risk_pregnancy"
     | "critical_lab_result"
     | "emergency_arrival"
-    | "facility_full";
+    | "facility_full"
+    | "new_followup_assignment";
   patientId: string;
   patientName: string;
   title: string;
@@ -899,6 +963,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
     getServerRecommendationsSnapshot,
   );
   const currentUser = getCurrentUserSnapshot();
+  const followUpAssignments = useFollowUpAssignments();
 
   return useMemo(() => {
     const alerts: NotificationAlert[] = [];
@@ -1095,12 +1160,31 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
+    if (role === "chw") {
+      for (const assignment of followUpAssignments) {
+        if (assignment.assignedToChwId !== currentUser.id || assignment.status !== "pending") continue;
+        const patient = patients.find((p) => p.id === assignment.patientId);
+        if (!patient) continue;
+        const patientName = `${patient.firstName} ${patient.lastName}`;
+        alerts.push({
+          id: `followup-assignment-${assignment.id}`,
+          type: "new_followup_assignment",
+          patientId: patient.id,
+          patientName,
+          title: "New Follow-up Assignment",
+          message: `${assignment.assignedByName} assigned ${patientName} for ${FOLLOW_UP_REASON_LABELS[assignment.reason]} — due ${assignment.dueDate}.`,
+          date: assignment.createdAt.slice(0, 10),
+          priority: assignment.priority === "high" ? "Urgent" : "Normal",
+        });
+      }
+    }
+
     // Sort by priority (Emergency first) and then by date (descending)
     return alerts.sort((a, b) => {
       if (a.priority === "Emergency" && b.priority !== "Emergency") return -1;
       if (a.priority !== "Emergency" && b.priority === "Emergency") return 1;
       return b.date.localeCompare(a.date);
     });
-  }, [visits, patients, pregnancies, referrals, recommendations, role, currentUser.facility, currentUser.name]);
+  }, [visits, patients, pregnancies, referrals, recommendations, followUpAssignments, role, currentUser.facility, currentUser.name, currentUser.id]);
 }
 

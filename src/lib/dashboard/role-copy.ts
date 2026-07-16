@@ -26,4 +26,9 @@ export const ROLE_OVERVIEW_COPY: Record<Role, RoleOverviewCopy> = {
     description:
       "Monitor performance, configure emergency capacity, and review records for your facility — read-only for clinical data.",
   },
+  chw: {
+    scope: "Community Follow-up",
+    description:
+      "Home-visit assignments from ANC nurses and gynecologists for your catchment appear here.",
+  },
 };

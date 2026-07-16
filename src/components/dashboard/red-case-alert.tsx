@@ -161,7 +161,7 @@ export function RedCaseAlertPanel() {
     return results.sort((a, b) => b.referral.createdAt.localeCompare(a.referral.createdAt));
   }, [referrals, patientById, visits, pregnancies, patientIdByPregnancyId, user, capacity]);
 
-  if (user?.role === "hospital_admin") return null;
+  if (user?.role === "hospital_admin" || user?.role === "chw") return null;
   if (pendingCases.length === 0) return null;
 
   const pendingAccept = pendingCases.find(({ referral }) => referral.id === pendingAcceptId);

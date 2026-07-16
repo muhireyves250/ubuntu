@@ -15,6 +15,7 @@ const ROLE_TABS: { role: Role; label: string }[] = [
   { role: "lab_nurse", label: "Laboratory Nurse" },
   { role: "gynecologist", label: "Gynecologist" },
   { role: "hospital_admin", label: "Hospital Administrator" },
+  { role: "chw", label: "Community Health Worker" },
 ];
 
 function RoleIcon({ role, className = "h-4 w-4" }: { role: Role; className?: string }) {
@@ -36,6 +37,13 @@ function RoleIcon({ role, className = "h-4 w-4" }: { role: Role; className?: str
     return (
       <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
         <path d="M4 21V9l8-5 8 5v12M4 21h16M9 21v-6h6v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (role === "chw") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M4 11.5 12 4l8 7.5M6 10v9a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
