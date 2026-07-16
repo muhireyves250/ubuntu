@@ -139,6 +139,46 @@ export interface Recommendation {
   acknowledgedByGynecologistAt?: string;
 }
 
+export type FollowUpReason =
+  | "missed_anc"
+  | "high_risk_followup"
+  | "medication_adherence"
+  | "bp_monitoring"
+  | "nutrition_counseling"
+  | "post_emergency_followup"
+  | "general_monitoring";
+
+export const FOLLOW_UP_REASON_LABELS: Record<FollowUpReason, string> = {
+  missed_anc: "Missed ANC appointment",
+  high_risk_followup: "High-risk pregnancy follow-up",
+  medication_adherence: "Medication adherence",
+  bp_monitoring: "Blood pressure monitoring",
+  nutrition_counseling: "Nutrition counseling",
+  post_emergency_followup: "Post-emergency follow-up",
+  general_monitoring: "General pregnancy monitoring",
+};
+
+export type FollowUpPriority = "routine" | "high";
+
+// "completed" is unreachable in this slice — nothing sets it yet, since the
+// visit-completion workflow is a later slice. It's part of the type now so
+// that slice doesn't need to touch this file again.
+export type FollowUpStatus = "pending" | "completed";
+
+export interface FollowUpAssignment {
+  id: string;
+  patientId: string;
+  createdAt: string; // ISO datetime
+  assignedByName: string;
+  assignedByRole: "nurse" | "gynecologist";
+  facility: string; // the CHW's facility, copied at creation time
+  assignedToChwId: string; // DirectoryUser id of the CHW
+  reason: FollowUpReason;
+  priority: FollowUpPriority;
+  dueDate: string; // ISO date "YYYY-MM-DD"
+  status: FollowUpStatus;
+}
+
 export interface Pregnancy {
   id: string;
   patientId: string;

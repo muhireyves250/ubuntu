@@ -21,6 +21,8 @@ export function NotificationPanel({
       router.push("/dashboard/lab/requests");
     } else if (type === "facility_full") {
       router.push("/dashboard/hospital-admin");
+    } else if (type === "new_followup_assignment") {
+      router.push(`/dashboard/chw/patients/${patientId}`);
     } else {
       router.push(`/dashboard/nurse/patients/${patientId}`);
     }

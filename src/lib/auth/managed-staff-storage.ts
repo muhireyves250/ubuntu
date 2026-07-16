@@ -6,6 +6,7 @@ export interface ManagedStaffAccount {
   name: string;
   title: string;
   facility: string;
+  village?: string;
   role: Extract<Role, "nurse" | "lab_nurse" | "gynecologist">;
   facilityLevel: FacilityLevel;
   password: string;

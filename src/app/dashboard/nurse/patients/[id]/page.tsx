@@ -13,6 +13,7 @@ import { ProfileOverviewTab } from "@/components/patients/profile-overview-tab";
 import { AiPredictionTab } from "@/components/patients/ai-prediction-panel";
 import { EditPatientModal } from "@/components/patients/edit-patient-modal";
 import { CreateReferralModal } from "@/components/patients/create-referral-modal";
+import { AssignChwModal } from "@/components/patients/assign-chw-modal";
 import { AwaitingLabsBlocker } from "@/components/patients/awaiting-labs-blocker";
 import { FinalizeAssessmentBlocker } from "@/components/patients/finalize-assessment-blocker";
 import { ActiveReferralBlocker, ActiveReferralBanner } from "@/components/patients/active-referral-blocker";
@@ -65,6 +66,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [showEditModal, setShowEditModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
+  const [showAssignChwModal, setShowAssignChwModal] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [assessmentContext, setAssessmentContext] = useState<AssessmentContext | null>(null);
   const [emergencyResult, setEmergencyResult] = useState<EmergencyResult | null>(null);
@@ -108,6 +110,13 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           clinicalSummary={allVisits[0]?.notes ?? ""}
           onClose={() => setShowReferralModal(false)}
           onCreated={() => setActiveTab("Visit History")}
+        />
+      )}
+      {showAssignChwModal && (
+        <AssignChwModal
+          patient={patient}
+          onClose={() => setShowAssignChwModal(false)}
+          onCreated={() => {}}
         />
       )}
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-300 bg-[#ffeedb] p-5 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
@@ -163,6 +172,15 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                   >
                     Create referral
                   </button>
+                  {(user?.role === "nurse" || user?.role === "gynecologist") && (
+                    <button
+                      type="button"
+                      onClick={() => { setActionsOpen(false); setShowAssignChwModal(true); }}
+                      className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
+                    >
+                      Assign Community Health Worker
+                    </button>
+                  )}
                 </div>
               )}
             </div>

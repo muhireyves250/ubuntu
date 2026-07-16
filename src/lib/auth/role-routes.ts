@@ -5,6 +5,7 @@ export const ROLE_DASHBOARD_PATH: Record<Role, string> = {
   lab_nurse: "/dashboard/lab",
   gynecologist: "/dashboard/gynecologist",
   hospital_admin: "/dashboard/hospital-admin",
+  chw: "/dashboard/chw",
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -12,6 +13,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   lab_nurse: "Laboratory Nurse",
   gynecologist: "Gynecologist",
   hospital_admin: "Hospital Administrator",
+  chw: "Community Health Worker",
 };
 
 export function dashboardPathForRole(role: Role): string {

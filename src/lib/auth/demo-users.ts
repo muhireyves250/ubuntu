@@ -101,6 +101,17 @@ export const DEMO_USERS: DemoUser[] = [
     facilityLevel: "dh",
     password: "labnurse123",
   },
+  {
+    id: "chw-mukamana",
+    username: "mukamana",
+    name: "Mukamana",
+    title: "Community Health Worker",
+    facility: "Nyamata Health Center",
+    village: "Rilima",
+    role: "chw",
+    facilityLevel: "hc",
+    password: "chw123",
+  },
 ];
 
 export function findDemoUserById(id: string): DemoUser | undefined {

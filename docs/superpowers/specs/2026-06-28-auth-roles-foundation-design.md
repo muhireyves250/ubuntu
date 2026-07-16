@@ -1,4 +1,4 @@
-# Auth & Roles Foundation — Design
+ # Auth & Roles Foundation — Design
 
 ## Context
 

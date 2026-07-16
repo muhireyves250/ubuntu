@@ -43,6 +43,12 @@ const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "Read-only access to patient records at your facility",
     "Cannot accept referrals, provide treatment, or edit clinical records",
   ],
+  chw: [
+    "Receive community follow-up assignments from ANC nurses and gynecologists",
+    "View a restricted record (name, ID, village, phone, gestational age, EDD) for assigned patients only",
+    "Cannot register patients, perform assessments, or view lab/clinical records",
+    "Cannot accept emergency referrals or modify patient records",
+  ],
 };
 
 export function ProfilePanel({ onClose }: { onClose: () => void }) {
