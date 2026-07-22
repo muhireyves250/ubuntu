@@ -53,6 +53,9 @@ export function RegisterPatientModal({
   const [hasOtherCondition, setHasOtherCondition] = useState(false);
   const [otherCondition, setOtherCondition] = useState("");
 
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -69,37 +72,47 @@ export function RegisterPatientModal({
     );
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError(null);
     const conditions = [
       ...chronicConditions,
       ...(hasOtherCondition && otherCondition.trim() ? [otherCondition.trim()] : []),
     ];
-    const patient = registerPatient({
-      nationalId: nationalId.trim(),
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      dateOfBirth,
-      phone: phone.trim(),
-      altPhone: altPhone.trim() || undefined,
-      maritalStatus: maritalStatus.trim() || undefined,
-      address: {
-        district: district.trim(),
-        sector: sector.trim(),
-        cell: cell.trim(),
-        village: village.trim(),
-      },
-      emergencyContact: {
-        name: contactName.trim(),
-        relationship: relationship.trim(),
-        phone: contactPhone.trim(),
-      },
-      bloodGroup: bloodGroup.trim() || undefined,
-      rhFactor: rhFactor || undefined,
-      allergies: allergies.trim() || undefined,
-      chronicConditions: conditions.length > 0 ? conditions : undefined,
-    });
-    onRegistered(patient);
+    setIsSubmitting(true);
+    try {
+      const patient = await registerPatient({
+        nationalId: nationalId.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        dateOfBirth,
+        phone: phone.trim(),
+        altPhone: altPhone.trim() || undefined,
+        maritalStatus: maritalStatus.trim() || undefined,
+        address: {
+          district: district.trim(),
+          sector: sector.trim(),
+          cell: cell.trim(),
+          village: village.trim(),
+        },
+        emergencyContact: {
+          name: contactName.trim(),
+          relationship: relationship.trim(),
+          phone: contactPhone.trim(),
+        },
+        bloodGroup: bloodGroup.trim() || undefined,
+        rhFactor: rhFactor || undefined,
+        allergies: allergies.trim() || undefined,
+        chronicConditions: conditions.length > 0 ? conditions : undefined,
+      });
+      onRegistered(patient);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not register patient",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -133,6 +146,12 @@ export function RegisterPatientModal({
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-6 rounded-xl border border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+              {error && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-400">
+                  {error}
+                </p>
+              )}
+
               <fieldset className="flex flex-col gap-3">
                 <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
                   Personal Information
@@ -288,9 +307,10 @@ export function RegisterPatientModal({
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-[#0f766e] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800"
+              disabled={isSubmitting}
+              className="rounded-xl bg-[#0f766e] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Register Patient
+              {isSubmitting ? "Registering…" : "Register Patient"}
             </button>
           </div>
         </form>
