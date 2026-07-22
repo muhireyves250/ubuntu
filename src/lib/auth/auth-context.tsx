@@ -8,12 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { apiFetch, ApiError } from "@/lib/api/client";
-import {
-  mapBackendRole,
-  mapBackendFacilityLevel,
-  titleForRole,
-  usernameToEmail,
-} from "./role-mapping";
+import { mapBackendRole, mapBackendFacilityLevel, titleForRole } from "./role-mapping";
 import type { FacilityLevel, Role } from "./types";
 
 const AUTH_STORAGE_KEY = "ubuntumed.auth";
@@ -79,7 +74,7 @@ export type LoginResult = "ok" | "invalid" | "network_error";
 interface AuthContextValue {
   user: AuthenticatedUser | null;
   isHydrated: boolean;
-  login: (username: string, password: string) => Promise<LoginResult>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
 }
 
@@ -103,8 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return parsed?.user ?? null;
   }, [rawStored]);
 
-  const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
-    const email = usernameToEmail(username);
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
+    const normalizedEmail = email.trim().toLowerCase();
     try {
       const response = await apiFetch<{
         accessToken: string;
@@ -116,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: string;
           facility: { id: string; name: string; type: string; district: string } | null;
         };
-      }>("/auth/login", { method: "POST", body: { email, password } });
+      }>("/auth/login", { method: "POST", body: { email: normalizedEmail, password } });
 
       const role = mapBackendRole(response.user.role);
       const authUser: AuthenticatedUser = {
