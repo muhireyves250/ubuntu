@@ -835,11 +835,11 @@ export async function closePregnancy(
   await queryClient.invalidateQueries({ queryKey: ["pregnancies", pregnancy.patientId] });
 }
 
-export function createEmergencyVisit(
+export async function createEmergencyVisit(
   patientId: string,
   dangerSignIds: string[],
   summary: string,
-): { pregnancy: Pregnancy; visit: Visit; referral: Referral } {
+): Promise<{ pregnancy: Pregnancy; visit: Visit; referral: Referral }> {
   const existingOpen = getPregnanciesSnapshot().find(
     (p) => p.patientId === patientId && p.status === "open",
   );
@@ -849,7 +849,7 @@ export function createEmergencyVisit(
     pregnancy = existingOpen;
   } else {
     const today = new Date().toISOString().slice(0, 10);
-    pregnancy = createPregnancy({
+    pregnancy = await createPregnancy({
       patientId,
       gravidity: 1,
       parity: 0,
