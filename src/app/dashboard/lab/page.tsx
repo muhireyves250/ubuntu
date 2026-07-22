@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 
 import { RoleGuard } from "@/components/role-guard";
 import { getLabRequests, subscribeToLabRequests, LabRequest } from "@/lib/patients/lab-requests";
-import { findUserById } from "@/lib/auth/user-directory";
+import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
 import Link from "next/link";
 
 import {
@@ -16,8 +16,7 @@ import {
 
 function readSessionUser() {
   if (typeof window === "undefined") return null;
-  const sessionUserId = window.localStorage.getItem("ubuntumed.session");
-  return sessionUserId ? findUserById(sessionUserId) ?? null : null;
+  return getStoredAuthenticatedUser();
 }
 
 export default function LabNurseDashboard() {

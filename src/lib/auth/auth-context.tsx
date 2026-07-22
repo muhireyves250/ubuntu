@@ -160,3 +160,7 @@ export function useAuth(): AuthContextValue {
 export function getStoredAccessToken(): string | null {
   return readStoredAuth()?.accessToken ?? null;
 }
+
+export function getStoredAuthenticatedUser(): AuthenticatedUser | null {
+  return readStoredAuth()?.user ?? null;
+}

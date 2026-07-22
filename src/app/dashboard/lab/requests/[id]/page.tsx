@@ -10,14 +10,14 @@ import {
   LabRequest,
 } from "@/lib/patients/lab-requests";
 import type { LabTestResult } from "@/lib/patients/types";
-import { findUserById, type DirectoryUser } from "@/lib/auth/user-directory";
+import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
+import type { AuthenticatedUser } from "@/lib/auth/auth-context";
 import { CriticalAlertModal } from "@/components/dashboard/critical-alert-modal";
 import Link from "next/link";
 
-function readSessionUser(): DirectoryUser | null {
+function readSessionUser(): AuthenticatedUser | null {
   if (typeof window === "undefined") return null;
-  const sessionUserId = window.localStorage.getItem("ubuntumed.session");
-  return sessionUserId ? findUserById(sessionUserId) ?? null : null;
+  return getStoredAuthenticatedUser();
 }
 
 type ResultForm = { result: string; unit: string; interp: LabTestResult["interpretation"] };
@@ -38,7 +38,7 @@ function RequestDetailContent({
   user,
 }: {
   requestId: string;
-  user: DirectoryUser;
+  user: AuthenticatedUser;
 }) {
   const router = useRouter();
   const [request, setRequest] = useState<LabRequest | null>(() => {

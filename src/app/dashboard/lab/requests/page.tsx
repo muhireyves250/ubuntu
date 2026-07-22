@@ -4,15 +4,14 @@ import { useState, useEffect } from "react";
 import { RoleGuard } from "@/components/role-guard";
 import { getLabRequests, subscribeToLabRequests, LabRequest } from "@/lib/patients/lab-requests";
 
-import { findUserById } from "@/lib/auth/user-directory";
+import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
 import { IconSearch } from "@/components/dashboard/icons";
 import Link from "next/link";
 import { relativeTime } from "@/lib/format";
 
 function readSessionUser() {
   if (typeof window === "undefined") return null;
-  const sessionUserId = window.localStorage.getItem("ubuntumed.session");
-  return sessionUserId ? findUserById(sessionUserId) ?? null : null;
+  return getStoredAuthenticatedUser();
 }
 
 export default function LabRequestsPage() {

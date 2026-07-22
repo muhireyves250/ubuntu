@@ -45,7 +45,7 @@ import {
 } from "./alerts-storage";
 import { classifyRiskLevel } from "./symptom-checklist";
 import { computeEdd, matchScheduledVisit } from "./pregnancy";
-import { findUserById } from "../auth/user-directory";
+import { getStoredAuthenticatedUser } from "../auth/auth-context";
 import { FOLLOW_UP_REASON_LABELS } from "./types";
 import type {
   Patient,
@@ -64,14 +64,8 @@ import type {
   FollowUpPriority,
 } from "./types";
 
-const SESSION_STORAGE_KEY = "ubuntumed.session";
-
 function getCurrentUserSnapshot(): { id: string; name: string; facility: string; facilityLevel: string; role: string } {
-  const sessionUserId =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem(SESSION_STORAGE_KEY)
-      : null;
-  const user = sessionUserId ? findUserById(sessionUserId) : null;
+  const user = typeof window !== "undefined" ? getStoredAuthenticatedUser() : null;
   return {
     id: user?.id ?? "",
     name: user?.name ?? "Unknown",
