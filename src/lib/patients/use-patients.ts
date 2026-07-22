@@ -4,6 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
+import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
 import {
   addReferral,
   addVisit,
@@ -99,6 +100,10 @@ export function usePatient(patientId: string): Patient | undefined {
   return data;
 }
 
+// NOTE: still backed by the old local-storage system — usePregnanciesForPatient()
+// below now uses the real API, so a newly-created pregnancy won't appear here
+// until a future slice migrates this hook (it also depends on visit data, out of
+// scope for this slice). See docs/superpowers/plans/2026-07-22-frontend-patients-pregnancies-integration.md.
 export function usePregnancies(): Pregnancy[] {
   return useSyncExternalStore(
     subscribeToPregnancies,
@@ -108,14 +113,12 @@ export function usePregnancies(): Pregnancy[] {
 }
 
 export function usePregnanciesForPatient(patientId: string): Pregnancy[] {
-  const pregnancies = usePregnancies();
-  return useMemo(
-    () =>
-      pregnancies
-        .filter((p) => p.patientId === patientId)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [pregnancies, patientId],
-  );
+  const { data } = useQuery({
+    queryKey: ["pregnancies", patientId],
+    queryFn: () => fetchPregnanciesForPatient(patientId),
+    enabled: !!patientId,
+  });
+  return data ?? [];
 }
 
 export function useVisitsForPregnancy(pregnancyId: string): Visit[] {
@@ -816,33 +819,20 @@ export function recordVisit(data: {
   return visit;
 }
 
-export function createPregnancy(
+export async function createPregnancy(
   data: Omit<Pregnancy, "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "delivery">,
-): Pregnancy {
-  const existingForPatient = getPregnanciesSnapshot().filter(
-    (pregnancy) => pregnancy.patientId === data.patientId,
-  );
-  if (existingForPatient.some((p) => p.status === "open")) {
-    throw new Error("Patient already has an open pregnancy");
-  }
-
-  const pregnancy: Pregnancy = {
-    ...data,
-    id: `pregnancy-${crypto.randomUUID()}`,
-    pregnancyNumber: existingForPatient.length + 1,
-    eddDate: computeEdd(data.lmpDate),
-    status: "open",
-    createdAt: new Date().toISOString(),
-  };
-  addPregnancy(pregnancy);
+): Promise<Pregnancy> {
+  const pregnancy = await createPregnancyApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["pregnancies", data.patientId] });
   return pregnancy;
 }
 
-export function closePregnancy(
+export async function closePregnancy(
   pregnancyId: string,
   delivery: NonNullable<Pregnancy["delivery"]>,
-): void {
-  storageUpdatePregnancy(pregnancyId, { status: "closed", delivery });
+): Promise<void> {
+  const pregnancy = await closePregnancyApi(pregnancyId, delivery);
+  await queryClient.invalidateQueries({ queryKey: ["pregnancies", pregnancy.patientId] });
 }
 
 export function createEmergencyVisit(
