@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { DEMO_USERS } from "@/lib/auth/demo-users";
+import { usernameToEmail } from "@/lib/auth/role-mapping";
 import { dashboardPathForRole } from "@/lib/auth/role-routes";
 import type { Role } from "@/lib/auth/types";
 
@@ -85,7 +86,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, isHydrated, login } = useAuth();
   const [selectedRole, setSelectedRole] = useState<Role>("nurse");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,11 +97,11 @@ export default function LoginPage() {
     }
   }, [isHydrated, user, router]);
 
-  const usernamesForRole = DEMO_USERS.filter((u) => u.role === selectedRole).map((u) => u.username);
+  const emailsForRole = DEMO_USERS.filter((u) => u.role === selectedRole).map((u) => usernameToEmail(u.username));
 
   function chooseRole(role: Role) {
     setSelectedRole(role);
-    setUsername("");
+    setEmail("");
     setPassword("");
     setError(null);
   }
@@ -111,10 +112,10 @@ export default function LoginPage() {
     event.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    const result = await login(username, password);
+    const result = await login(email, password);
     setIsSubmitting(false);
     if (result === "invalid") {
-      setError("Incorrect username or password.");
+      setError("Incorrect email or password.");
       return;
     }
     if (result === "network_error") {
@@ -226,19 +227,19 @@ export default function LoginPage() {
           {/* Form */}
           <form id="login-form" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-              Username
+              Email
               <input
-                type="text"
-                id="username-field"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="Enter your username"
-                autoComplete="username"
+                type="email"
+                id="email-field"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="Enter your email"
+                autoComplete="email"
                 className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                 required
               />
               <span className="text-xs text-zinc-400">
-                Demo {ROLE_TABS.find((t) => t.role === selectedRole)?.label} usernames: {usernamesForRole.join(", ")}
+                Demo {ROLE_TABS.find((t) => t.role === selectedRole)?.label} emails: {emailsForRole.join(", ")}
               </span>
             </label>
 
