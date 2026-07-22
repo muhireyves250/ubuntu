@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { DEMO_USERS } from "@/lib/auth/demo-users";
-import { findUserByUsername } from "@/lib/auth/user-directory";
 import { dashboardPathForRole } from "@/lib/auth/role-routes";
 import type { Role } from "@/lib/auth/types";
 
@@ -106,23 +105,23 @@ export default function LoginPage() {
     setError(null);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const candidate = findUserByUsername(username);
-    if (!candidate || candidate.role !== selectedRole) {
-      setError(`No ${ROLE_TABS.find((t) => t.role === selectedRole)?.label} account found for that username.`);
-      return;
-    }
-    const result = login(candidate.id, password);
+    setIsSubmitting(true);
+    setError(null);
+    const result = await login(username, password);
+    setIsSubmitting(false);
     if (result === "invalid") {
-      setError("Incorrect password.");
+      setError("Incorrect username or password.");
       return;
     }
-    if (result === "suspended") {
-      setError("This account has been suspended. Contact your hospital administrator.");
+    if (result === "network_error") {
+      setError("Could not reach the server. Please try again.");
       return;
     }
-    router.replace(dashboardPathForRole(candidate.role));
+    router.replace(dashboardPathForRole(selectedRole));
   }
 
   return (
@@ -285,9 +284,10 @@ export default function LoginPage() {
             <button
               type="submit"
               id="login-submit-btn"
-              className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-teal-600 active:scale-[0.98]"
+              disabled={isSubmitting}
+              className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-teal-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Log In →
+              {isSubmitting ? "Signing in…" : "Log In →"}
             </button>
           </form>
         </div>
