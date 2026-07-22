@@ -41,7 +41,7 @@ export function SignsSymptomsTab({
     );
   }
 
-  function handleFlagEmergency() {
+  async function handleFlagEmergency() {
     const summaryParts = activeDangerSignIds.map((id) => {
       if (id === "very-high-bp") {
         return `Very high blood pressure (${bpSystolic}/${bpDiastolic})`;
@@ -52,7 +52,7 @@ export function SignsSymptomsTab({
       return DANGER_SIGN_LABEL.get(id) ?? id;
     });
     const summary = summaryParts.join("; ");
-    const result = createEmergencyVisit(patientId, activeDangerSignIds, summary);
+    const result = await createEmergencyVisit(patientId, activeDangerSignIds, summary);
     onFlagged(result);
   }
 
