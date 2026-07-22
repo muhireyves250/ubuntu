@@ -1,24 +1,23 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/query-client";
+import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import {
-  addPatient,
   addReferral,
   addVisit,
   addPregnancy,
-  updatePatient as storageUpdatePatient,
   updatePregnancy as storageUpdatePregnancy,
   updateReferral as storageUpdateReferral,
   updateVisit as storageUpdateVisit,
   getPatientsSnapshot,
   getReferralsSnapshot,
-  getServerPatientsSnapshot,
   getServerReferralsSnapshot,
   getServerVisitsSnapshot,
   getServerPregnanciesSnapshot,
   getVisitsSnapshot,
   getPregnanciesSnapshot,
-  subscribeToPatients,
   subscribeToReferrals,
   subscribeToVisits,
   subscribeToPregnancies,
@@ -78,11 +77,8 @@ function getCurrentUserSnapshot(): { id: string; name: string; facility: string;
 // The system holds one shared patient record — every facility can see every
 // patient and their full history, not just the ones they registered.
 export function usePatients(): Patient[] {
-  return useSyncExternalStore(
-    subscribeToPatients,
-    getPatientsSnapshot,
-    getServerPatientsSnapshot,
-  );
+  const { data } = useQuery({ queryKey: ["patients"], queryFn: fetchPatients });
+  return data ?? [];
 }
 
 export function useVisits(): Visit[] {
@@ -95,11 +91,12 @@ export function useVisits(): Visit[] {
 
 
 export function usePatient(patientId: string): Patient | undefined {
-  const patients = usePatients();
-  return useMemo(
-    () => patients.find((patient) => patient.id === patientId),
-    [patients, patientId],
-  );
+  const { data } = useQuery({
+    queryKey: ["patients", patientId],
+    queryFn: () => fetchPatient(patientId),
+    enabled: !!patientId,
+  });
+  return data;
 }
 
 export function usePregnancies(): Pregnancy[] {
@@ -746,18 +743,11 @@ export function useRiskSummary(days?: number): RiskSummary {
   }, [patients, visits, pregnancies, days, activeEmergencyPatientIds]);
 }
 
-export function registerPatient(
+export async function registerPatient(
   data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">,
-): Patient {
-  const { name, facility } = getCurrentUserSnapshot();
-  const patient: Patient = {
-    ...data,
-    id: `patient-${crypto.randomUUID()}`,
-    registeredAt: new Date().toISOString().slice(0, 10),
-    registeredBy: name,
-    registrationFacility: facility,
-  };
-  addPatient(patient);
+): Promise<Patient> {
+  const patient = await createPatientApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["patients"] });
   return patient;
 }
 
@@ -895,11 +885,12 @@ export function createEmergencyVisit(
   return { pregnancy, visit, referral };
 }
 
-export function updatePatient(
+export async function updatePatient(
   patientId: string,
   updates: Partial<Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">>,
-): void {
-  storageUpdatePatient(patientId, updates);
+): Promise<void> {
+  await updatePatientApi(patientId, updates);
+  await queryClient.invalidateQueries({ queryKey: ["patients"] });
 }
 
 export function useAcknowledgedAlerts(): AcknowledgedAlert[] {
