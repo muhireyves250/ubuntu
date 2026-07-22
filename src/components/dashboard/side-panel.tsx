@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { DemoUser } from "@/lib/auth/types";
+import type { AuthenticatedUser } from "@/lib/auth/auth-context";
 import type { RoleOverviewCopy } from "@/lib/dashboard/role-copy";
 import { getInitials, relativeTime, fullName } from "@/lib/format";
 import {
@@ -35,7 +35,7 @@ export function SidePanel({
   user,
   copy,
 }: {
-  user: DemoUser;
+  user: AuthenticatedUser;
   copy: RoleOverviewCopy;
 }) {
   const activeReferrals = useActiveReferrals();
