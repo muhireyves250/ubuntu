@@ -8,7 +8,6 @@ import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } fro
 import { fetchVisitsForPregnancy, createVisitApi, finalizeVisitApi } from "./visit-api";
 import {
   addReferral,
-  addVisit,
   addPregnancy,
   updatePregnancy as storageUpdatePregnancy,
   updateReferral as storageUpdateReferral,
@@ -460,12 +459,13 @@ export function setFacilityMaxCapacity(facility: string, max: number) {
   setCapacityOverride(facility, max);
 }
 
-export function finalizeAssessment(visitId: string, treatment: string, followUpPlan: string) {
-  storageUpdateVisit(visitId, {
-    treatment,
-    followUpPlan,
-    assessmentFinalized: true,
-  });
+export async function finalizeAssessment(
+  visitId: string,
+  treatment: string,
+  followUpPlan: string,
+): Promise<void> {
+  const visit = await finalizeVisitApi(visitId, treatment, followUpPlan);
+  await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", visit.pregnancyId] });
 }
 
 function getOrCreateEmergencyReferral(patientId: string, reason: string): Referral {
