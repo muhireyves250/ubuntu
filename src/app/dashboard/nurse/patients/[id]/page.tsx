@@ -22,6 +22,7 @@ import { SpecialistNotesTab } from "@/components/patients/specialist-notes-tab";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
   usePatient,
+  usePatientIsLoading,
   usePregnanciesForPatient,
   useAllVisitsForPatient,
   useVisitsForPregnancy,
@@ -58,6 +59,7 @@ type EmergencyResult = { pregnancy: Pregnancy; visit: Visit; referral: Referral 
 
 function PatientDetailContent({ patientId }: { patientId: string }) {
   const patient = usePatient(patientId);
+  const patientLoading = usePatientIsLoading(patientId);
   const pregnancies = usePregnanciesForPatient(patientId);
   const openPregnancy = pregnancies.find((p) => p.status === "open") ?? null;
   const allVisits = useAllVisitsForPatient(patientId);
@@ -79,6 +81,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
     (activeReferral.referredByFacility === user?.facility ||
       activeReferral.acceptedByFacility === user?.facility);
 
+  if (patientLoading) return null;
   if (!patient) return notFound();
   if (lock.locked) return <PatientLockedBlocker patient={patient} lockedByFacility={lock.lockedByFacility!} />;
   if (activeReferral && !isManagingReferral) {

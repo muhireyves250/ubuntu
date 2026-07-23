@@ -100,6 +100,20 @@ export function usePatient(patientId: string): Patient | undefined {
   return data;
 }
 
+// `usePatient()` returns `undefined` both while the fetch is in flight and when the
+// patient genuinely doesn't exist. Callers that render a not-found state (e.g. via
+// `notFound()`) must check this first, or every fresh navigation/reload false-404s
+// before the fetch resolves. Shares the query cache with `usePatient()` (same key),
+// so calling both in one component does not trigger a second request.
+export function usePatientIsLoading(patientId: string): boolean {
+  const { isLoading } = useQuery({
+    queryKey: ["patients", patientId],
+    queryFn: () => fetchPatient(patientId),
+    enabled: !!patientId,
+  });
+  return isLoading;
+}
+
 // NOTE: still backed by the old local-storage system — usePregnanciesForPatient()
 // below now uses the real API, so a newly-created pregnancy won't appear here
 // until a future slice migrates this hook (it also depends on visit data, out of
