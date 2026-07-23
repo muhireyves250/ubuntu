@@ -5,7 +5,7 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
-import { fetchVisitsForPregnancy } from "./visit-api";
+import { fetchVisitsForPregnancy, createVisitApi, finalizeVisitApi } from "./visit-api";
 import {
   addReferral,
   addVisit,
@@ -770,7 +770,7 @@ export async function registerPatient(
   return patient;
 }
 
-export function recordVisit(data: {
+export async function recordVisit(data: {
   pregnancyId: string;
   type: VisitType;
   ancNumber?: number;
@@ -782,33 +782,35 @@ export function recordVisit(data: {
   emergencySummary?: string;
   treatment?: string;
   followUpPlan?: string;
-}): Visit {
-  const { name, facility } = getCurrentUserSnapshot();
+}): Promise<Visit> {
+  // Local classification, unchanged — still drives the local-only referral
+  // escalation / lab-push side effects below, which stay on the old system.
   const riskLevel = data.type === "emergency" ? "red" : classifyRiskLevel(data.symptomIds);
-  const visit: Visit = {
-    id: `visit-${crypto.randomUUID()}`,
-    pregnancyId: data.pregnancyId,
-    date: new Date().toISOString().slice(0, 10),
+
+  let visit = await createVisitApi(data.pregnancyId, {
     type: data.type,
     ancNumber: data.ancNumber,
     scheduledWeek: data.scheduledWeek,
-    hospital: facility,
-    attendingNurse: name,
     symptomIds: data.symptomIds,
     notes: data.notes,
-    riskLevel,
     labs: data.labs,
-    labStatus: data.labStatus,
     emergencySummary: data.emergencySummary,
-    treatment: data.treatment,
-    followUpPlan: data.followUpPlan,
-    assessmentFinalized: data.labStatus === "pending" ? false : true,
-    createdAt: new Date().toISOString(),
-  };
-  addVisit(visit);
+  });
 
-  if (visit.labStatus === "pending") {
-    // We need to resolve patient and pregnancy to push a full mock request
+  // The backend only accepts treatment/followUpPlan via /finalize, not on
+  // create — the Assessment Wizard's non-lab path (labStatus undefined)
+  // collects them at create time, so finalize immediately to preserve that
+  // one-call UX. The lab-pending path never has them yet (finalize happens
+  // later, out of this slice's scope — see finalize-assessment-blocker.tsx).
+  if (data.labStatus !== "pending" && (data.treatment || data.followUpPlan)) {
+    visit = await finalizeVisitApi(visit.id, data.treatment ?? "", data.followUpPlan ?? "");
+  }
+
+  await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", data.pregnancyId] });
+
+  if (data.labStatus === "pending") {
+    // We need to resolve patient and pregnancy to push a full mock request.
+    // Unchanged from before this slice — stays on the old local-storage system.
     const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
     if (pregnancy) {
       const patient = getPatientsSnapshot().find((p) => p.id === pregnancy.patientId);
@@ -878,7 +880,7 @@ export async function createEmergencyVisit(
     });
   }
 
-  const visit = recordVisit({
+  const visit = await recordVisit({
     pregnancyId: pregnancy.id,
     type: "emergency",
     symptomIds: dangerSignIds,
