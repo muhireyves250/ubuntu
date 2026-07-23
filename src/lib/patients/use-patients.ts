@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
+import { fetchVisitsForPregnancy } from "./visit-api";
 import {
   addReferral,
   addVisit,
@@ -82,6 +83,13 @@ export function usePatients(): Patient[] {
   return data ?? [];
 }
 
+// Still backed by the old local-storage system — useVisitsForPregnancy() and
+// useAllVisitsForPatient() below now use the real API, so a newly-recorded
+// visit won't appear here. There is no "all visits" backend endpoint (only
+// per-pregnancy), so useFollowUpPatients/useTodaysVisits/useRiskSummary/
+// useNotificationAlerts (which all depend on this hook) stay on the old
+// system too, same divergence Slice B accepted for usePregnancies(). See
+// docs/superpowers/plans/2026-07-23-frontend-visits-integration.md.
 export function useVisits(): Visit[] {
   return useSyncExternalStore(
     subscribeToVisits,
@@ -136,37 +144,31 @@ export function usePregnanciesForPatient(patientId: string): Pregnancy[] {
 }
 
 export function useVisitsForPregnancy(pregnancyId: string): Visit[] {
-  const visits = useVisits();
-  return useMemo(
-    () =>
-      visits
-        .filter((v) => v.pregnancyId === pregnancyId)
-        .sort((a, b) => {
-          const dateCompare = b.date.localeCompare(a.date);
-          if (dateCompare !== 0) return dateCompare;
-          const timeA = a.createdAt ?? "";
-          const timeB = b.createdAt ?? "";
-          return timeB.localeCompare(timeA);
-        }),
-    [visits, pregnancyId],
-  );
+  const { data } = useQuery({
+    queryKey: ["visits", "pregnancy", pregnancyId],
+    queryFn: () => fetchVisitsForPregnancy(pregnancyId),
+    enabled: !!pregnancyId,
+  });
+  return data ?? [];
 }
 
 export function useAllVisitsForPatient(patientId: string): Visit[] {
   const pregnancies = usePregnanciesForPatient(patientId);
-  const visits = useVisits();
+  const results = useQueries({
+    queries: pregnancies.map((p) => ({
+      queryKey: ["visits", "pregnancy", p.id],
+      queryFn: () => fetchVisitsForPregnancy(p.id),
+      enabled: !!p.id,
+    })),
+  });
   return useMemo(() => {
-    const pregnancyIds = new Set(pregnancies.map((p) => p.id));
-    return visits
-      .filter((v) => pregnancyIds.has(v.pregnancyId))
-      .sort((a, b) => {
-        const dateCompare = b.date.localeCompare(a.date);
-        if (dateCompare !== 0) return dateCompare;
-        const timeA = a.createdAt ?? "";
-        const timeB = b.createdAt ?? "";
-        return timeB.localeCompare(timeA);
-      });
-  }, [pregnancies, visits]);
+    const allVisits = results.flatMap((r) => r.data ?? []);
+    return allVisits.sort((a, b) => {
+      const dateCompare = b.date.localeCompare(a.date);
+      if (dateCompare !== 0) return dateCompare;
+      return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+    });
+  }, [results]);
 }
 
 export interface PatientLock {
