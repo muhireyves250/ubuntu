@@ -788,8 +788,9 @@ export async function recordVisit(data: {
   treatment?: string;
   followUpPlan?: string;
 }): Promise<Visit> {
-  // Local classification, unchanged — still drives the local-only referral
-  // escalation / lab-push side effects below, which stay on the old system.
+  // Local classification, unchanged — used below to decide whether to
+  // attempt the (see KNOWN GAP comment below) referral escalation, and by
+  // the lab-push block's labStatus check.
   const riskLevel = data.type === "emergency" ? "red" : classifyRiskLevel(data.symptomIds);
 
   let visit = await createVisitApi(data.pregnancyId, {
@@ -836,6 +837,13 @@ export async function recordVisit(data: {
     }
   }
 
+  // KNOWN GAP (pre-existing since the 2026-07-22 patients/pregnancies slice,
+  // found during Slice C's verification, not introduced here): same cause as
+  // the lab-push block above — getPregnanciesSnapshot() never holds a real
+  // (API-created) pregnancy, so `pregnancy` is always undefined here and this
+  // RED-classification -> emergency-referral escalation never actually runs.
+  // Silently dead for every visit, not just ones migrated by this slice.
+  // Deferred to a future Referrals integration slice alongside gaps 1-3.
   if (riskLevel === "red") {
     const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
     if (pregnancy) {
