@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { RoleGuard } from "@/components/role-guard";
 import {
-  getLabRequestById,
+  useLabRequest,
+  useLabRequestIsLoading,
   acceptLabRequest,
   submitLabResults,
   LabRequest,
@@ -41,17 +42,35 @@ function RequestDetailContent({
   user: AuthenticatedUser;
 }) {
   const router = useRouter();
-  const [request, setRequest] = useState<LabRequest | null>(() => {
-    const req = getLabRequestById(requestId);
-    return req && req.facility === user.facility ? req : null;
-  });
-  const [resultsForm, setResultsForm] = useState<Record<string, ResultForm>>(() =>
-    request ? buildInitialForm(request) : {},
-  );
+  const fetchedRequest = useLabRequest(requestId);
+  const isLoadingRequest = useLabRequestIsLoading(requestId);
+  const request = fetchedRequest && fetchedRequest.facility === user.facility ? fetchedRequest : null;
+
+  const [resultsForm, setResultsForm] = useState<Record<string, ResultForm>>({});
   const [alertState, setAlertState] = useState<{ open: boolean; hasCritical: boolean }>({
     open: false,
     hasCritical: false,
   });
+  const [error, setError] = useState<string | null>(null);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Re-sync the results form whenever the fetched request's identity or
+  // status changes (e.g. right after accept flips Pending -> In Progress),
+  // mirroring the old code's synchronous buildInitialForm-on-mount behavior.
+  const formSyncKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!request) return;
+    const key = `${request.id}:${request.status}`;
+    if (formSyncKeyRef.current !== key) {
+      formSyncKeyRef.current = key;
+      setResultsForm(buildInitialForm(request));
+    }
+  }, [request]);
+
+  if (isLoadingRequest) {
+    return <div className="flex flex-col items-center p-6" />;
+  }
 
   if (!request) {
     return (
@@ -64,14 +83,16 @@ function RequestDetailContent({
     );
   }
 
-  function handleAccept() {
-    if (request && request.status === "Pending") {
-      acceptLabRequest(request.id, user.id);
-      const refreshed = getLabRequestById(request.id);
-      if (refreshed) {
-        setRequest(refreshed);
-        setResultsForm(buildInitialForm(refreshed));
-      }
+  async function handleAccept() {
+    if (!request || request.status !== "Pending" || isAccepting) return;
+    setError(null);
+    setIsAccepting(true);
+    try {
+      await acceptLabRequest(request.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to accept request. Please try again.");
+    } finally {
+      setIsAccepting(false);
     }
   }
 
@@ -85,28 +106,35 @@ function RequestDetailContent({
     }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!request) return;
+    if (!request || isSubmitting) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const finalResults: LabTestResult[] = request.requestedInvestigatonNames.map((name, idx) => {
+        const form = resultsForm[name];
+        return {
+          id: `res-${Date.now()}-${idx}`,
+          testName: name,
+          result: form.result,
+          unit: form.unit,
+          interpretation: form.interp,
+          referenceRange: "Varies",
+          completedAt: new Date().toISOString(),
+          completedBy: user.id,
+        };
+      });
 
-    const finalResults: LabTestResult[] = request.requestedInvestigatonNames.map((name, idx) => {
-      const form = resultsForm[name];
-      return {
-        id: `res-${Date.now()}-${idx}`,
-        testName: name,
-        result: form.result,
-        unit: form.unit,
-        interpretation: form.interp,
-        referenceRange: "Varies",
-        completedAt: new Date().toISOString(),
-        completedBy: user.id,
-      };
-    });
+      await submitLabResults(request.id, finalResults);
 
-    submitLabResults(request.id, finalResults);
-
-    const hasCritical = finalResults.some((r) => r.interpretation === "Critical");
-    setAlertState({ open: true, hasCritical });
+      const hasCritical = finalResults.some((r) => r.interpretation === "Critical");
+      setAlertState({ open: true, hasCritical });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit results. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -214,10 +242,16 @@ function RequestDetailContent({
             <button
               type="button"
               onClick={handleAccept}
-              className="relative z-10 inline-flex items-center justify-center rounded-xl bg-teal-900 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition-all hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl active:translate-y-0"
+              disabled={isAccepting}
+              className="relative z-10 inline-flex items-center justify-center rounded-xl bg-teal-900 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition-all hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Accept Request & Begin Tests
+              {isAccepting ? "Accepting…" : "Accept Request & Begin Tests"}
             </button>
+            {error && (
+              <p className="relative z-10 mt-4 rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                {error}
+              </p>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -304,13 +338,19 @@ function RequestDetailContent({
               </div>
             </div>
 
+            {error && (
+              <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                {error}
+              </p>
+            )}
             {request.status === "In Progress" && (
               <div className="flex justify-end pt-2">
                 <button
                   type="submit"
-                  className="rounded-xl bg-teal-900 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition-all hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl active:translate-y-0"
+                  disabled={isSubmitting}
+                  className="rounded-xl bg-teal-900 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition-all hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Submit Laboratory Results
+                  {isSubmitting ? "Submitting…" : "Submit Laboratory Results"}
                 </button>
               </div>
             )}
