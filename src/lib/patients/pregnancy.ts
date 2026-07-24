@@ -94,6 +94,11 @@ export interface AncCalendarEntry {
 // gets a concrete date instead of just a gestational week.
 export function ancCalendar(pregnancy: Pregnancy): AncCalendarEntry[] {
   const lmp = new Date(`${pregnancy.lmpDate}T00:00:00`);
+  // lmpDate can be "" when the backend's nullable lmp field is null (a
+  // legitimate, allowed data state — not every pregnancy has a recorded
+  // LMP) — without this guard, the invalid Date below throws RangeError
+  // on .toISOString(), crashing every page that renders an ANC calendar.
+  if (isNaN(lmp.getTime())) return [];
   return ANC_SCHEDULE.map((s) => ({
     visitNumber: s.visitNumber,
     dueByWeek: s.dueByWeek,
