@@ -213,6 +213,11 @@ export function usePatientLock(patientId: string): PatientLock {
 
     const latest = visits[0];
     if (!latest) return { locked: false, lockedByFacility: null };
+    // KNOWN GAP as of Slice C: labStatus is always undefined on real visits
+    // (see visit-api.ts's toFrontendVisit) since lab status lives in the
+    // backend's not-yet-migrated Lab Requests domain — so `inUse` can never
+    // be true for a real visit, and this cross-facility lock never engages.
+    // Deferred to a future Lab Requests integration slice, not fixed here.
     const inUse =
       latest.labStatus === "pending" ||
       latest.labStatus === "in_progress" ||
@@ -810,7 +815,15 @@ export async function recordVisit(data: {
 
   if (data.labStatus === "pending") {
     // We need to resolve patient and pregnancy to push a full mock request.
-    // Unchanged from before this slice — stays on the old local-storage system.
+    // KNOWN DEAD as of Slice C (found + accepted during its verification, not
+    // fixed here): this lookup reads getPregnanciesSnapshot(), the old
+    // local-storage system, which real pregnancies (created via the API
+    // since the prior Slice B) are never written to — so `pregnancy` is
+    // always undefined here and this block silently no-ops. Even if it
+    // matched, pushNewLabRequest() itself assumes the visit was written to
+    // local storage via the old addVisit(), which this function no longer
+    // does. Fixing this for real requires wiring Lab Requests to the real
+    // backend — a future slice, not this one.
     const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
     if (pregnancy) {
       const patient = getPatientsSnapshot().find((p) => p.id === pregnancy.patientId);
@@ -858,6 +871,14 @@ export async function createEmergencyVisit(
   dangerSignIds: string[],
   summary: string,
 ): Promise<{ pregnancy: Pregnancy; visit: Visit; referral: Referral }> {
+  // KNOWN PRE-EXISTING BUG (predates this slice, found during Slice C's
+  // verification): this reads getPregnanciesSnapshot(), the old local-storage
+  // system — real pregnancies (created via the API since Slice B) are never
+  // written there, so `existingOpen` is always undefined for a patient with a
+  // real active pregnancy, and the emergency flow below always falls through
+  // to creating a new pregnancy, which the backend correctly 409s on since
+  // one already exists. Currently live-broken for essentially every patient.
+  // Not fixed here — introduced by the 2026-07-22 patients/pregnancies slice.
   const existingOpen = getPregnanciesSnapshot().find(
     (p) => p.patientId === patientId && p.status === "open",
   );
