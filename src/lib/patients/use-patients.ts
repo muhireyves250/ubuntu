@@ -6,13 +6,13 @@ import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
 import { fetchVisitsForPregnancy, createVisitApi, finalizeVisitApi } from "./visit-api";
+import { createLabRequestApi } from "./lab-request-api";
 import {
   addReferral,
   addPregnancy,
   updatePregnancy as storageUpdatePregnancy,
   updateReferral as storageUpdateReferral,
   updateVisit as storageUpdateVisit,
-  getPatientsSnapshot,
   getReferralsSnapshot,
   getServerReferralsSnapshot,
   getServerVisitsSnapshot,
@@ -815,26 +815,7 @@ export async function recordVisit(data: {
   await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", data.pregnancyId] });
 
   if (data.labStatus === "pending") {
-    // We need to resolve patient and pregnancy to push a full mock request.
-    // KNOWN DEAD as of Slice C (found + accepted during its verification, not
-    // fixed here): this lookup reads getPregnanciesSnapshot(), the old
-    // local-storage system, which real pregnancies (created via the API
-    // since the prior Slice B) are never written to — so `pregnancy` is
-    // always undefined here and this block silently no-ops. Even if it
-    // matched, pushNewLabRequest() itself assumes the visit was written to
-    // local storage via the old addVisit(), which this function no longer
-    // does. Fixing this for real requires wiring Lab Requests to the real
-    // backend — a future slice, not this one.
-    const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
-    if (pregnancy) {
-      const patient = getPatientsSnapshot().find((p) => p.id === pregnancy.patientId);
-      if (patient) {
-        // dynamic import of lab_requests to avoid circular issues
-        import("./lab-requests").then((m) => {
-          m.pushNewLabRequest(visit, patient, pregnancy);
-        });
-      }
-    }
+    await createLabRequestApi(visit.id, data.type === "emergency" ? "Emergency" : "Normal", data.notes);
   }
 
   // KNOWN GAP (pre-existing since the 2026-07-22 patients/pregnancies slice,
