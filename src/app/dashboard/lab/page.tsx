@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 
 import { RoleGuard } from "@/components/role-guard";
-import { getLabRequests, subscribeToLabRequests, LabRequest } from "@/lib/patients/lab-requests";
+import { useLabRequests } from "@/lib/patients/lab-requests";
 import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
 import Link from "next/link";
 
@@ -21,19 +21,9 @@ function readSessionUser() {
 
 export default function LabNurseDashboard() {
   const [user] = useState(readSessionUser);
-  const [requests, setRequests] = useState<LabRequest[]>(() =>
-    user ? getLabRequests(user.facility) : [],
-  );
+  const requests = useLabRequests();
   const userName = user?.name ?? "Lab Nurse";
   const facility = user?.facility ?? "";
-
-  useEffect(() => {
-    if (!user) return;
-    const unsubscribe = subscribeToLabRequests(() => {
-      setRequests(getLabRequests(user.facility));
-    });
-    return () => { unsubscribe(); };
-  }, [user]);
 
 
 
