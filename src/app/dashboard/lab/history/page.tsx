@@ -1,32 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { RoleGuard } from "@/components/role-guard";
-import { getLabRequests, subscribeToLabRequests, LabRequest } from "@/lib/patients/lab-requests";
-import { getStoredAuthenticatedUser, type AuthenticatedUser } from "@/lib/auth/auth-context";
+import { useLabRequests } from "@/lib/patients/lab-requests";
 import { IconSearch, IconReport } from "@/components/dashboard/icons";
 import Link from "next/link";
 import { relativeTime, getInitials } from "@/lib/format";
 
-function readSessionUser(): AuthenticatedUser | null {
-  if (typeof window === "undefined") return null;
-  return getStoredAuthenticatedUser();
-}
-
 export default function LabHistoryPage() {
-  const [user] = useState(readSessionUser);
-  const [requests, setRequests] = useState<LabRequest[]>(() =>
-    user ? getLabRequests(user.facility).filter((r) => r.status === "Completed") : [],
-  );
+  const allRequests = useLabRequests();
+  const requests = allRequests.filter((r) => r.status === "Completed");
   const [filter, setFilter] = useState("");
-
-  useEffect(() => {
-    if (!user) return;
-    const unsubscribe = subscribeToLabRequests(() => {
-      setRequests(getLabRequests(user.facility).filter((r) => r.status === "Completed"));
-    });
-    return () => { unsubscribe(); };
-  }, [user]);
 
   const filteredRequests = requests
     .filter(
