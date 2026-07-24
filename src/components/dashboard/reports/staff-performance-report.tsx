@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useVisits, useReferrals, useAllRecommendations } from "@/lib/patients/use-patients";
-import { getLabRequests, subscribeToLabRequests, type LabRequest } from "@/lib/patients/lab-requests";
+import { useLabRequests } from "@/lib/patients/lab-requests";
 
 function tally(names: string[]): { name: string; count: number }[] {
   const counts = new Map<string, number>();
@@ -40,15 +39,7 @@ export function StaffPerformanceReport({ days }: { days?: number }) {
   const visits = useVisits();
   const referrals = useReferrals();
   const recommendations = useAllRecommendations();
-  const [labRequests, setLabRequests] = useState<LabRequest[]>(() => (user ? getLabRequests(user.facility) : []));
-
-  useEffect(() => {
-    if (!user) return;
-    const unsubscribe = subscribeToLabRequests(() => {
-      setLabRequests(getLabRequests(user.facility));
-    });
-    return () => { unsubscribe(); };
-  }, [user]);
+  const labRequests = useLabRequests();
 
   if (!user) return null;
   const facility = user.facility;

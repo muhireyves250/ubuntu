@@ -1,22 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { getLabRequests, subscribeToLabRequests, type LabRequest } from "@/lib/patients/lab-requests";
+import { useLabRequests } from "@/lib/patients/lab-requests";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { IconClipboard, IconCheckCircle, IconClock, IconAlertTriangle } from "@/components/dashboard/icons";
 
 export function LaboratoryReport({ days }: { days?: number }) {
   const { user } = useAuth();
-  const [requests, setRequests] = useState<LabRequest[]>(() => (user ? getLabRequests(user.facility) : []));
-
-  useEffect(() => {
-    if (!user) return;
-    const unsubscribe = subscribeToLabRequests(() => {
-      setRequests(getLabRequests(user.facility));
-    });
-    return () => { unsubscribe(); };
-  }, [user]);
+  const requests = useLabRequests();
 
   if (!user) return null;
 
