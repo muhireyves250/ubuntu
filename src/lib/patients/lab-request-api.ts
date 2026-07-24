@@ -131,10 +131,13 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
   };
 }
 
+// QueryLabRequestsDto caps limit at 100 (unlike QueryPatientDto's 200) — no
+// pagination UI exists yet, this approximates "fetch all" for the current
+// small seed dataset within that cap.
 export async function fetchLabRequests(): Promise<LabRequest[]> {
   const token = getStoredAccessToken();
   const result = await apiFetch<{ data: BackendLabRequest[]; meta: unknown }>(
-    "/lab-requests?limit=200",
+    "/lab-requests?limit=100",
     { token: token ?? undefined },
   );
   return result.data.map(toFrontendLabRequest);
