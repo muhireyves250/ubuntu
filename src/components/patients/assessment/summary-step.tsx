@@ -43,32 +43,43 @@ export function SummaryStep({
   const [notes, setNotes] = useState("");
   const [treatment, setTreatment] = useState("");
   const [followUpPlan, setFollowUpPlan] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const bmi = computeBmi(vitals);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const visitLabs: VisitLabs = {
-      bpSystolic: vitals.bpSystolic ? Number(vitals.bpSystolic) : undefined,
-      bpDiastolic: vitals.bpDiastolic ? Number(vitals.bpDiastolic) : undefined,
-      temperature: vitals.temperature ? Number(vitals.temperature) : undefined,
-      pulse: vitals.pulse ? Number(vitals.pulse) : undefined,
-      weight: vitals.weight ? Number(vitals.weight) : undefined,
-    };
-    const hasVisitLabs = Object.values(visitLabs).some((v) => v !== undefined);
-    const visit = recordVisit({
-      pregnancyId,
-      type,
-      scheduledWeek,
-      ancNumber,
-      symptomIds: symptoms,
-      notes,
-      labs: hasVisitLabs ? visitLabs : undefined,
-      labStatus: labsOrdered ? "pending" : undefined,
-      treatment: treatment.trim() || undefined,
-      followUpPlan: followUpPlan.trim() || undefined,
-    });
-    onRecorded(visit);
+    if (isSubmitting) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const visitLabs: VisitLabs = {
+        bpSystolic: vitals.bpSystolic ? Number(vitals.bpSystolic) : undefined,
+        bpDiastolic: vitals.bpDiastolic ? Number(vitals.bpDiastolic) : undefined,
+        temperature: vitals.temperature ? Number(vitals.temperature) : undefined,
+        pulse: vitals.pulse ? Number(vitals.pulse) : undefined,
+        weight: vitals.weight ? Number(vitals.weight) : undefined,
+      };
+      const hasVisitLabs = Object.values(visitLabs).some((v) => v !== undefined);
+      const visit = await recordVisit({
+        pregnancyId,
+        type,
+        scheduledWeek,
+        ancNumber,
+        symptomIds: symptoms,
+        notes,
+        labs: hasVisitLabs ? visitLabs : undefined,
+        labStatus: labsOrdered ? "pending" : undefined,
+        treatment: treatment.trim() || undefined,
+        followUpPlan: followUpPlan.trim() || undefined,
+      });
+      onRecorded(visit);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to record visit. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -207,11 +218,18 @@ export function SummaryStep({
         </>
       )}
 
+      {error && (
+        <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+          {error}
+        </p>
+      )}
+
       <button
         type="submit"
-        className="w-full rounded-xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800"
+        disabled={isSubmitting}
+        className="w-full rounded-xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {labsOrdered ? "Submit Request to Laboratory" : "Submit Assessment"}
+        {isSubmitting ? "Submitting…" : labsOrdered ? "Submit Request to Laboratory" : "Submit Assessment"}
       </button>
     </form>
   );
