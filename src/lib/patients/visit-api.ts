@@ -148,6 +148,13 @@ function toFrontendVisit(v: BackendVisit): Visit {
     notes: v.notes ?? "",
     riskLevel: v.riskAssessment ? RISK_LEVEL_TO_FRONTEND[v.riskAssessment.riskLevel] : "green",
     labs,
+    // Always undefined: lab status lives in the backend's separate, not-yet-
+    // migrated LabRequest/LabResult domain, which this slice doesn't touch.
+    // Known consequence (found + accepted during Slice C's verification, not
+    // fixed here): usePatientLock()'s cross-facility lock check and
+    // patients/[id]/page.tsx's AwaitingLabsBlocker/FinalizeAssessmentBlocker
+    // gating both key off labStatus, so neither can ever trigger for a real
+    // visit until a future Lab Requests integration slice wires this field.
     labStatus: undefined,
     emergencySummary: v.emergencySummary ?? undefined,
     treatment: v.treatment ?? undefined,
