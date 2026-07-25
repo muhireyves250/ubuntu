@@ -1,34 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { RoleGuard } from "@/components/role-guard";
-import { getLabRequests, subscribeToLabRequests, LabRequest } from "@/lib/patients/lab-requests";
+import { useLabRequests } from "@/lib/patients/lab-requests";
 
-import { findUserById } from "@/lib/auth/user-directory";
 import { IconSearch } from "@/components/dashboard/icons";
 import Link from "next/link";
 import { relativeTime } from "@/lib/format";
 
-function readSessionUser() {
-  if (typeof window === "undefined") return null;
-  const sessionUserId = window.localStorage.getItem("ubuntumed.session");
-  return sessionUserId ? findUserById(sessionUserId) ?? null : null;
-}
-
 export default function LabRequestsPage() {
-  const [user] = useState(readSessionUser);
-  const [requests, setRequests] = useState<LabRequest[]>(() =>
-    user ? getLabRequests(user.facility) : [],
-  );
+  const requests = useLabRequests();
   const [filter, setFilter] = useState("");
-
-  useEffect(() => {
-    if (!user) return;
-    const unsubscribe = subscribeToLabRequests(() => {
-      setRequests(getLabRequests(user.facility));
-    });
-    return () => { unsubscribe(); };
-  }, [user]);
 
 
   const filteredRequests = requests.filter((r) =>

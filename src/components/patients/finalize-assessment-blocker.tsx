@@ -146,7 +146,11 @@ function AssessmentSummaryStep({
       // escalateVisitIfCritical writes to the shared store and notifies other
       // subscribed components (e.g. Topbar) — that must happen after commit,
       // not during this component's render, so it belongs in an effect.
-      setEscalation(escalateVisitIfCritical(visit, pred.riskLevel));
+      escalateVisitIfCritical(visit, pred.riskLevel)
+        .then(setEscalation)
+        .catch((err) => {
+          console.error("Failed to escalate critical visit to an emergency referral:", err);
+        });
     }
   }, [pred.riskLevel, visit]);
 
@@ -412,14 +416,24 @@ function TreatmentStep({
   visit: Visit;
   aiFollowUpSuggestion: string;
   onBack: () => void;
-  onFinalized: (visitId: string, treatment: string, followUpPlan: string) => void;
+  onFinalized: (visitId: string, treatment: string, followUpPlan: string) => Promise<void>;
 }) {
   const [treatment, setTreatment] = useState("");
   const [followUpPlan, setFollowUpPlan] = useState(aiFollowUpSuggestion);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onFinalized(visit.id, treatment.trim(), followUpPlan.trim());
+    if (isSubmitting) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await onFinalized(visit.id, treatment.trim(), followUpPlan.trim());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to finalize assessment. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -471,19 +485,27 @@ function TreatmentStep({
               />
             </label>
 
+            {error && (
+              <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                {error}
+              </p>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
               <button
                 type="button"
                 onClick={onBack}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                disabled={isSubmitting}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 ← Back
               </button>
               <button
                 type="submit"
-                className="grow rounded-lg bg-[#0f766e] px-4 py-2 text-xs font-extrabold text-white shadow-sm transition-colors hover:bg-teal-800"
+                disabled={isSubmitting}
+                className="grow rounded-lg bg-[#0f766e] px-4 py-2 text-xs font-extrabold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Complete Visit &amp; Unlock Profile ✔
+                {isSubmitting ? "Finalizing…" : "Complete Visit & Unlock Profile ✔"}
               </button>
             </div>
           </form>
@@ -502,7 +524,7 @@ export function FinalizeAssessmentBlocker({
 }: {
   patient: Patient;
   visit: Visit;
-  onFinalized: (visitId: string, treatment: string, followUpPlan: string) => void;
+  onFinalized: (visitId: string, treatment: string, followUpPlan: string) => Promise<void>;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
 

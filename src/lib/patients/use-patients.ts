@@ -1,25 +1,21 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { useQuery, useQueries } from "@tanstack/react-query";
+import { queryClient } from "@/lib/query-client";
+import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
+import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
+import { fetchVisitsForPregnancy, createVisitApi, finalizeVisitApi } from "./visit-api";
+import { createLabRequestApi } from "./lab-request-api";
+import { fetchReferrals, createReferralApi, acceptReferralApi, closeReferralApi } from "./referral-api";
 import {
-  addPatient,
-  addReferral,
-  addVisit,
   addPregnancy,
-  updatePatient as storageUpdatePatient,
   updatePregnancy as storageUpdatePregnancy,
-  updateReferral as storageUpdateReferral,
   updateVisit as storageUpdateVisit,
-  getPatientsSnapshot,
-  getReferralsSnapshot,
-  getServerPatientsSnapshot,
-  getServerReferralsSnapshot,
   getServerVisitsSnapshot,
   getServerPregnanciesSnapshot,
   getVisitsSnapshot,
   getPregnanciesSnapshot,
-  subscribeToPatients,
-  subscribeToReferrals,
   subscribeToVisits,
   subscribeToPregnancies,
   subscribeToRecommendations,
@@ -45,7 +41,7 @@ import {
 } from "./alerts-storage";
 import { classifyRiskLevel } from "./symptom-checklist";
 import { computeEdd, matchScheduledVisit } from "./pregnancy";
-import { findUserById } from "../auth/user-directory";
+import { getStoredAuthenticatedUser } from "../auth/auth-context";
 import { FOLLOW_UP_REASON_LABELS } from "./types";
 import type {
   Patient,
@@ -64,14 +60,8 @@ import type {
   FollowUpPriority,
 } from "./types";
 
-const SESSION_STORAGE_KEY = "ubuntumed.session";
-
 function getCurrentUserSnapshot(): { id: string; name: string; facility: string; facilityLevel: string; role: string } {
-  const sessionUserId =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem(SESSION_STORAGE_KEY)
-      : null;
-  const user = sessionUserId ? findUserById(sessionUserId) : null;
+  const user = typeof window !== "undefined" ? getStoredAuthenticatedUser() : null;
   return {
     id: user?.id ?? "",
     name: user?.name ?? "Unknown",
@@ -84,13 +74,17 @@ function getCurrentUserSnapshot(): { id: string; name: string; facility: string;
 // The system holds one shared patient record — every facility can see every
 // patient and their full history, not just the ones they registered.
 export function usePatients(): Patient[] {
-  return useSyncExternalStore(
-    subscribeToPatients,
-    getPatientsSnapshot,
-    getServerPatientsSnapshot,
-  );
+  const { data } = useQuery({ queryKey: ["patients"], queryFn: fetchPatients });
+  return data ?? [];
 }
 
+// Still backed by the old local-storage system — useVisitsForPregnancy() and
+// useAllVisitsForPatient() below now use the real API, so a newly-recorded
+// visit won't appear here. There is no "all visits" backend endpoint (only
+// per-pregnancy), so useFollowUpPatients/useTodaysVisits/useRiskSummary/
+// useNotificationAlerts (which all depend on this hook) stay on the old
+// system too, same divergence Slice B accepted for usePregnancies(). See
+// docs/superpowers/plans/2026-07-23-frontend-visits-integration.md.
 export function useVisits(): Visit[] {
   return useSyncExternalStore(
     subscribeToVisits,
@@ -101,13 +95,32 @@ export function useVisits(): Visit[] {
 
 
 export function usePatient(patientId: string): Patient | undefined {
-  const patients = usePatients();
-  return useMemo(
-    () => patients.find((patient) => patient.id === patientId),
-    [patients, patientId],
-  );
+  const { data } = useQuery({
+    queryKey: ["patients", patientId],
+    queryFn: () => fetchPatient(patientId),
+    enabled: !!patientId,
+  });
+  return data;
 }
 
+// `usePatient()` returns `undefined` both while the fetch is in flight and when the
+// patient genuinely doesn't exist. Callers that render a not-found state (e.g. via
+// `notFound()`) must check this first, or every fresh navigation/reload false-404s
+// before the fetch resolves. Shares the query cache with `usePatient()` (same key),
+// so calling both in one component does not trigger a second request.
+export function usePatientIsLoading(patientId: string): boolean {
+  const { isLoading } = useQuery({
+    queryKey: ["patients", patientId],
+    queryFn: () => fetchPatient(patientId),
+    enabled: !!patientId,
+  });
+  return isLoading;
+}
+
+// NOTE: still backed by the old local-storage system — usePregnanciesForPatient()
+// below now uses the real API, so a newly-created pregnancy won't appear here
+// until a future slice migrates this hook (it also depends on visit data, out of
+// scope for this slice). See docs/superpowers/plans/2026-07-22-frontend-patients-pregnancies-integration.md.
 export function usePregnancies(): Pregnancy[] {
   return useSyncExternalStore(
     subscribeToPregnancies,
@@ -117,48 +130,40 @@ export function usePregnancies(): Pregnancy[] {
 }
 
 export function usePregnanciesForPatient(patientId: string): Pregnancy[] {
-  const pregnancies = usePregnancies();
-  return useMemo(
-    () =>
-      pregnancies
-        .filter((p) => p.patientId === patientId)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [pregnancies, patientId],
-  );
+  const { data } = useQuery({
+    queryKey: ["pregnancies", patientId],
+    queryFn: () => fetchPregnanciesForPatient(patientId),
+    enabled: !!patientId,
+  });
+  return data ?? [];
 }
 
 export function useVisitsForPregnancy(pregnancyId: string): Visit[] {
-  const visits = useVisits();
-  return useMemo(
-    () =>
-      visits
-        .filter((v) => v.pregnancyId === pregnancyId)
-        .sort((a, b) => {
-          const dateCompare = b.date.localeCompare(a.date);
-          if (dateCompare !== 0) return dateCompare;
-          const timeA = a.createdAt ?? "";
-          const timeB = b.createdAt ?? "";
-          return timeB.localeCompare(timeA);
-        }),
-    [visits, pregnancyId],
-  );
+  const { data } = useQuery({
+    queryKey: ["visits", "pregnancy", pregnancyId],
+    queryFn: () => fetchVisitsForPregnancy(pregnancyId),
+    enabled: !!pregnancyId,
+  });
+  return data ?? [];
 }
 
 export function useAllVisitsForPatient(patientId: string): Visit[] {
   const pregnancies = usePregnanciesForPatient(patientId);
-  const visits = useVisits();
+  const results = useQueries({
+    queries: pregnancies.map((p) => ({
+      queryKey: ["visits", "pregnancy", p.id],
+      queryFn: () => fetchVisitsForPregnancy(p.id),
+      enabled: !!p.id,
+    })),
+  });
   return useMemo(() => {
-    const pregnancyIds = new Set(pregnancies.map((p) => p.id));
-    return visits
-      .filter((v) => pregnancyIds.has(v.pregnancyId))
-      .sort((a, b) => {
-        const dateCompare = b.date.localeCompare(a.date);
-        if (dateCompare !== 0) return dateCompare;
-        const timeA = a.createdAt ?? "";
-        const timeB = b.createdAt ?? "";
-        return timeB.localeCompare(timeA);
-      });
-  }, [pregnancies, visits]);
+    const allVisits = results.flatMap((r) => r.data ?? []);
+    return allVisits.sort((a, b) => {
+      const dateCompare = b.date.localeCompare(a.date);
+      if (dateCompare !== 0) return dateCompare;
+      return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+    });
+  }, [results]);
 }
 
 export interface PatientLock {
@@ -204,6 +209,11 @@ export function usePatientLock(patientId: string): PatientLock {
 
     const latest = visits[0];
     if (!latest) return { locked: false, lockedByFacility: null };
+    // KNOWN GAP as of Slice C: labStatus is always undefined on real visits
+    // (see visit-api.ts's toFrontendVisit) since lab status lives in the
+    // backend's not-yet-migrated Lab Requests domain — so `inUse` can never
+    // be true for a real visit, and this cross-facility lock never engages.
+    // Deferred to a future Lab Requests integration slice, not fixed here.
     const inUse =
       latest.labStatus === "pending" ||
       latest.labStatus === "in_progress" ||
@@ -229,11 +239,8 @@ export function useLatestRiskLevel(patientId: string): RiskLevel {
 // for me" (the broadcast panel, notification alerts) already apply their
 // own facility/urgency filtering on top of this.
 export function useReferrals(): Referral[] {
-  return useSyncExternalStore(
-    subscribeToReferrals,
-    getReferralsSnapshot,
-    getServerReferralsSnapshot,
-  );
+  const { data } = useQuery({ queryKey: ["referrals"], queryFn: fetchReferrals });
+  return data ?? [];
 }
 
 // Scoped to the current facility — this drives a dashboard widget, not the
@@ -415,10 +422,10 @@ export const FACILITY_CAPACITY: Record<string, number> = {
 };
 export const DEFAULT_CAPACITY = 999;
 
-function getFacilityCapacitySnapshot(facility: string): FacilityCapacity {
+function getFacilityCapacitySnapshot(facility: string, referrals: Referral[]): FacilityCapacity {
   const overrides = getCapacityOverridesSnapshot();
   const max = overrides[facility] ?? FACILITY_CAPACITY[facility] ?? DEFAULT_CAPACITY;
-  const active = getReferralsSnapshot().filter(
+  const active = referrals.filter(
     (r) => r.status === "accepted" && r.acceptedByFacility === facility && r.urgency === "emergency",
   ).length;
   const remaining = max - active;
@@ -450,58 +457,47 @@ export function setFacilityMaxCapacity(facility: string, max: number) {
   setCapacityOverride(facility, max);
 }
 
-export function finalizeAssessment(visitId: string, treatment: string, followUpPlan: string) {
-  storageUpdateVisit(visitId, {
-    treatment,
-    followUpPlan,
-    assessmentFinalized: true,
-  });
+export async function finalizeAssessment(
+  visitId: string,
+  treatment: string,
+  followUpPlan: string,
+): Promise<void> {
+  const visit = await finalizeVisitApi(visitId, treatment, followUpPlan);
+  await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", visit.pregnancyId] });
 }
 
-function getOrCreateEmergencyReferral(patientId: string, reason: string): Referral {
-  const existing = getReferralsSnapshot().find(
+async function getOrCreateEmergencyReferral(patientId: string, reason: string): Promise<Referral> {
+  const existingReferrals = await fetchReferrals();
+  const existing = existingReferrals.find(
     (r) => r.patientId === patientId && (r.status === "pending" || r.status === "accepted"),
   );
   if (existing) return existing;
 
-  const { name, facility, facilityLevel } = getCurrentUserSnapshot();
-  const now = new Date().toISOString();
+  const openPregnancy = (await fetchPregnanciesForPatient(patientId)).find((p) => p.status === "open");
+  if (!openPregnancy) {
+    throw new Error("Cannot create an emergency referral: patient has no open pregnancy");
+  }
+
+  const { facility, facilityLevel } = getCurrentUserSnapshot();
   // A health center always escalates up. Anything already at district-hospital
   // level or above already has the capability to manage an obstetric
-  // emergency, so it self-accepts immediately instead of sitting pending.
+  // emergency, so it self-accepts immediately instead of sitting pending. The
+  // backend has no self-accept shortcut, so this is two real calls (create,
+  // then accept) rather than one local object construction — same net
+  // visible result (a referral that's already "accepted" by its own
+  // creating facility).
   const canHandleLocally = facilityLevel !== "hc";
+  const toFacilityName = canHandleLocally ? facility : (REFERRAL_ROUTING[facility] ?? DEFAULT_RECEIVING_FACILITY);
 
-  const referral: Referral = canHandleLocally
-    ? {
-        id: `referral-${crypto.randomUUID()}`,
-        patientId,
-        createdAt: now,
-        status: "accepted",
-        receivingFacility: facility,
-        reason,
-        urgency: "emergency",
-        referredByNurse: name,
-        referredByFacility: facility,
-        acceptedAt: now,
-        acceptedByNurse: name,
-        acceptedByFacility: facility,
-      }
-    : {
-        id: `referral-${crypto.randomUUID()}`,
-        patientId,
-        createdAt: now,
-        status: "pending",
-        receivingFacility: REFERRAL_ROUTING[facility] ?? DEFAULT_RECEIVING_FACILITY,
-        reason,
-        urgency: "emergency",
-        referredByNurse: name,
-        referredByFacility: facility,
-      };
-  addReferral(referral);
+  let referral = await createReferralApi(openPregnancy.id, toFacilityName, reason, "emergency");
+  if (canHandleLocally) {
+    referral = await acceptReferralApi(referral.id);
+  }
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
   return referral;
 }
 
-export function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Referral | null {
+export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Promise<Referral | null> {
   if (riskLevel !== "red") return null;
 
   const pregnancy = getPregnanciesSnapshot().find((p) => p.id === visit.pregnancyId);
@@ -516,63 +512,36 @@ export function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Ref
   return getOrCreateEmergencyReferral(pregnancy.patientId, reason);
 }
 
-export function acceptEmergencyReferral(referralId: string): Referral {
-  const referral = getReferralsSnapshot().find((r) => r.id === referralId);
-  if (!referral || referral.status !== "pending") {
-    throw new Error("Referral is not pending");
-  }
-  const { name, facility } = getCurrentUserSnapshot();
-  if (referral.urgency === "emergency" && getFacilityCapacitySnapshot(facility).status === "full") {
+export async function acceptReferral(referralId: string): Promise<Referral> {
+  const { facility } = getCurrentUserSnapshot();
+  const referrals = await fetchReferrals();
+  const referral = referrals.find((r) => r.id === referralId);
+  if (referral?.urgency === "emergency" && getFacilityCapacitySnapshot(facility, referrals).status === "full") {
     throw new Error("This facility has reached its emergency capacity. Choose another facility.");
   }
-  storageUpdateReferral(referralId, {
-    status: "accepted",
-    acceptedAt: new Date().toISOString(),
-    acceptedByNurse: name,
-    acceptedByFacility: facility,
-  });
-  return getReferralsSnapshot().find((r) => r.id === referralId)!;
+  const accepted = await acceptReferralApi(referralId);
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
+  return accepted;
 }
 
-export function closeReferral(
+export async function closeReferral(
   referralId: string,
   data: { outcome: ReferralOutcome; outcomeStatement: string; riskLevel: RiskLevel },
-): Referral {
-  const referral = getReferralsSnapshot().find((r) => r.id === referralId);
-  if (!referral || referral.status !== "accepted") {
-    throw new Error("Referral is not accepted");
-  }
-  storageUpdateReferral(referralId, {
-    status: "closed",
-    closedAt: new Date().toISOString(),
-    outcome: data.outcome,
-    outcomeStatement: data.outcomeStatement,
-  });
-
-  // Closing the case is also the moment the patient's risk color is updated
-  // to reflect how she is doing now, so the next visit starts from the right
-  // baseline instead of still showing red.
-  const latestVisit = latestVisitFor(
-    referral.patientId,
-    getPregnanciesSnapshot(),
-    getVisitsSnapshot(),
-  );
-  if (latestVisit) {
-    storageUpdateVisit(latestVisit.id, { riskLevel: data.riskLevel });
-  }
-
-  return getReferralsSnapshot().find((r) => r.id === referralId)!;
+): Promise<Referral> {
+  const closed = await closeReferralApi(referralId, data.outcome, data.outcomeStatement, data.riskLevel);
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
+  return closed;
 }
 
-export function createReferral(data: {
+export async function createReferral(data: {
   patientId: string;
   receivingFacility: string;
   reason: string;
   urgency: "routine" | "urgent" | "emergency";
-}): Referral {
+}): Promise<Referral> {
   if (data.urgency === "emergency") {
     // A patient can only have one active red case at a time.
-    const existing = getReferralsSnapshot().find(
+    const existing = (await fetchReferrals()).find(
       (r) =>
         r.patientId === data.patientId &&
         r.urgency === "emergency" &&
@@ -580,23 +549,12 @@ export function createReferral(data: {
     );
     if (existing) return existing;
   }
-  const { name, facility } = getCurrentUserSnapshot();
-  const now = new Date().toISOString();
-  // Pending, not self-accepted: this referral is being sent TO another
-  // facility, so it must wait for that facility to actually accept it —
-  // otherwise the receiving hospital never sees it as something to act on.
-  const referral: Referral = {
-    id: `referral-${crypto.randomUUID()}`,
-    patientId: data.patientId,
-    createdAt: now,
-    status: "pending",
-    receivingFacility: data.receivingFacility,
-    reason: data.reason,
-    urgency: data.urgency,
-    referredByNurse: name,
-    referredByFacility: facility,
-  };
-  addReferral(referral);
+  const openPregnancy = (await fetchPregnanciesForPatient(data.patientId)).find((p) => p.status === "open");
+  if (!openPregnancy) {
+    throw new Error("Cannot create a referral: patient has no open pregnancy");
+  }
+  const referral = await createReferralApi(openPregnancy.id, data.receivingFacility, data.reason, data.urgency);
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
   return referral;
 }
 
@@ -752,22 +710,15 @@ export function useRiskSummary(days?: number): RiskSummary {
   }, [patients, visits, pregnancies, days, activeEmergencyPatientIds]);
 }
 
-export function registerPatient(
+export async function registerPatient(
   data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">,
-): Patient {
-  const { name, facility } = getCurrentUserSnapshot();
-  const patient: Patient = {
-    ...data,
-    id: `patient-${crypto.randomUUID()}`,
-    registeredAt: new Date().toISOString().slice(0, 10),
-    registeredBy: name,
-    registrationFacility: facility,
-  };
-  addPatient(patient);
+): Promise<Patient> {
+  const patient = await createPatientApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["patients"] });
   return patient;
 }
 
-export function recordVisit(data: {
+export async function recordVisit(data: {
   pregnancyId: string;
   type: VisitType;
   ancNumber?: number;
@@ -779,45 +730,44 @@ export function recordVisit(data: {
   emergencySummary?: string;
   treatment?: string;
   followUpPlan?: string;
-}): Visit {
-  const { name, facility } = getCurrentUserSnapshot();
+}): Promise<Visit> {
+  // Local classification, unchanged — used below to decide whether to
+  // attempt the (see KNOWN GAP comment below) referral escalation, and by
+  // the lab-push block's labStatus check.
   const riskLevel = data.type === "emergency" ? "red" : classifyRiskLevel(data.symptomIds);
-  const visit: Visit = {
-    id: `visit-${crypto.randomUUID()}`,
-    pregnancyId: data.pregnancyId,
-    date: new Date().toISOString().slice(0, 10),
+
+  let visit = await createVisitApi(data.pregnancyId, {
     type: data.type,
     ancNumber: data.ancNumber,
     scheduledWeek: data.scheduledWeek,
-    hospital: facility,
-    attendingNurse: name,
     symptomIds: data.symptomIds,
     notes: data.notes,
-    riskLevel,
     labs: data.labs,
-    labStatus: data.labStatus,
     emergencySummary: data.emergencySummary,
-    treatment: data.treatment,
-    followUpPlan: data.followUpPlan,
-    assessmentFinalized: data.labStatus === "pending" ? false : true,
-    createdAt: new Date().toISOString(),
-  };
-  addVisit(visit);
+  });
 
-  if (visit.labStatus === "pending") {
-    // We need to resolve patient and pregnancy to push a full mock request
-    const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
-    if (pregnancy) {
-      const patient = getPatientsSnapshot().find((p) => p.id === pregnancy.patientId);
-      if (patient) {
-        // dynamic import of lab_requests to avoid circular issues
-        import("./lab-requests").then((m) => {
-          m.pushNewLabRequest(visit, patient, pregnancy);
-        });
-      }
-    }
+  // The backend only accepts treatment/followUpPlan via /finalize, not on
+  // create — the Assessment Wizard's non-lab path (labStatus undefined)
+  // collects them at create time, so finalize immediately to preserve that
+  // one-call UX. The lab-pending path never has them yet (finalize happens
+  // later, out of this slice's scope — see finalize-assessment-blocker.tsx).
+  if (data.labStatus !== "pending" && (data.treatment || data.followUpPlan)) {
+    visit = await finalizeVisitApi(visit.id, data.treatment ?? "", data.followUpPlan ?? "");
   }
 
+  await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", data.pregnancyId] });
+
+  if (data.labStatus === "pending") {
+    await createLabRequestApi(visit.id, data.type === "emergency" ? "Emergency" : "Normal", data.notes);
+  }
+
+  // KNOWN GAP (pre-existing since the 2026-07-22 patients/pregnancies slice,
+  // found during Slice C's verification, not introduced here): same cause as
+  // the lab-push block above — getPregnanciesSnapshot() never holds a real
+  // (API-created) pregnancy, so `pregnancy` is always undefined here and this
+  // RED-classification -> emergency-referral escalation never actually runs.
+  // Silently dead for every visit, not just ones migrated by this slice.
+  // Deferred to a future Referrals integration slice alongside gaps 1-3.
   if (riskLevel === "red") {
     const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
     if (pregnancy) {
@@ -832,42 +782,38 @@ export function recordVisit(data: {
   return visit;
 }
 
-export function createPregnancy(
+export async function createPregnancy(
   data: Omit<Pregnancy, "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "delivery">,
-): Pregnancy {
-  const existingForPatient = getPregnanciesSnapshot().filter(
-    (pregnancy) => pregnancy.patientId === data.patientId,
-  );
-  if (existingForPatient.some((p) => p.status === "open")) {
-    throw new Error("Patient already has an open pregnancy");
-  }
-
-  const pregnancy: Pregnancy = {
-    ...data,
-    id: `pregnancy-${crypto.randomUUID()}`,
-    pregnancyNumber: existingForPatient.length + 1,
-    eddDate: computeEdd(data.lmpDate),
-    status: "open",
-    createdAt: new Date().toISOString(),
-  };
-  addPregnancy(pregnancy);
+): Promise<Pregnancy> {
+  const pregnancy = await createPregnancyApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["pregnancies", data.patientId] });
   return pregnancy;
 }
 
-export function closePregnancy(
+export async function closePregnancy(
   pregnancyId: string,
   delivery: NonNullable<Pregnancy["delivery"]>,
-): void {
-  storageUpdatePregnancy(pregnancyId, { status: "closed", delivery });
+): Promise<void> {
+  const pregnancy = await closePregnancyApi(pregnancyId, delivery);
+  await queryClient.invalidateQueries({ queryKey: ["pregnancies", pregnancy.patientId] });
 }
 
-export function createEmergencyVisit(
+export async function createEmergencyVisit(
   patientId: string,
   dangerSignIds: string[],
   summary: string,
-): { pregnancy: Pregnancy; visit: Visit; referral: Referral } {
-  const existingOpen = getPregnanciesSnapshot().find(
-    (p) => p.patientId === patientId && p.status === "open",
+): Promise<{ pregnancy: Pregnancy; visit: Visit; referral: Referral }> {
+  // Was a KNOWN PRE-EXISTING BUG (documented during Slice C's verification):
+  // this used to read getPregnanciesSnapshot(), the old local-storage system,
+  // which never held real (API-created) pregnancies since Slice B — so
+  // `existingOpen` was always undefined for a patient with a real active
+  // pregnancy, and this always fell through to creating a duplicate
+  // pregnancy, which the backend correctly 409s on. Fixed here (Slice E) by
+  // reading the real pregnancy data instead, since fixing this is required
+  // for this slice's own goal (the Emergency Danger-Sign panel no longer
+  // 409ing) to actually work end-to-end.
+  const existingOpen = (await fetchPregnanciesForPatient(patientId)).find(
+    (p) => p.status === "open",
   );
 
   let pregnancy: Pregnancy;
@@ -875,7 +821,7 @@ export function createEmergencyVisit(
     pregnancy = existingOpen;
   } else {
     const today = new Date().toISOString().slice(0, 10);
-    pregnancy = createPregnancy({
+    pregnancy = await createPregnancy({
       patientId,
       gravidity: 1,
       parity: 0,
@@ -888,7 +834,7 @@ export function createEmergencyVisit(
     });
   }
 
-  const visit = recordVisit({
+  const visit = await recordVisit({
     pregnancyId: pregnancy.id,
     type: "emergency",
     symptomIds: dangerSignIds,
@@ -896,16 +842,17 @@ export function createEmergencyVisit(
     emergencySummary: summary,
   });
 
-  const referral = getOrCreateEmergencyReferral(patientId, summary);
+  const referral = await getOrCreateEmergencyReferral(patientId, summary);
 
   return { pregnancy, visit, referral };
 }
 
-export function updatePatient(
+export async function updatePatient(
   patientId: string,
   updates: Partial<Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">>,
-): void {
-  storageUpdatePatient(patientId, updates);
+): Promise<void> {
+  await updatePatientApi(patientId, updates);
+  await queryClient.invalidateQueries({ queryKey: ["patients"] });
 }
 
 export function useAcknowledgedAlerts(): AcknowledgedAlert[] {
@@ -1145,7 +1092,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
     }
 
     if (role === "hospital_admin" && currentUser.facility in FACILITY_CAPACITY) {
-      const facilityCapacity = getFacilityCapacitySnapshot(currentUser.facility);
+      const facilityCapacity = getFacilityCapacitySnapshot(currentUser.facility, referrals);
       if (facilityCapacity.status === "full") {
         alerts.push({
           id: `facility-full-${currentUser.facility}`,

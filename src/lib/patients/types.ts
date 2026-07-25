@@ -56,6 +56,32 @@ export interface LabTestResult {
   completedBy?: string;
 }
 
+export type LabPriority = "Normal" | "Urgent" | "Emergency";
+export type LabStatus = "Pending" | "In Progress" | "Completed";
+export type ResultInterpretation = "Normal" | "Abnormal" | "Critical";
+
+export interface LabRequest {
+  id: string; // Same as visit.id in the old local-storage model — now the LabRequest's own id
+  patientId: string;
+  patientName: string;
+  patientAge: number;
+  pregnancyNumber: number;
+  visitNumber: number;
+  gestationalAge: string;
+  requestDate: string;
+  requestingNurseId: string;
+  visitType: "Scheduled ANC" | "Unscheduled ANC" | "Emergency Visit";
+  priority: LabPriority;
+  status: LabStatus;
+  facility: string;
+  requestedInvestigatonNames: string[];
+  clinicalNotes: string;
+  allergies?: string;
+  results: LabTestResult[];
+  acceptedBy?: string;
+  acceptedAt?: string;
+}
+
 export type VisitType = "scheduled" | "unscheduled" | "emergency";
 
 export interface Visit {

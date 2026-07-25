@@ -1,17 +1,24 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { usePatient, usePregnanciesForPatient, useFollowUpAssignmentsForPatient } from "@/lib/patients/use-patients";
+import {
+  usePatient,
+  usePatientIsLoading,
+  usePregnanciesForPatient,
+  useFollowUpAssignmentsForPatient,
+} from "@/lib/patients/use-patients";
 import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { fullName, getInitials } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
 
 export function ChwPatientView({ patientId }: { patientId: string }) {
   const patient = usePatient(patientId);
+  const patientLoading = usePatientIsLoading(patientId);
   const pregnancies = usePregnanciesForPatient(patientId);
   const openPregnancy = pregnancies.find((p) => p.status === "open") ?? null;
   const assignments = useFollowUpAssignmentsForPatient(patientId);
 
+  if (patientLoading) return null;
   if (!patient) return notFound();
 
   return (
