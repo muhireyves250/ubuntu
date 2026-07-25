@@ -73,7 +73,7 @@ function AssignmentSection({
 export function ChwDashboardContent() {
   const { user } = useAuth();
   const patients = usePatients();
-  const assignments = useFollowUpAssignmentsForChw(user?.id ?? "");
+  const assignments = useFollowUpAssignmentsForChw();
 
   const patientNameOf = (patientId: string) => {
     const p = patients.find((pt) => pt.id === patientId);
