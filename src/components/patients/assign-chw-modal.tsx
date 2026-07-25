@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFollowUpAssignment } from "@/lib/patients/use-patients";
-import { findChwForFacility } from "@/lib/auth/user-directory";
+import { fetchChwForFacility } from "@/lib/patients/chw-assignment-api";
 import { IconClose } from "@/components/dashboard/icons";
 import { fullName } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
@@ -29,8 +29,24 @@ export function AssignChwModal({
   const [reason, setReason] = useState<FollowUpReason>(REASON_OPTIONS[0]);
   const [priority, setPriority] = useState<FollowUpPriority>("routine");
   const [dueDate, setDueDate] = useState(defaultDueDate());
+  const [chw, setChw] = useState<{ id: string; name: string } | undefined>(undefined);
+  const [chwLoading, setChwLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const chw = findChwForFacility(patient.registrationFacility);
+  useEffect(() => {
+    let cancelled = false;
+    fetchChwForFacility(patient.registrationFacility)
+      .then((result) => {
+        if (!cancelled) setChw(result);
+      })
+      .finally(() => {
+        if (!cancelled) setChwLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patient.registrationFacility]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -40,18 +56,24 @@ export function AssignChwModal({
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  function handleSubmit() {
-    if (!chw) return;
-    createFollowUpAssignment({
-      patientId: patient.id,
-      reason,
-      priority,
-      dueDate,
-      assignedToChwId: chw.id,
-      facility: chw.facility,
-    });
-    onCreated();
-    onClose();
+  async function handleSubmit() {
+    if (!chw || isSubmitting) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await createFollowUpAssignment({
+        patientId: patient.id,
+        reason,
+        priority,
+        dueDate,
+        assignedToChwId: chw.id,
+      });
+      onCreated();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to assign CHW. Please try again.");
+      setIsSubmitting(false);
+    }
   }
 
   return createPortal(
@@ -83,7 +105,7 @@ export function AssignChwModal({
           </div>
         </div>
 
-        {!chw ? (
+        {chwLoading ? null : !chw ? (
           <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
             No Community Health Worker is available at this facility yet.
           </div>
@@ -91,7 +113,6 @@ export function AssignChwModal({
           <div className="mt-4 flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
             <p className="text-xs text-zinc-400">
               Will be assigned to <span className="font-medium text-zinc-600 dark:text-zinc-300">{chw.name}</span>
-              {chw.village ? ` (${chw.village})` : ""}
             </p>
 
             <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -140,21 +161,28 @@ export function AssignChwModal({
               />
             </label>
 
+            {error && (
+              <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                {error}
+              </p>
+            )}
+
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                disabled={isSubmitting}
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={!dueDate}
+                disabled={!dueDate || isSubmitting}
                 onClick={handleSubmit}
                 className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Assign
+                {isSubmitting ? "Assigning…" : "Assign"}
               </button>
             </div>
           </div>
