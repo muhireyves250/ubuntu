@@ -8,6 +8,7 @@ import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } fro
 import { fetchVisitsForPregnancy, createVisitApi, finalizeVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
 import { fetchReferrals, createReferralApi, acceptReferralApi, closeReferralApi } from "./referral-api";
+import { fetchChwForFacility, createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
 import {
   addPregnancy,
   updatePregnancy as storageUpdatePregnancy,
@@ -27,10 +28,6 @@ import {
   getCapacityOverridesSnapshot,
   getServerCapacityOverridesSnapshot,
   setCapacityOverride,
-  subscribeToFollowUpAssignments,
-  getFollowUpAssignmentsSnapshot,
-  getServerFollowUpAssignmentsSnapshot,
-  addFollowUpAssignment,
 } from "./storage";
 import {
   subscribeToAcknowledged,
@@ -334,56 +331,33 @@ export function acknowledgeRecommendation(id: string): Recommendation {
   return getRecommendationsSnapshot().find((r) => r.id === id)!;
 }
 
-export function useFollowUpAssignments(): FollowUpAssignment[] {
-  return useSyncExternalStore(
-    subscribeToFollowUpAssignments,
-    getFollowUpAssignmentsSnapshot,
-    getServerFollowUpAssignmentsSnapshot,
-  );
-}
-
-export function useFollowUpAssignmentsForChw(chwId: string): FollowUpAssignment[] {
-  const assignments = useFollowUpAssignments();
-  return useMemo(
-    () => assignments.filter((a) => a.assignedToChwId === chwId),
-    [assignments, chwId],
-  );
+export function useFollowUpAssignmentsForChw(): FollowUpAssignment[] {
+  const { role } = getCurrentUserSnapshot();
+  const { data } = useQuery({
+    queryKey: ["chw-assignments", "mine"],
+    queryFn: fetchMyAssignments,
+    enabled: role === "chw",
+  });
+  return data ?? [];
 }
 
 export function useFollowUpAssignmentsForPatient(patientId: string): FollowUpAssignment[] {
-  const assignments = useFollowUpAssignments();
-  return useMemo(
-    () =>
-      assignments
-        .filter((a) => a.patientId === patientId)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [assignments, patientId],
-  );
+  const { data } = useQuery({
+    queryKey: ["chw-assignments", "patient", patientId],
+    queryFn: () => fetchAssignmentsForPatient(patientId),
+  });
+  return data ?? [];
 }
 
-export function createFollowUpAssignment(data: {
+export async function createFollowUpAssignment(data: {
   patientId: string;
   reason: FollowUpReason;
   priority: FollowUpPriority;
   dueDate: string;
   assignedToChwId: string;
-  facility: string;
-}): FollowUpAssignment {
-  const currentUser = getCurrentUserSnapshot();
-  const assignment: FollowUpAssignment = {
-    id: `followup-${crypto.randomUUID()}`,
-    patientId: data.patientId,
-    createdAt: new Date().toISOString(),
-    assignedByName: currentUser.name,
-    assignedByRole: currentUser.role as "nurse" | "gynecologist",
-    facility: data.facility,
-    assignedToChwId: data.assignedToChwId,
-    reason: data.reason,
-    priority: data.priority,
-    dueDate: data.dueDate,
-    status: "pending",
-  };
-  addFollowUpAssignment(assignment);
+}): Promise<FollowUpAssignment> {
+  const assignment = await createChwAssignmentApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["chw-assignments"] });
   return assignment;
 }
 
@@ -910,7 +884,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
     getServerRecommendationsSnapshot,
   );
   const currentUser = getCurrentUserSnapshot();
-  const followUpAssignments = useFollowUpAssignments();
+  const followUpAssignments = useFollowUpAssignmentsForChw();
 
   return useMemo(() => {
     const alerts: NotificationAlert[] = [];
@@ -1109,7 +1083,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
 
     if (role === "chw") {
       for (const assignment of followUpAssignments) {
-        if (assignment.assignedToChwId !== currentUser.id || assignment.status !== "pending") continue;
+        if (assignment.status !== "pending") continue;
         const patient = patients.find((p) => p.id === assignment.patientId);
         if (!patient) continue;
         const patientName = `${patient.firstName} ${patient.lastName}`;
