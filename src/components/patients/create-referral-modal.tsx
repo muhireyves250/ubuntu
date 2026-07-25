@@ -42,6 +42,8 @@ export function CreateReferralModal({
   const [receivingFacility, setReceivingFacility] = useState("");
   const [reason, setReason] = useState("");
   const [urgency, setUrgency] = useState<"routine" | "urgent" | "emergency">("urgent");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -51,15 +53,23 @@ export function CreateReferralModal({
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  function handleSubmit() {
-    createReferral({
-      patientId: patient.id,
-      receivingFacility,
-      reason: reason.trim(),
-      urgency,
-    });
-    onCreated();
-    onClose();
+  async function handleSubmit() {
+    if (isSubmitting) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await createReferral({
+        patientId: patient.id,
+        receivingFacility,
+        reason: reason.trim(),
+        urgency,
+      });
+      onCreated();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create referral. Please try again.");
+      setIsSubmitting(false);
+    }
   }
 
   return createPortal(
@@ -153,21 +163,28 @@ export function CreateReferralModal({
             </div>
           )}
 
+          {error && (
+            <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+              {error}
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+              disabled={isSubmitting}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
-              disabled={!receivingFacility || !reason.trim()}
+              disabled={!receivingFacility || !reason.trim() || isSubmitting}
               onClick={handleSubmit}
               className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Create Referral
+              {isSubmitting ? "Creating…" : "Create Referral"}
             </button>
           </div>
         </div>
