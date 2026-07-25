@@ -8,7 +8,7 @@ import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } fro
 import { fetchVisitsForPregnancy, createVisitApi, finalizeVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
 import { fetchReferrals, createReferralApi, acceptReferralApi, closeReferralApi } from "./referral-api";
-import { fetchChwForFacility, createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
+import { createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
 import {
   addPregnancy,
   updatePregnancy as storageUpdatePregnancy,
