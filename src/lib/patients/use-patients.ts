@@ -7,19 +7,15 @@ import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from 
 import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
 import { fetchVisitsForPregnancy, createVisitApi, finalizeVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
+import { fetchReferrals, createReferralApi, acceptReferralApi, closeReferralApi } from "./referral-api";
 import {
-  addReferral,
   addPregnancy,
   updatePregnancy as storageUpdatePregnancy,
-  updateReferral as storageUpdateReferral,
   updateVisit as storageUpdateVisit,
-  getReferralsSnapshot,
-  getServerReferralsSnapshot,
   getServerVisitsSnapshot,
   getServerPregnanciesSnapshot,
   getVisitsSnapshot,
   getPregnanciesSnapshot,
-  subscribeToReferrals,
   subscribeToVisits,
   subscribeToPregnancies,
   subscribeToRecommendations,
@@ -243,11 +239,8 @@ export function useLatestRiskLevel(patientId: string): RiskLevel {
 // for me" (the broadcast panel, notification alerts) already apply their
 // own facility/urgency filtering on top of this.
 export function useReferrals(): Referral[] {
-  return useSyncExternalStore(
-    subscribeToReferrals,
-    getReferralsSnapshot,
-    getServerReferralsSnapshot,
-  );
+  const { data } = useQuery({ queryKey: ["referrals"], queryFn: fetchReferrals });
+  return data ?? [];
 }
 
 // Scoped to the current facility — this drives a dashboard widget, not the
@@ -429,10 +422,10 @@ export const FACILITY_CAPACITY: Record<string, number> = {
 };
 export const DEFAULT_CAPACITY = 999;
 
-function getFacilityCapacitySnapshot(facility: string): FacilityCapacity {
+function getFacilityCapacitySnapshot(facility: string, referrals: Referral[]): FacilityCapacity {
   const overrides = getCapacityOverridesSnapshot();
   const max = overrides[facility] ?? FACILITY_CAPACITY[facility] ?? DEFAULT_CAPACITY;
-  const active = getReferralsSnapshot().filter(
+  const active = referrals.filter(
     (r) => r.status === "accepted" && r.acceptedByFacility === facility && r.urgency === "emergency",
   ).length;
   const remaining = max - active;
@@ -473,50 +466,38 @@ export async function finalizeAssessment(
   await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", visit.pregnancyId] });
 }
 
-function getOrCreateEmergencyReferral(patientId: string, reason: string): Referral {
-  const existing = getReferralsSnapshot().find(
+async function getOrCreateEmergencyReferral(patientId: string, reason: string): Promise<Referral> {
+  const existingReferrals = await fetchReferrals();
+  const existing = existingReferrals.find(
     (r) => r.patientId === patientId && (r.status === "pending" || r.status === "accepted"),
   );
   if (existing) return existing;
 
-  const { name, facility, facilityLevel } = getCurrentUserSnapshot();
-  const now = new Date().toISOString();
+  const openPregnancy = (await fetchPregnanciesForPatient(patientId)).find((p) => p.status === "open");
+  if (!openPregnancy) {
+    throw new Error("Cannot create an emergency referral: patient has no open pregnancy");
+  }
+
+  const { facility, facilityLevel } = getCurrentUserSnapshot();
   // A health center always escalates up. Anything already at district-hospital
   // level or above already has the capability to manage an obstetric
-  // emergency, so it self-accepts immediately instead of sitting pending.
+  // emergency, so it self-accepts immediately instead of sitting pending. The
+  // backend has no self-accept shortcut, so this is two real calls (create,
+  // then accept) rather than one local object construction — same net
+  // visible result (a referral that's already "accepted" by its own
+  // creating facility).
   const canHandleLocally = facilityLevel !== "hc";
+  const toFacilityName = canHandleLocally ? facility : (REFERRAL_ROUTING[facility] ?? DEFAULT_RECEIVING_FACILITY);
 
-  const referral: Referral = canHandleLocally
-    ? {
-        id: `referral-${crypto.randomUUID()}`,
-        patientId,
-        createdAt: now,
-        status: "accepted",
-        receivingFacility: facility,
-        reason,
-        urgency: "emergency",
-        referredByNurse: name,
-        referredByFacility: facility,
-        acceptedAt: now,
-        acceptedByNurse: name,
-        acceptedByFacility: facility,
-      }
-    : {
-        id: `referral-${crypto.randomUUID()}`,
-        patientId,
-        createdAt: now,
-        status: "pending",
-        receivingFacility: REFERRAL_ROUTING[facility] ?? DEFAULT_RECEIVING_FACILITY,
-        reason,
-        urgency: "emergency",
-        referredByNurse: name,
-        referredByFacility: facility,
-      };
-  addReferral(referral);
+  let referral = await createReferralApi(openPregnancy.id, toFacilityName, reason, "emergency");
+  if (canHandleLocally) {
+    referral = await acceptReferralApi(referral.id);
+  }
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
   return referral;
 }
 
-export function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Referral | null {
+export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Promise<Referral | null> {
   if (riskLevel !== "red") return null;
 
   const pregnancy = getPregnanciesSnapshot().find((p) => p.id === visit.pregnancyId);
@@ -531,63 +512,36 @@ export function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Ref
   return getOrCreateEmergencyReferral(pregnancy.patientId, reason);
 }
 
-export function acceptEmergencyReferral(referralId: string): Referral {
-  const referral = getReferralsSnapshot().find((r) => r.id === referralId);
-  if (!referral || referral.status !== "pending") {
-    throw new Error("Referral is not pending");
-  }
-  const { name, facility } = getCurrentUserSnapshot();
-  if (referral.urgency === "emergency" && getFacilityCapacitySnapshot(facility).status === "full") {
+export async function acceptReferral(referralId: string): Promise<Referral> {
+  const { facility } = getCurrentUserSnapshot();
+  const referrals = await fetchReferrals();
+  const referral = referrals.find((r) => r.id === referralId);
+  if (referral?.urgency === "emergency" && getFacilityCapacitySnapshot(facility, referrals).status === "full") {
     throw new Error("This facility has reached its emergency capacity. Choose another facility.");
   }
-  storageUpdateReferral(referralId, {
-    status: "accepted",
-    acceptedAt: new Date().toISOString(),
-    acceptedByNurse: name,
-    acceptedByFacility: facility,
-  });
-  return getReferralsSnapshot().find((r) => r.id === referralId)!;
+  const accepted = await acceptReferralApi(referralId);
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
+  return accepted;
 }
 
-export function closeReferral(
+export async function closeReferral(
   referralId: string,
   data: { outcome: ReferralOutcome; outcomeStatement: string; riskLevel: RiskLevel },
-): Referral {
-  const referral = getReferralsSnapshot().find((r) => r.id === referralId);
-  if (!referral || referral.status !== "accepted") {
-    throw new Error("Referral is not accepted");
-  }
-  storageUpdateReferral(referralId, {
-    status: "closed",
-    closedAt: new Date().toISOString(),
-    outcome: data.outcome,
-    outcomeStatement: data.outcomeStatement,
-  });
-
-  // Closing the case is also the moment the patient's risk color is updated
-  // to reflect how she is doing now, so the next visit starts from the right
-  // baseline instead of still showing red.
-  const latestVisit = latestVisitFor(
-    referral.patientId,
-    getPregnanciesSnapshot(),
-    getVisitsSnapshot(),
-  );
-  if (latestVisit) {
-    storageUpdateVisit(latestVisit.id, { riskLevel: data.riskLevel });
-  }
-
-  return getReferralsSnapshot().find((r) => r.id === referralId)!;
+): Promise<Referral> {
+  const closed = await closeReferralApi(referralId, data.outcome, data.outcomeStatement, data.riskLevel);
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
+  return closed;
 }
 
-export function createReferral(data: {
+export async function createReferral(data: {
   patientId: string;
   receivingFacility: string;
   reason: string;
   urgency: "routine" | "urgent" | "emergency";
-}): Referral {
+}): Promise<Referral> {
   if (data.urgency === "emergency") {
     // A patient can only have one active red case at a time.
-    const existing = getReferralsSnapshot().find(
+    const existing = (await fetchReferrals()).find(
       (r) =>
         r.patientId === data.patientId &&
         r.urgency === "emergency" &&
@@ -595,23 +549,12 @@ export function createReferral(data: {
     );
     if (existing) return existing;
   }
-  const { name, facility } = getCurrentUserSnapshot();
-  const now = new Date().toISOString();
-  // Pending, not self-accepted: this referral is being sent TO another
-  // facility, so it must wait for that facility to actually accept it —
-  // otherwise the receiving hospital never sees it as something to act on.
-  const referral: Referral = {
-    id: `referral-${crypto.randomUUID()}`,
-    patientId: data.patientId,
-    createdAt: now,
-    status: "pending",
-    receivingFacility: data.receivingFacility,
-    reason: data.reason,
-    urgency: data.urgency,
-    referredByNurse: name,
-    referredByFacility: facility,
-  };
-  addReferral(referral);
+  const openPregnancy = (await fetchPregnanciesForPatient(data.patientId)).find((p) => p.status === "open");
+  if (!openPregnancy) {
+    throw new Error("Cannot create a referral: patient has no open pregnancy");
+  }
+  const referral = await createReferralApi(openPregnancy.id, data.receivingFacility, data.reason, data.urgency);
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
   return referral;
 }
 
@@ -860,16 +803,17 @@ export async function createEmergencyVisit(
   dangerSignIds: string[],
   summary: string,
 ): Promise<{ pregnancy: Pregnancy; visit: Visit; referral: Referral }> {
-  // KNOWN PRE-EXISTING BUG (predates this slice, found during Slice C's
-  // verification): this reads getPregnanciesSnapshot(), the old local-storage
-  // system — real pregnancies (created via the API since Slice B) are never
-  // written there, so `existingOpen` is always undefined for a patient with a
-  // real active pregnancy, and the emergency flow below always falls through
-  // to creating a new pregnancy, which the backend correctly 409s on since
-  // one already exists. Currently live-broken for essentially every patient.
-  // Not fixed here — introduced by the 2026-07-22 patients/pregnancies slice.
-  const existingOpen = getPregnanciesSnapshot().find(
-    (p) => p.patientId === patientId && p.status === "open",
+  // Was a KNOWN PRE-EXISTING BUG (documented during Slice C's verification):
+  // this used to read getPregnanciesSnapshot(), the old local-storage system,
+  // which never held real (API-created) pregnancies since Slice B — so
+  // `existingOpen` was always undefined for a patient with a real active
+  // pregnancy, and this always fell through to creating a duplicate
+  // pregnancy, which the backend correctly 409s on. Fixed here (Slice E) by
+  // reading the real pregnancy data instead, since fixing this is required
+  // for this slice's own goal (the Emergency Danger-Sign panel no longer
+  // 409ing) to actually work end-to-end.
+  const existingOpen = (await fetchPregnanciesForPatient(patientId)).find(
+    (p) => p.status === "open",
   );
 
   let pregnancy: Pregnancy;
@@ -898,7 +842,7 @@ export async function createEmergencyVisit(
     emergencySummary: summary,
   });
 
-  const referral = getOrCreateEmergencyReferral(patientId, summary);
+  const referral = await getOrCreateEmergencyReferral(patientId, summary);
 
   return { pregnancy, visit, referral };
 }
@@ -1148,7 +1092,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
     }
 
     if (role === "hospital_admin" && currentUser.facility in FACILITY_CAPACITY) {
-      const facilityCapacity = getFacilityCapacitySnapshot(currentUser.facility);
+      const facilityCapacity = getFacilityCapacitySnapshot(currentUser.facility, referrals);
       if (facilityCapacity.status === "full") {
         alerts.push({
           id: `facility-full-${currentUser.facility}`,
