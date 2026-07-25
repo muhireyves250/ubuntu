@@ -146,7 +146,11 @@ function AssessmentSummaryStep({
       // escalateVisitIfCritical writes to the shared store and notifies other
       // subscribed components (e.g. Topbar) — that must happen after commit,
       // not during this component's render, so it belongs in an effect.
-      setEscalation(escalateVisitIfCritical(visit, pred.riskLevel));
+      escalateVisitIfCritical(visit, pred.riskLevel)
+        .then(setEscalation)
+        .catch((err) => {
+          console.error("Failed to escalate critical visit to an emergency referral:", err);
+        });
     }
   }, [pred.riskLevel, visit]);
 
