@@ -42,6 +42,8 @@ export function CloseReferralModal({
   const [outcomeStatement, setOutcomeStatement] = useState("");
   const [riskLevel, setRiskLevel] = useState<RiskLevel>("green");
   const [nextFacility, setNextFacility] = useState(ANY_CAPABLE_FACILITY);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isReferringOnward = outcome === "referred";
 
   useEffect(() => {
@@ -52,18 +54,26 @@ export function CloseReferralModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    closeReferral(referral.id, { outcome, outcomeStatement, riskLevel });
-    if (isReferringOnward && nextFacility) {
-      createReferral({
-        patientId: referral.patientId,
-        receivingFacility: nextFacility,
-        reason: outcomeStatement.trim() || "Condition did not improve — escalating to a higher-level facility.",
-        urgency: "emergency",
-      });
+    if (isSubmitting) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await closeReferral(referral.id, { outcome, outcomeStatement, riskLevel });
+      if (isReferringOnward && nextFacility) {
+        await createReferral({
+          patientId: referral.patientId,
+          receivingFacility: nextFacility,
+          reason: outcomeStatement.trim() || "Condition did not improve — escalating to a higher-level facility.",
+          urgency: "emergency",
+        });
+      }
+      onClosed();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to close referral. Please try again.");
+      setIsSubmitting(false);
     }
-    onClosed();
   }
 
   return (
@@ -134,14 +144,20 @@ export function CloseReferralModal({
             </div>
           )}
 
+          {error && (
+            <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+              {error}
+            </p>
+          )}
+
           <div className="mt-2 grid grid-cols-2 gap-2.5">
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">Cancel</button>
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
             <button
               type="submit"
-              disabled={isReferringOnward && !nextFacility}
+              disabled={(isReferringOnward && !nextFacility) || isSubmitting}
               className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isReferringOnward ? "Close & Refer Onward" : "Close Case"}
+              {isSubmitting ? "Closing…" : isReferringOnward ? "Close & Refer Onward" : "Close Case"}
             </button>
           </div>
         </form>

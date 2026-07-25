@@ -24,6 +24,8 @@ export function SignsSymptomsTab({
   const [bpDiastolic, setBpDiastolic] = useState("");
   const [temperature, setTemperature] = useState("");
   const [manualCheckedIds, setManualCheckedIds] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isVeryHighBp =
     Number(bpSystolic) >= VERY_HIGH_BP_SYSTOLIC || Number(bpDiastolic) >= VERY_HIGH_BP_DIASTOLIC;
@@ -41,19 +43,28 @@ export function SignsSymptomsTab({
     );
   }
 
-  function handleFlagEmergency() {
-    const summaryParts = activeDangerSignIds.map((id) => {
-      if (id === "very-high-bp") {
-        return `Very high blood pressure (${bpSystolic}/${bpDiastolic})`;
-      }
-      if (id === "high-fever") {
-        return `High fever (${temperature}°C)`;
-      }
-      return DANGER_SIGN_LABEL.get(id) ?? id;
-    });
-    const summary = summaryParts.join("; ");
-    const result = createEmergencyVisit(patientId, activeDangerSignIds, summary);
-    onFlagged(result);
+  async function handleFlagEmergency() {
+    if (isSubmitting) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const summaryParts = activeDangerSignIds.map((id) => {
+        if (id === "very-high-bp") {
+          return `Very high blood pressure (${bpSystolic}/${bpDiastolic})`;
+        }
+        if (id === "high-fever") {
+          return `High fever (${temperature}°C)`;
+        }
+        return DANGER_SIGN_LABEL.get(id) ?? id;
+      });
+      const summary = summaryParts.join("; ");
+      const result = await createEmergencyVisit(patientId, activeDangerSignIds, summary);
+      onFlagged(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to flag emergency. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -196,14 +207,20 @@ export function SignsSymptomsTab({
             </div>
           </div>
 
+          {error && (
+            <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+              {error}
+            </p>
+          )}
+
           <button
             type="button"
-            disabled={activeDangerSignIds.length === 0}
+            disabled={activeDangerSignIds.length === 0 || isSubmitting}
             onClick={handleFlagEmergency}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3.5 font-semibold text-white shadow-sm transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <IconAlert className="h-4.5 w-4.5" />
-            Flag Emergency
+            {isSubmitting ? "Flagging…" : "Flag Emergency"}
           </button>
         </div>
       </div>

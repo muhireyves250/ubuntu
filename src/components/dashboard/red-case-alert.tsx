@@ -7,7 +7,7 @@ import {
   useVisits,
   usePregnancies,
   useReferrals,
-  acceptEmergencyReferral,
+  acceptReferral,
   useFacilityCapacity,
 } from "@/lib/patients/use-patients";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -221,9 +221,9 @@ export function RedCaseAlertPanel() {
           description={`${fullName(pendingAccept.patient)} will be assigned to you and marked as an accepted referral.`}
           confirmLabel="Accept"
           tone="danger"
-          onConfirm={() => {
+          onConfirm={async () => {
             try {
-              acceptEmergencyReferral(pendingAccept.referral.id);
+              await acceptReferral(pendingAccept.referral.id);
               setPendingAcceptId(null);
               router.push(`/dashboard/nurse/patients/${pendingAccept.patient.id}`);
             } catch (err) {

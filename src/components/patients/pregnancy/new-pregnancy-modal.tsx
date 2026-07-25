@@ -24,6 +24,7 @@ export function NewPregnancyModal({
   const [lmpDate, setLmpDate] = useState("");
   const [startDate, setStartDate] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -41,11 +42,12 @@ export function NewPregnancyModal({
     if (!startDate) setStartDate(value);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setIsSubmitting(true);
     try {
-      const pregnancy = createPregnancy({
+      const pregnancy = await createPregnancy({
         patientId,
         gravidity: Number(gravidity),
         parity: Number(parity),
@@ -61,6 +63,8 @@ export function NewPregnancyModal({
       setError(
         err instanceof Error ? err.message : "Could not create pregnancy",
       );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -214,9 +218,10 @@ export function NewPregnancyModal({
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800"
+              disabled={isSubmitting}
+              className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Create Pregnancy
+              {isSubmitting ? "Creating…" : "Create Pregnancy"}
             </button>
           </div>
         </form>

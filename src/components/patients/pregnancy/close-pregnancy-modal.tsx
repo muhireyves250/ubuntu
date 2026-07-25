@@ -21,6 +21,8 @@ export function ClosePregnancyModal({
   const [birthWeightKg, setBirthWeightKg] = useState("");
   const [motherCondition, setMotherCondition] = useState("");
   const [summary, setSummary] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -30,18 +32,28 @@ export function ClosePregnancyModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    closePregnancy(pregnancy.id, {
-      outcome,
-      date,
-      method,
-      babyStatus,
-      birthWeightKg: Number(birthWeightKg),
-      motherCondition,
-      summary,
-    });
-    onClosed();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await closePregnancy(pregnancy.id, {
+        outcome,
+        date,
+        method,
+        babyStatus,
+        birthWeightKg: Number(birthWeightKg),
+        motherCondition,
+        summary,
+      });
+      onClosed();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not close pregnancy",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -55,6 +67,11 @@ export function ClosePregnancyModal({
           </button>
         </div>
         <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-400">
+              {error}
+            </p>
+          )}
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Delivery outcome
             <select value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)} className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50">
@@ -96,7 +113,7 @@ export function ClosePregnancyModal({
           </label>
           <div className="mt-2 grid grid-cols-2 gap-2.5">
             <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800">Cancel</button>
-            <button type="submit" className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800">Close Pregnancy</button>
+            <button type="submit" disabled={isSubmitting} className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Closing…" : "Close Pregnancy"}</button>
           </div>
         </form>
       </div>

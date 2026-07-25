@@ -7,11 +7,26 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react";
-import { DEMO_USERS, findDemoUserByRole } from "./demo-users";
-import { findUserById, type DirectoryUser } from "./user-directory";
-import type { Role } from "./types";
+import { apiFetch, ApiError } from "@/lib/api/client";
+import { mapBackendRole, mapBackendFacilityLevel, titleForRole } from "./role-mapping";
+import type { FacilityLevel, Role } from "./types";
 
-const SESSION_STORAGE_KEY = "ubuntumed.session";
+const AUTH_STORAGE_KEY = "ubuntumed.auth";
+
+export interface AuthenticatedUser {
+  id: string;
+  username: string;
+  name: string;
+  title: string;
+  facility: string;
+  facilityLevel: FacilityLevel;
+  role: Role;
+}
+
+interface StoredAuth {
+  accessToken: string;
+  user: AuthenticatedUser;
+}
 
 const listeners = new Set<() => void>();
 
@@ -24,8 +39,18 @@ function subscribeToSession(onChange: () => void) {
   return () => listeners.delete(onChange);
 }
 
+function readStoredAuth(): StoredAuth | null {
+  const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as StoredAuth;
+  } catch {
+    return null;
+  }
+}
+
 function getSessionSnapshot(): string | null {
-  return window.localStorage.getItem(SESSION_STORAGE_KEY);
+  return window.localStorage.getItem(AUTH_STORAGE_KEY);
 }
 
 function getServerSessionSnapshot(): string | null {
@@ -44,18 +69,19 @@ function getIsClientServerSnapshot() {
   return false;
 }
 
+export type LoginResult = "ok" | "invalid" | "network_error";
+
 interface AuthContextValue {
-  user: DirectoryUser | null;
+  user: AuthenticatedUser | null;
   isHydrated: boolean;
-  login: (userId: string, password: string) => "ok" | "invalid" | "suspended";
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
-  switchRole: (role: Role) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const sessionUserId = useSyncExternalStore(
+  const rawStored = useSyncExternalStore(
     subscribeToSession,
     getSessionSnapshot,
     getServerSessionSnapshot,
@@ -67,38 +93,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const user = useMemo(() => {
-    if (!sessionUserId) return null;
-    const candidate = findUserById(sessionUserId);
-    if (!candidate || candidate.status === "suspended") return null;
-    return candidate;
-  }, [sessionUserId]);
+    if (!rawStored) return null;
+    const parsed = readStoredAuth();
+    return parsed?.user ?? null;
+  }, [rawStored]);
 
-  const login = useCallback((userId: string, password: string): "ok" | "invalid" | "suspended" => {
-    const candidate = findUserById(userId);
-    if (!candidate) return "invalid";
-    if (candidate.status === "suspended") return "suspended";
-    if (candidate.password !== password) return "invalid";
-    window.localStorage.setItem(SESSION_STORAGE_KEY, candidate.id);
-    emitSessionChange();
-    return "ok";
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
+    const normalizedEmail = email.trim().toLowerCase();
+    try {
+      const response = await apiFetch<{
+        accessToken: string;
+        user: {
+          id: string;
+          email: string;
+          firstName: string;
+          lastName: string;
+          role: string;
+          facility: { id: string; name: string; type: string; district: string } | null;
+        };
+      }>("/auth/login", { method: "POST", body: { email: normalizedEmail, password } });
+
+      const role = mapBackendRole(response.user.role);
+      const authUser: AuthenticatedUser = {
+        id: response.user.id,
+        username: response.user.email.split("@")[0],
+        name: `${response.user.firstName} ${response.user.lastName}`,
+        title: titleForRole(role),
+        facility: response.user.facility?.name ?? "",
+        facilityLevel: mapBackendFacilityLevel(response.user.facility?.type ?? "PRIMARY"),
+        role,
+      };
+
+      const stored: StoredAuth = { accessToken: response.accessToken, user: authUser };
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(stored));
+      emitSessionChange();
+      return "ok";
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 401) return "invalid";
+      return "network_error";
+    }
   }, []);
 
   const logout = useCallback(() => {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    emitSessionChange();
-  }, []);
-
-  const switchRole = useCallback((role: Role) => {
-    const nextUser = findDemoUserByRole(role);
-    if (!nextUser) return;
-    window.localStorage.setItem(SESSION_STORAGE_KEY, nextUser.id);
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
     emitSessionChange();
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{ user, isHydrated, login, logout, switchRole }}
-    >
+    <AuthContext.Provider value={{ user, isHydrated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -110,4 +152,10 @@ export function useAuth(): AuthContextValue {
   return context;
 }
 
-export { DEMO_USERS };
+export function getStoredAccessToken(): string | null {
+  return readStoredAuth()?.accessToken ?? null;
+}
+
+export function getStoredAuthenticatedUser(): AuthenticatedUser | null {
+  return readStoredAuth()?.user ?? null;
+}
