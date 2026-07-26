@@ -135,8 +135,8 @@ export function ActiveReferralBlocker({
           />
           <StatusChip
             icon={<IconBuilding className="h-3.5 w-3.5" />}
-            label={isPending ? "Referred to" : "Being managed by"}
-            value={isPending ? referral.receivingFacility : referral.acceptedByFacility}
+            label={isPending ? "Visibility" : "Being managed by"}
+            value={isPending ? "All capable facilities" : referral.acceptedByFacility}
           />
           {isPending ? (
             <StatusChip
@@ -209,7 +209,7 @@ export function ActiveReferralBanner({
           </p>
           <p className="text-xs text-red-700/80 dark:text-red-400/80">
             {isPending
-              ? `Referred to ${referral.receivingFacility} · opened ${relativeTime(referral.createdAt)}`
+              ? `Broadcast to all capable facilities · opened ${relativeTime(referral.createdAt)}`
               : `Managed by ${referral.acceptedByFacility} · accepted by ${referral.acceptedByNurse} · opened ${relativeTime(referral.createdAt)}`}
           </p>
         </div>
