@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
@@ -23,13 +23,8 @@ import {
   respondToRecommendationApi,
   acknowledgeRecommendationApi,
 } from "./recommendation-api";
-import {
-  subscribeToAcknowledged,
-  getAcknowledgedSnapshot,
-  getServerAcknowledgedSnapshot,
-  acknowledgeAlert as storageAcknowledgeAlert,
-  type AcknowledgedAlert,
-} from "./alerts-storage";
+import { type AcknowledgedAlert } from "./alerts-storage";
+import { fetchAcknowledgments, acknowledgePatientApi } from "./patient-acknowledgment-api";
 import { classifyRiskLevel } from "./symptom-checklist";
 import { computeEdd, matchScheduledVisit } from "./pregnancy";
 import { getStoredAuthenticatedUser } from "../auth/auth-context";
@@ -781,11 +776,8 @@ export async function updatePatient(
 }
 
 export function useAcknowledgedAlerts(): AcknowledgedAlert[] {
-  return useSyncExternalStore(
-    subscribeToAcknowledged,
-    getAcknowledgedSnapshot,
-    getServerAcknowledgedSnapshot,
-  );
+  const { data } = useQuery({ queryKey: ["acknowledgments"], queryFn: fetchAcknowledgments });
+  return data ?? [];
 }
 
 export function useUnacknowledgedCount(): number {
@@ -798,8 +790,9 @@ export function useUnacknowledgedCount(): number {
   return followUps.filter((f) => !ackIds.has(f.patient.id)).length;
 }
 
-export function acknowledgeAlert(patientId: string, note: string): void {
-  storageAcknowledgeAlert(patientId, note);
+export async function acknowledgeAlert(patientId: string, note: string): Promise<void> {
+  await acknowledgePatientApi(patientId, note);
+  await queryClient.invalidateQueries({ queryKey: ["acknowledgments"] });
 }
 
 export interface NotificationAlert {
