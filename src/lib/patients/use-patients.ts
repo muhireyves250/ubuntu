@@ -802,6 +802,7 @@ export interface NotificationAlert {
     | "lab_completed"
     | "referral_pending"
     | "referral_accepted"
+    | "referral_accepted_elsewhere"
     | "recommendation_open"
     | "recommendation_responded"
     | "risk_pregnancy"
@@ -965,6 +966,40 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
+    // Broadcast emergency referrals are visible to every capable facility
+    // (matching red-case-alert.tsx's RedCaseAlertPanel exactly — everyone
+    // except hospital_admin/chw, excluding health centers and the referring
+    // facility itself). Once one facility accepts, the others who were
+    // watching it need to know it's been taken, not just see it silently
+    // vanish from their pending list.
+    if (role !== "hospital_admin" && role !== "chw") {
+      for (const referral of referrals) {
+        if (
+          referral.status !== "accepted" ||
+          referral.urgency !== "emergency" ||
+          currentUser.facilityLevel === "hc" ||
+          referral.referredByFacility === currentUser.facility ||
+          referral.acceptedByFacility === currentUser.facility
+        ) {
+          continue;
+        }
+        const patient = patients.find((p) => p.id === referral.patientId);
+        if (!patient) continue;
+        const patientName = `${patient.firstName} ${patient.lastName}`;
+
+        alerts.push({
+          id: `referral-accepted-elsewhere-${referral.id}`,
+          type: "referral_accepted_elsewhere",
+          patientId: patient.id,
+          patientName,
+          title: "Emergency Case Accepted Elsewhere",
+          message: `${referral.acceptedByFacility} accepted the emergency referral for ${patientName}.`,
+          date: (referral.acceptedAt ?? referral.createdAt).slice(0, 10),
+          priority: "Emergency",
+        });
+      }
+    }
+
     if (role === "nurse") {
       for (const rec of recommendations) {
         if (rec.status !== "open") continue;
@@ -1047,6 +1082,6 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       if (a.priority !== "Emergency" && b.priority === "Emergency") return 1;
       return b.date.localeCompare(a.date);
     });
-  }, [visits, patients, pregnancies, referrals, recommendations, facilities, followUpAssignments, role, currentUser.facility, currentUser.name, currentUser.id]);
+  }, [visits, patients, pregnancies, referrals, recommendations, facilities, followUpAssignments, role, currentUser.facility, currentUser.facilityLevel, currentUser.name, currentUser.id]);
 }
 
