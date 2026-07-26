@@ -16,10 +16,12 @@ type Filter = "all" | "unacknowledged" | "acknowledged";
 
 function AcknowledgeModal({
   patientName,
+  isSubmitting,
   onConfirm,
   onCancel,
 }: {
   patientName: string;
+  isSubmitting: boolean;
   onConfirm: (note: string) => void;
   onCancel: () => void;
 }) {
@@ -56,16 +58,18 @@ function AcknowledgeModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+            disabled={isSubmitting}
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={() => onConfirm(note)}
-            className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-800"
+            disabled={isSubmitting}
+            className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Acknowledge
+            {isSubmitting ? "Acknowledging…" : "Acknowledge"}
           </button>
         </div>
       </div>
@@ -78,6 +82,8 @@ function ActiveAlertsContent() {
   const acknowledged = useAcknowledgedAlerts();
   const [filter, setFilter] = useState<Filter>("all");
   const [ackTarget, setAckTarget] = useState<string | null>(null);
+  const [ackError, setAckError] = useState<string | null>(null);
+  const [isAcking, setIsAcking] = useState(false);
 
   const ackMap = new Map(acknowledged.map((a) => [a.patientId, a]));
 
@@ -103,9 +109,17 @@ function ActiveAlertsContent() {
       {ackTarget && ackTargetPatient && (
         <AcknowledgeModal
           patientName={fullName(ackTargetPatient.patient)}
-          onConfirm={(note) => {
-            acknowledgeAlert(ackTarget, note);
-            setAckTarget(null);
+          isSubmitting={isAcking}
+          onConfirm={async (note) => {
+            setIsAcking(true);
+            try {
+              await acknowledgeAlert(ackTarget, note);
+              setAckTarget(null);
+            } catch (err) {
+              setAckError(err instanceof Error ? err.message : "Failed to acknowledge. Please try again.");
+            } finally {
+              setIsAcking(false);
+            }
           }}
           onCancel={() => setAckTarget(null)}
         />
@@ -119,6 +133,12 @@ function ActiveAlertsContent() {
           {unackedCount} unacknowledged
         </span>
       </div>
+
+      {ackError && (
+        <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+          {ackError}
+        </p>
+      )}
 
       <div className="flex w-fit gap-1 rounded-full border border-zinc-300 bg-[#ffeedb] p-1 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         {TABS.map((tab) => (
