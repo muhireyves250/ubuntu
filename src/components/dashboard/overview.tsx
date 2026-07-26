@@ -6,7 +6,7 @@ import { ROLE_OVERVIEW_COPY } from "@/lib/dashboard/role-copy";
 import {
   useRiskSummary,
   useFacilityCapacity,
-  FACILITY_CAPACITY,
+  DEFAULT_CAPACITY,
   setFacilityMaxCapacity,
   useReferrals,
 } from "@/lib/patients/use-patients";
@@ -34,7 +34,7 @@ export function DashboardOverview() {
   const [isEditingCapacity, setIsEditingCapacity] = useState(false);
   if (!user) return null;
 
-  const hasCapacityConfig = user.facility in FACILITY_CAPACITY;
+  const hasCapacityConfig = capacity.max !== DEFAULT_CAPACITY;
   const isHospitalAdmin = user.role === "hospital_admin";
 
   const referralCounts = {
@@ -115,11 +115,11 @@ export function DashboardOverview() {
             isEditingCapacity ? (
               <form
                 className="flex items-center gap-1.5"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   const parsed = Number(capacityDraft);
                   if (Number.isFinite(parsed) && parsed >= 0) {
-                    setFacilityMaxCapacity(user.facility, parsed);
+                    await setFacilityMaxCapacity(parsed);
                     setIsEditingCapacity(false);
                   }
                 }}
