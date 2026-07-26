@@ -24,19 +24,50 @@ export function SpecialistNotesTab({
   const [showAddForm, setShowAddForm] = useState(false);
   const [message, setMessage] = useState("");
   const [responseDrafts, setResponseDrafts] = useState<Record<string, string>>({});
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
-  function handleAdd() {
-    if (!message.trim()) return;
-    createRecommendation(patientId, message.trim(), currentRiskLevel);
-    setMessage("");
-    setShowAddForm(false);
+  function isPending(id: string) {
+    return pendingIds.has(id);
   }
 
-  function handleRespond(id: string) {
+  async function withPending(id: string, action: () => Promise<unknown>) {
+    setError(null);
+    setPendingIds((prev) => new Set(prev).add(id));
+    try {
+      await action();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setPendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
+  async function handleAdd() {
+    if (!message.trim() || isPending("add")) return;
+    await withPending("add", async () => {
+      await createRecommendation(patientId, message.trim(), currentRiskLevel);
+      setMessage("");
+      setShowAddForm(false);
+    });
+  }
+
+  async function handleRespond(id: string) {
     const response = responseDrafts[id]?.trim();
-    if (!response) return;
-    respondToRecommendation(id, response);
-    setResponseDrafts((prev) => ({ ...prev, [id]: "" }));
+    if (!response || isPending(id)) return;
+    await withPending(id, async () => {
+      await respondToRecommendation(id, response);
+      setResponseDrafts((prev) => ({ ...prev, [id]: "" }));
+    });
+  }
+
+  async function handleAcknowledge(id: string) {
+    if (isPending(id)) return;
+    await withPending(id, () => acknowledgeRecommendation(id));
   }
 
   return (
@@ -72,20 +103,27 @@ export function SpecialistNotesTab({
             placeholder="Recommend follow-up actions, treatment adjustments, or monitoring instructions…"
             className="resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
+          {error && (
+            <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+              {error}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={() => { setShowAddForm(false); setMessage(""); }}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+              disabled={isPending("add")}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleAdd}
-              className="rounded-lg bg-[#0f766e] px-3 py-2 text-sm font-medium text-white hover:bg-teal-800"
+              disabled={isPending("add")}
+              className="rounded-lg bg-[#0f766e] px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Send Recommendation
+              {isPending("add") ? "Sending…" : "Send Recommendation"}
             </button>
           </div>
         </div>
@@ -123,10 +161,11 @@ export function SpecialistNotesTab({
                     !rec.acknowledgedByGynecologistAt && (
                       <button
                         type="button"
-                        onClick={() => acknowledgeRecommendation(rec.id)}
-                        className="mt-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                        onClick={() => handleAcknowledge(rec.id)}
+                        disabled={isPending(rec.id)}
+                        className="mt-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Acknowledge
+                        {isPending(rec.id) ? "Acknowledging…" : "Acknowledge"}
                       </button>
                     )}
                 </div>
@@ -144,9 +183,10 @@ export function SpecialistNotesTab({
                   <button
                     type="button"
                     onClick={() => handleRespond(rec.id)}
-                    className="self-end rounded-lg bg-[#0f766e] px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-800"
+                    disabled={isPending(rec.id)}
+                    className="self-end rounded-lg bg-[#0f766e] px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Send Response
+                    {isPending(rec.id) ? "Sending…" : "Send Response"}
                   </button>
                 </div>
               ) : (
