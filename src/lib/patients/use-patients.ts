@@ -1006,7 +1006,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
-    if (role === "hospital_admin" && currentUser.facility in FACILITY_CAPACITY) {
+    if (role === "hospital_admin") {
       const facilityCapacity = getFacilityCapacitySnapshot(currentUser.facility, referrals, facilities);
       if (facilityCapacity.status === "full") {
         alerts.push({
