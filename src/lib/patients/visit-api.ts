@@ -121,7 +121,7 @@ const RISK_LEVEL_TO_FRONTEND: Record<string, "green" | "yellow" | "orange" | "re
   RED: "red",
 };
 
-function toFrontendVisit(v: BackendVisit): Visit {
+export function toFrontendVisit(v: BackendVisit): Visit {
   const labs: VisitLabs | undefined = v.vitalSigns
     ? {
         bpSystolic: v.vitalSigns.systolic ?? undefined,
@@ -170,6 +170,17 @@ export async function fetchVisitsForPregnancy(pregnancyId: string): Promise<Visi
     token: token ?? undefined,
   });
   return visits.map(toFrontendVisit);
+}
+
+// Large page size — no pagination UI exists yet, this approximates "fetch
+// all" for the current small seed dataset, matching fetchPatients()'s exact
+// convention. Revisit if the visit count grows past this limit.
+export async function fetchAllVisits(): Promise<Visit[]> {
+  const token = getStoredAccessToken();
+  const result = await apiFetch<{ data: BackendVisit[]; meta: unknown }>("/visits?limit=200", {
+    token: token ?? undefined,
+  });
+  return result.data.map(toFrontendVisit);
 }
 
 export async function createVisitApi(

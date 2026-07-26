@@ -55,7 +55,7 @@ const BABY_STATUS_TO_FRONTEND: Record<string, "alive" | "deceased"> = {
   DECEASED: "deceased",
 };
 
-function toFrontendPregnancy(p: BackendPregnancy): Pregnancy {
+export function toFrontendPregnancy(p: BackendPregnancy): Pregnancy {
   return {
     id: p.id,
     patientId: p.patientId,
@@ -92,6 +92,17 @@ export async function fetchPregnanciesForPatient(patientId: string): Promise<Pre
     token: token ?? undefined,
   });
   return pregnancies.map(toFrontendPregnancy);
+}
+
+// Large page size — no pagination UI exists yet, this approximates "fetch
+// all" for the current small seed dataset, matching fetchPatients()'s exact
+// convention. Revisit if the pregnancy count grows past this limit.
+export async function fetchAllPregnancies(): Promise<Pregnancy[]> {
+  const token = getStoredAccessToken();
+  const result = await apiFetch<{ data: BackendPregnancy[]; meta: unknown }>("/pregnancies?limit=200", {
+    token: token ?? undefined,
+  });
+  return result.data.map(toFrontendPregnancy);
 }
 
 export async function createPregnancyApi(
