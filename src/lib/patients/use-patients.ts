@@ -1,13 +1,21 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
 import { fetchVisitsForPregnancy, fetchAllVisits, createVisitApi, finalizeVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
-import { fetchReferrals, createReferralApi, acceptReferralApi, closeReferralApi } from "./referral-api";
+import {
+  fetchReferrals,
+  createReferralApi,
+  acceptReferralApi,
+  closeReferralApi,
+  fetchFacilities,
+  updateFacilityCapacityApi,
+  type BackendFacility,
+} from "./referral-api";
 import { createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
 import {
   fetchRecommendations,
@@ -15,22 +23,8 @@ import {
   respondToRecommendationApi,
   acknowledgeRecommendationApi,
 } from "./recommendation-api";
-import {
-  addPregnancy,
-  updatePregnancy as storageUpdatePregnancy,
-  updateVisit as storageUpdateVisit,
-  subscribeToCapacityOverrides,
-  getCapacityOverridesSnapshot,
-  getServerCapacityOverridesSnapshot,
-  setCapacityOverride,
-} from "./storage";
-import {
-  subscribeToAcknowledged,
-  getAcknowledgedSnapshot,
-  getServerAcknowledgedSnapshot,
-  acknowledgeAlert as storageAcknowledgeAlert,
-  type AcknowledgedAlert,
-} from "./alerts-storage";
+import { type AcknowledgedAlert } from "./alerts-storage";
+import { fetchAcknowledgments, acknowledgePatientApi } from "./patient-acknowledgment-api";
 import { classifyRiskLevel } from "./symptom-checklist";
 import { computeEdd, matchScheduledVisit } from "./pregnancy";
 import { getStoredAuthenticatedUser } from "../auth/auth-context";
@@ -357,9 +351,12 @@ export const FACILITY_CAPACITY: Record<string, number> = {
 };
 export const DEFAULT_CAPACITY = 999;
 
-function getFacilityCapacitySnapshot(facility: string, referrals: Referral[]): FacilityCapacity {
-  const overrides = getCapacityOverridesSnapshot();
-  const max = overrides[facility] ?? FACILITY_CAPACITY[facility] ?? DEFAULT_CAPACITY;
+function getFacilityCapacitySnapshot(
+  facility: string,
+  referrals: Referral[],
+  facilities: BackendFacility[],
+): FacilityCapacity {
+  const max = facilities.find((f) => f.name === facility)?.capacity ?? FACILITY_CAPACITY[facility] ?? DEFAULT_CAPACITY;
   const active = referrals.filter(
     (r) => r.status === "accepted" && r.acceptedByFacility === facility && r.urgency === "emergency",
   ).length;
@@ -369,27 +366,23 @@ function getFacilityCapacitySnapshot(facility: string, referrals: Referral[]): F
   return { max, active, remaining, status };
 }
 
-export function useFacilityCapacity(facility: string): FacilityCapacity {
-  const referrals = useReferrals();
-  const overrides = useSyncExternalStore(
-    subscribeToCapacityOverrides,
-    getCapacityOverridesSnapshot,
-    getServerCapacityOverridesSnapshot,
-  );
-  return useMemo(() => {
-    const max = overrides[facility] ?? FACILITY_CAPACITY[facility] ?? DEFAULT_CAPACITY;
-    const active = referrals.filter(
-      (r) => r.status === "accepted" && r.acceptedByFacility === facility && r.urgency === "emergency",
-    ).length;
-    const remaining = max - active;
-    const status: FacilityCapacityStatus =
-      remaining <= 0 ? "full" : remaining <= 2 ? "nearly_full" : "available";
-    return { max, active, remaining, status };
-  }, [referrals, facility, overrides]);
+function useFacilities(): BackendFacility[] {
+  const { data } = useQuery({ queryKey: ["facilities"], queryFn: fetchFacilities });
+  return data ?? [];
 }
 
-export function setFacilityMaxCapacity(facility: string, max: number) {
-  setCapacityOverride(facility, max);
+export function useFacilityCapacity(facility: string): FacilityCapacity {
+  const referrals = useReferrals();
+  const facilities = useFacilities();
+  return useMemo(
+    () => getFacilityCapacitySnapshot(facility, referrals, facilities),
+    [referrals, facility, facilities],
+  );
+}
+
+export async function setFacilityMaxCapacity(capacity: number): Promise<void> {
+  await updateFacilityCapacityApi(capacity);
+  await queryClient.invalidateQueries({ queryKey: ["facilities"] });
 }
 
 export async function finalizeAssessment(
@@ -438,10 +431,6 @@ export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel
   const pregnancy = (await fetchAllPregnancies()).find((p) => p.id === visit.pregnancyId);
   if (!pregnancy) return null;
 
-  if (visit.riskLevel !== "red") {
-    storageUpdateVisit(visit.id, { riskLevel: "red" });
-  }
-
   const reason =
     visit.emergencySummary ?? "AI-confirmed critical case following laboratory review";
   return getOrCreateEmergencyReferral(pregnancy.patientId, reason);
@@ -451,7 +440,10 @@ export async function acceptReferral(referralId: string): Promise<Referral> {
   const { facility } = getCurrentUserSnapshot();
   const referrals = await fetchReferrals();
   const referral = referrals.find((r) => r.id === referralId);
-  if (referral?.urgency === "emergency" && getFacilityCapacitySnapshot(facility, referrals).status === "full") {
+  if (
+    referral?.urgency === "emergency" &&
+    getFacilityCapacitySnapshot(facility, referrals, await fetchFacilities()).status === "full"
+  ) {
     throw new Error("This facility has reached its emergency capacity. Choose another facility.");
   }
   const accepted = await acceptReferralApi(referralId);
@@ -784,11 +776,8 @@ export async function updatePatient(
 }
 
 export function useAcknowledgedAlerts(): AcknowledgedAlert[] {
-  return useSyncExternalStore(
-    subscribeToAcknowledged,
-    getAcknowledgedSnapshot,
-    getServerAcknowledgedSnapshot,
-  );
+  const { data } = useQuery({ queryKey: ["acknowledgments"], queryFn: fetchAcknowledgments });
+  return data ?? [];
 }
 
 export function useUnacknowledgedCount(): number {
@@ -801,8 +790,9 @@ export function useUnacknowledgedCount(): number {
   return followUps.filter((f) => !ackIds.has(f.patient.id)).length;
 }
 
-export function acknowledgeAlert(patientId: string, note: string): void {
-  storageAcknowledgeAlert(patientId, note);
+export async function acknowledgeAlert(patientId: string, note: string): Promise<void> {
+  await acknowledgePatientApi(patientId, note);
+  await queryClient.invalidateQueries({ queryKey: ["acknowledgments"] });
 }
 
 export interface NotificationAlert {
@@ -833,6 +823,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
   const pregnancies = usePregnancies();
   const referrals = useReferrals();
   const recommendations = useAllRecommendations();
+  const facilities = useFacilities();
   const currentUser = getCurrentUserSnapshot();
   const followUpAssignments = useFollowUpAssignmentsForChw();
 
@@ -1016,7 +1007,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
     }
 
     if (role === "hospital_admin" && currentUser.facility in FACILITY_CAPACITY) {
-      const facilityCapacity = getFacilityCapacitySnapshot(currentUser.facility, referrals);
+      const facilityCapacity = getFacilityCapacitySnapshot(currentUser.facility, referrals, facilities);
       if (facilityCapacity.status === "full") {
         alerts.push({
           id: `facility-full-${currentUser.facility}`,
@@ -1056,6 +1047,6 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       if (a.priority !== "Emergency" && b.priority === "Emergency") return 1;
       return b.date.localeCompare(a.date);
     });
-  }, [visits, patients, pregnancies, referrals, recommendations, followUpAssignments, role, currentUser.facility, currentUser.name, currentUser.id]);
+  }, [visits, patients, pregnancies, referrals, recommendations, facilities, followUpAssignments, role, currentUser.facility, currentUser.name, currentUser.id]);
 }
 

@@ -13,8 +13,6 @@ const RISK_OPTIONS: { value: RiskLevel; label: string }[] = [
   { value: "red", label: "Red — still critical" },
 ];
 
-const ANY_CAPABLE_FACILITY = "Any capable facility";
-
 const OUTCOME_OPTIONS: { value: ReferralOutcome; label: string; suggestedRisk: RiskLevel }[] = [
   { value: "stable", label: "Stable", suggestedRisk: "yellow" },
   { value: "improved", label: "Improved", suggestedRisk: "yellow" },
@@ -41,7 +39,7 @@ export function CloseReferralModal({
   const [outcome, setOutcome] = useState<ReferralOutcome>("recovered");
   const [outcomeStatement, setOutcomeStatement] = useState("");
   const [riskLevel, setRiskLevel] = useState<RiskLevel>("green");
-  const [nextFacility, setNextFacility] = useState(ANY_CAPABLE_FACILITY);
+  const [nextFacility, setNextFacility] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isReferringOnward = outcome === "referred";
@@ -122,8 +120,7 @@ export function CloseReferralModal({
               <p className="flex items-start gap-1.5 text-xs text-orange-800 dark:text-orange-400">
                 <IconAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 The patient did not improve here. Closing with this outcome will also open a new
-                emergency referral — broadcast it to any capable facility so whichever hospital
-                accepts first can take over, or target one specific facility instead.
+                emergency referral to the facility you select below.
               </p>
               <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Refer to
@@ -133,9 +130,7 @@ export function CloseReferralModal({
                   onChange={(e) => setNextFacility(e.target.value)}
                   className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                 >
-                  <option value={ANY_CAPABLE_FACILITY}>
-                    Any capable facility (first to accept helps the patient)
-                  </option>
+                  <option value="">Select facility…</option>
                   {RECEIVING_FACILITIES.map((f) => (
                     <option key={f} value={f}>{f}</option>
                   ))}

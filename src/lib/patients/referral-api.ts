@@ -2,11 +2,12 @@ import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { Referral, ReferralOutcome } from "./types";
 
-interface BackendFacility {
+export interface BackendFacility {
   id: string;
   name: string;
   type: string;
   district: string;
+  capacity: number | null;
 }
 
 interface BackendReferral {
@@ -101,6 +102,15 @@ export async function fetchReferrals(): Promise<Referral[]> {
 export async function fetchFacilities(): Promise<BackendFacility[]> {
   const token = getStoredAccessToken();
   return apiFetch<BackendFacility[]>("/facilities", { token: token ?? undefined });
+}
+
+export async function updateFacilityCapacityApi(capacity: number): Promise<BackendFacility> {
+  const token = getStoredAccessToken();
+  return apiFetch<BackendFacility>("/facilities/capacity", {
+    method: "PATCH",
+    body: { capacity },
+    token: token ?? undefined,
+  });
 }
 
 export async function createReferralApi(
