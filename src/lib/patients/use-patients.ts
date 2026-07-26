@@ -4,8 +4,8 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
-import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
-import { fetchVisitsForPregnancy, createVisitApi, finalizeVisitApi } from "./visit-api";
+import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
+import { fetchVisitsForPregnancy, fetchAllVisits, createVisitApi, finalizeVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
 import { fetchReferrals, createReferralApi, acceptReferralApi, closeReferralApi } from "./referral-api";
 import { createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
@@ -19,12 +19,6 @@ import {
   addPregnancy,
   updatePregnancy as storageUpdatePregnancy,
   updateVisit as storageUpdateVisit,
-  getServerVisitsSnapshot,
-  getServerPregnanciesSnapshot,
-  getVisitsSnapshot,
-  getPregnanciesSnapshot,
-  subscribeToVisits,
-  subscribeToPregnancies,
   subscribeToCapacityOverrides,
   getCapacityOverridesSnapshot,
   getServerCapacityOverridesSnapshot,
@@ -76,19 +70,9 @@ export function usePatients(): Patient[] {
   return data ?? [];
 }
 
-// Still backed by the old local-storage system — useVisitsForPregnancy() and
-// useAllVisitsForPatient() below now use the real API, so a newly-recorded
-// visit won't appear here. There is no "all visits" backend endpoint (only
-// per-pregnancy), so useFollowUpPatients/useTodaysVisits/useRiskSummary/
-// useNotificationAlerts (which all depend on this hook) stay on the old
-// system too, same divergence Slice B accepted for usePregnancies(). See
-// docs/superpowers/plans/2026-07-23-frontend-visits-integration.md.
 export function useVisits(): Visit[] {
-  return useSyncExternalStore(
-    subscribeToVisits,
-    getVisitsSnapshot,
-    getServerVisitsSnapshot,
-  );
+  const { data } = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits });
+  return data ?? [];
 }
 
 
@@ -115,16 +99,9 @@ export function usePatientIsLoading(patientId: string): boolean {
   return isLoading;
 }
 
-// NOTE: still backed by the old local-storage system — usePregnanciesForPatient()
-// below now uses the real API, so a newly-created pregnancy won't appear here
-// until a future slice migrates this hook (it also depends on visit data, out of
-// scope for this slice). See docs/superpowers/plans/2026-07-22-frontend-patients-pregnancies-integration.md.
 export function usePregnancies(): Pregnancy[] {
-  return useSyncExternalStore(
-    subscribeToPregnancies,
-    getPregnanciesSnapshot,
-    getServerPregnanciesSnapshot,
-  );
+  const { data } = useQuery({ queryKey: ["pregnancies", "all"], queryFn: fetchAllPregnancies });
+  return data ?? [];
 }
 
 export function usePregnanciesForPatient(patientId: string): Pregnancy[] {
@@ -458,7 +435,7 @@ async function getOrCreateEmergencyReferral(patientId: string, reason: string): 
 export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Promise<Referral | null> {
   if (riskLevel !== "red") return null;
 
-  const pregnancy = getPregnanciesSnapshot().find((p) => p.id === visit.pregnancyId);
+  const pregnancy = (await fetchAllPregnancies()).find((p) => p.id === visit.pregnancyId);
   if (!pregnancy) return null;
 
   if (visit.riskLevel !== "red") {
@@ -719,21 +696,14 @@ export async function recordVisit(data: {
     await createLabRequestApi(visit.id, data.type === "emergency" ? "Emergency" : "Normal", data.notes);
   }
 
-  // KNOWN GAP (pre-existing since the 2026-07-22 patients/pregnancies slice,
-  // found during Slice C's verification, not introduced here): same cause as
-  // the lab-push block above — getPregnanciesSnapshot() never holds a real
-  // (API-created) pregnancy, so `pregnancy` is always undefined here and this
-  // RED-classification -> emergency-referral escalation never actually runs.
-  // Silently dead for every visit, not just ones migrated by this slice.
-  // Deferred to a future Referrals integration slice alongside gaps 1-3.
   if (riskLevel === "red") {
-    const pregnancy = getPregnanciesSnapshot().find((p) => p.id === data.pregnancyId);
+    const pregnancy = (await fetchAllPregnancies()).find((p) => p.id === data.pregnancyId);
     if (pregnancy) {
       const reason =
         data.type === "emergency"
           ? (data.emergencySummary ?? data.notes)
           : `Classified RED during ${data.type} visit`;
-      getOrCreateEmergencyReferral(pregnancy.patientId, reason);
+      await getOrCreateEmergencyReferral(pregnancy.patientId, reason);
     }
   }
 
