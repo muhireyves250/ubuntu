@@ -971,18 +971,22 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
     // except hospital_admin/chw, excluding health centers and the referring
     // facility itself). Once one facility accepts, the others who were
     // watching it need to know it's been taken, not just see it silently
-    // vanish from their pending list.
+    // vanish from their pending list. The referring facility ALSO needs to
+    // know who took their case — but unconditionally, regardless of its own
+    // facility level or capacity, since it's their own referral's outcome,
+    // not a "could I have accepted this" broadcast concern.
     if (role !== "hospital_admin" && role !== "chw") {
       for (const referral of referrals) {
         if (
           referral.status !== "accepted" ||
           referral.urgency !== "emergency" ||
-          currentUser.facilityLevel === "hc" ||
-          referral.referredByFacility === currentUser.facility ||
           referral.acceptedByFacility === currentUser.facility
         ) {
           continue;
         }
+        const isReferringFacility = referral.referredByFacility === currentUser.facility;
+        if (!isReferringFacility && currentUser.facilityLevel === "hc") continue;
+
         const patient = patients.find((p) => p.id === referral.patientId);
         if (!patient) continue;
         const patientName = `${patient.firstName} ${patient.lastName}`;
@@ -992,7 +996,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
           type: "referral_accepted_elsewhere",
           patientId: patient.id,
           patientName,
-          title: "Emergency Case Accepted Elsewhere",
+          title: isReferringFacility ? "Your Referral Was Accepted" : "Emergency Case Accepted Elsewhere",
           message: `${referral.acceptedByFacility} accepted the emergency referral for ${patientName}.`,
           date: (referral.acceptedAt ?? referral.createdAt).slice(0, 10),
           priority: "Emergency",
