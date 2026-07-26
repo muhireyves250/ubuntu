@@ -10,6 +10,12 @@ import { createLabRequestApi } from "./lab-request-api";
 import { fetchReferrals, createReferralApi, acceptReferralApi, closeReferralApi } from "./referral-api";
 import { createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
 import {
+  fetchRecommendations,
+  createRecommendationApi,
+  respondToRecommendationApi,
+  acknowledgeRecommendationApi,
+} from "./recommendation-api";
+import {
   addPregnancy,
   updatePregnancy as storageUpdatePregnancy,
   updateVisit as storageUpdateVisit,
@@ -19,11 +25,6 @@ import {
   getPregnanciesSnapshot,
   subscribeToVisits,
   subscribeToPregnancies,
-  subscribeToRecommendations,
-  getRecommendationsSnapshot,
-  getServerRecommendationsSnapshot,
-  addRecommendation,
-  updateRecommendation,
   subscribeToCapacityOverrides,
   getCapacityOverridesSnapshot,
   getServerCapacityOverridesSnapshot,
@@ -277,58 +278,41 @@ export function useActiveEmergencyPatientIds(): Set<string> {
 }
 
 export function useRecommendationsForPatient(patientId: string): Recommendation[] {
-  const all = useSyncExternalStore(
-    subscribeToRecommendations,
-    getRecommendationsSnapshot,
-    getServerRecommendationsSnapshot,
-  );
-  return useMemo(
-    () =>
-      all
-        .filter((r) => r.patientId === patientId)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [all, patientId],
-  );
+  const { data } = useQuery({
+    queryKey: ["recommendations", "patient", patientId],
+    queryFn: () => fetchRecommendations(patientId),
+  });
+  return data ?? [];
 }
 
 export function useAllRecommendations(): Recommendation[] {
-  return useSyncExternalStore(
-    subscribeToRecommendations,
-    getRecommendationsSnapshot,
-    getServerRecommendationsSnapshot,
-  );
+  const { data } = useQuery({
+    queryKey: ["recommendations", "all"],
+    queryFn: () => fetchRecommendations(),
+  });
+  return data ?? [];
 }
 
-export function createRecommendation(patientId: string, message: string, riskLevel: RiskLevel): Recommendation {
-  const { name, facility } = getCurrentUserSnapshot();
-  const recommendation: Recommendation = {
-    id: `recommendation-${crypto.randomUUID()}`,
-    patientId,
-    createdAt: new Date().toISOString(),
-    createdByGynecologist: name,
-    createdByFacility: facility,
-    riskLevelAtCreation: riskLevel,
-    message,
-    status: "open",
-  };
-  addRecommendation(recommendation);
+export async function createRecommendation(
+  patientId: string,
+  message: string,
+  riskLevel: RiskLevel,
+): Promise<Recommendation> {
+  const recommendation = await createRecommendationApi(patientId, message, riskLevel);
+  await queryClient.invalidateQueries({ queryKey: ["recommendations"] });
   return recommendation;
 }
 
-export function respondToRecommendation(id: string, response: string): Recommendation {
-  const { name } = getCurrentUserSnapshot();
-  updateRecommendation(id, {
-    status: "responded",
-    nurseResponse: response,
-    respondedByNurse: name,
-    respondedAt: new Date().toISOString(),
-  });
-  return getRecommendationsSnapshot().find((r) => r.id === id)!;
+export async function respondToRecommendation(id: string, response: string): Promise<Recommendation> {
+  const recommendation = await respondToRecommendationApi(id, response);
+  await queryClient.invalidateQueries({ queryKey: ["recommendations"] });
+  return recommendation;
 }
 
-export function acknowledgeRecommendation(id: string): Recommendation {
-  updateRecommendation(id, { acknowledgedByGynecologistAt: new Date().toISOString() });
-  return getRecommendationsSnapshot().find((r) => r.id === id)!;
+export async function acknowledgeRecommendation(id: string): Promise<Recommendation> {
+  const recommendation = await acknowledgeRecommendationApi(id);
+  await queryClient.invalidateQueries({ queryKey: ["recommendations"] });
+  return recommendation;
 }
 
 export function useFollowUpAssignmentsForChw(): FollowUpAssignment[] {
@@ -878,11 +862,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
   const patients = usePatients();
   const pregnancies = usePregnancies();
   const referrals = useReferrals();
-  const recommendations = useSyncExternalStore(
-    subscribeToRecommendations,
-    getRecommendationsSnapshot,
-    getServerRecommendationsSnapshot,
-  );
+  const recommendations = useAllRecommendations();
   const currentUser = getCurrentUserSnapshot();
   const followUpAssignments = useFollowUpAssignmentsForChw();
 
