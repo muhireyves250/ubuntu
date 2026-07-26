@@ -18,7 +18,6 @@ import {
 import {
   addPregnancy,
   updatePregnancy as storageUpdatePregnancy,
-  updateVisit as storageUpdateVisit,
   subscribeToCapacityOverrides,
   getCapacityOverridesSnapshot,
   getServerCapacityOverridesSnapshot,
@@ -437,10 +436,6 @@ export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel
 
   const pregnancy = (await fetchAllPregnancies()).find((p) => p.id === visit.pregnancyId);
   if (!pregnancy) return null;
-
-  if (visit.riskLevel !== "red") {
-    storageUpdateVisit(visit.id, { riskLevel: "red" });
-  }
 
   const reason =
     visit.emergencySummary ?? "AI-confirmed critical case following laboratory review";
