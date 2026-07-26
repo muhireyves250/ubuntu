@@ -272,7 +272,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                     Referral
                   </p>
                   <p className="text-zinc-700 dark:text-zinc-300">
-                    Sent to {emergencyResult.referral.receivingFacility} — pending acceptance
+                    Broadcast to all capable facilities — pending acceptance
                   </p>
                 </div>
                 <button
