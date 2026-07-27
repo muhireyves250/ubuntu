@@ -947,22 +947,40 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
             date: referral.createdAt.slice(0, 10),
             priority: "Emergency",
           });
-        } else if (
-          referral.status === "accepted" &&
-          referral.acceptedByFacility === currentUser.facility &&
-          referral.acceptedByNurse !== currentUser.name
-        ) {
-          alerts.push({
-            id: `referral-accepted-${referral.id}`,
-            type: "referral_accepted",
-            patientId: patient.id,
-            patientName,
-            title: "Emergency Case Accepted",
-            message: `${referral.acceptedByNurse} accepted the emergency referral for ${patientName} at your facility.`,
-            date: (referral.acceptedAt ?? referral.createdAt).slice(0, 10),
-            priority: "Emergency",
-          });
         }
+      }
+    }
+
+    // Confirmation to everyone at the facility that accepted a case (the
+    // accepter themselves and colleagues alike), naming who referred it —
+    // broader audience than the gynecologist-only referral_pending alert
+    // above, since nurses accept cases too.
+    if (role !== "hospital_admin" && role !== "chw") {
+      for (const referral of referrals) {
+        if (
+          referral.urgency !== "emergency" ||
+          referral.status !== "accepted" ||
+          referral.acceptedByFacility !== currentUser.facility
+        ) {
+          continue;
+        }
+        const patient = patients.find((p) => p.id === referral.patientId);
+        if (!patient) continue;
+        const patientName = `${patient.firstName} ${patient.lastName}`;
+        const isAccepter = referral.acceptedByNurse === currentUser.name;
+
+        alerts.push({
+          id: `referral-accepted-${referral.id}`,
+          type: "referral_accepted",
+          patientId: patient.id,
+          patientName,
+          title: "Emergency Case Accepted",
+          message: isAccepter
+            ? `You accepted the case of ${patientName} from ${referral.referredByFacility}.`
+            : `${referral.acceptedByNurse} accepted the emergency referral for ${patientName} from ${referral.referredByFacility} at your facility.`,
+          date: (referral.acceptedAt ?? referral.createdAt).slice(0, 10),
+          priority: "Emergency",
+        });
       }
     }
 
