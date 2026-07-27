@@ -16,6 +16,7 @@ import {
   updateFacilityCapacityApi,
   type BackendFacility,
 } from "./referral-api";
+import { useLabRequests } from "./lab-requests";
 import { createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
 import {
   fetchRecommendations,
@@ -794,6 +795,7 @@ export interface NotificationAlert {
   id: string; // visitId
   type:
     | "lab_request"
+    | "lab_request_accepted"
     | "lab_completed"
     | "referral_pending"
     | "referral_accepted"
@@ -820,6 +822,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
   const referrals = useReferrals();
   const recommendations = useAllRecommendations();
   const facilities = useFacilities();
+  const labRequests = useLabRequests();
   const currentUser = getCurrentUserSnapshot();
   const followUpAssignments = useFollowUpAssignmentsForChw();
 
@@ -836,59 +839,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
 
       const patientName = `${patient.firstName} ${patient.lastName}`;
 
-      if (
-        role === "nurse" &&
-        v.hospital === currentUser.facility &&
-        v.labStatus === "completed" &&
-        v.assessmentFinalized === false
-      ) {
-        let hbStr = "";
-        if (v.labs?.hemoglobin != null) {
-          hbStr = ` (Hb: ${v.labs.hemoglobin} g/dL)`;
-        }
-        alerts.push({
-          id: v.id,
-          type: "lab_completed",
-          patientId: patient.id,
-          patientName,
-          title: "Laboratory Results Completed",
-          message: `Lab investigations resolved for ${patientName}${hbStr}. Action required: Review and finalize ANC assessment.`,
-          date: v.date,
-          priority: v.type === "emergency" ? "Emergency" : "Normal",
-        });
-      } else if (role === "lab_nurse" && v.hospital === currentUser.facility && v.labStatus === "pending") {
-        alerts.push({
-          id: v.id,
-          type: "lab_request",
-          patientId: patient.id,
-          patientName,
-          title: "New Lab Request Submitted",
-          message: `Attending nurse ${v.attendingNurse} requested a lab screen for ${patientName}.`,
-          date: v.date,
-          priority: v.type === "emergency" ? "Emergency" : "Normal",
-        });
-      }
-
       if (role === "gynecologist" && v.hospital === currentUser.facility) {
-        const labs = v.labs;
-        const isCritical =
-          (labs?.hemoglobin != null && labs.hemoglobin < 7) ||
-          (labs?.bpSystolic != null && labs.bpSystolic >= 160) ||
-          (labs?.bpDiastolic != null && labs.bpDiastolic >= 110) ||
-          (labs?.urineProtein != null && ["2+", "3+"].includes(labs.urineProtein));
-        if (isCritical && v.labStatus === "completed" && v.assessmentFinalized === false) {
-          alerts.push({
-            id: `critical-lab-${v.id}`,
-            type: "critical_lab_result",
-            patientId: patient.id,
-            patientName,
-            title: "Critical Laboratory Result",
-            message: `${patientName} has a critical lab finding at your facility — review before the ANC assessment is finalized.`,
-            date: v.date,
-            priority: "Emergency",
-          });
-        }
-
         if (v.type === "emergency" && v.date === today) {
           alerts.push({
             id: `emergency-arrival-${v.id}`,
@@ -1017,6 +968,87 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
+    // Lab-request alerts are driven by the real, already-facility-scoped
+    // useLabRequests() (lab requests are inherently intra-facility — a
+    // nurse requests from their own facility's lab tech), not the visits
+    // loop above, matching this codebase's precedent of using the most
+    // specific real data source available rather than deriving through an
+    // intermediate field.
+    const visitById = new Map(visits.map((v) => [v.id, v]));
+    for (const lr of labRequests) {
+      const patient =
+        patients.find((p) => p.nationalId === lr.patientId) ??
+        patients.find((p) => p.id === lr.patientId);
+      if (!patient) continue;
+      const patientName = `${patient.firstName} ${patient.lastName}`;
+      const visit = visitById.get(lr.visitId);
+
+      if (role === "lab_nurse" && lr.facility === currentUser.facility && lr.status === "Pending") {
+        alerts.push({
+          id: `lab-request-${lr.id}`,
+          type: "lab_request",
+          patientId: patient.id,
+          patientName,
+          title: "New Lab Request Submitted",
+          message: `${lr.requestingNurseId} requested a lab screen for ${patientName}.`,
+          date: lr.requestDate.slice(0, 10),
+          priority: lr.priority,
+        });
+      }
+
+      if (role === "nurse" && lr.status === "In Progress" && lr.requestingNurseId === currentUser.name) {
+        alerts.push({
+          id: `lab-request-accepted-${lr.id}`,
+          type: "lab_request_accepted",
+          patientId: patient.id,
+          patientName,
+          title: "Lab Request Accepted",
+          message: `${lr.acceptedBy ?? "A lab technician"} accepted your lab request for ${patientName}.`,
+          date: (lr.acceptedAt ?? lr.requestDate).slice(0, 10),
+          priority: lr.priority,
+        });
+      }
+
+      if (
+        role === "nurse" &&
+        lr.facility === currentUser.facility &&
+        lr.status === "Completed" &&
+        visit?.assessmentFinalized === false
+      ) {
+        const hb = lr.results.find((r) => r.testName === "Hemoglobin (Hb)");
+        const hbStr = hb ? ` (Hb: ${hb.result} g/dL)` : "";
+        alerts.push({
+          id: `lab-completed-${lr.id}`,
+          type: "lab_completed",
+          patientId: patient.id,
+          patientName,
+          title: "Laboratory Results Completed",
+          message: `Lab investigations resolved for ${patientName}${hbStr}. Action required: Review and finalize ANC assessment.`,
+          date: (lr.results[0]?.completedAt ?? lr.requestDate).slice(0, 10),
+          priority: lr.priority,
+        });
+      }
+
+      if (
+        role === "gynecologist" &&
+        lr.facility === currentUser.facility &&
+        lr.status === "Completed" &&
+        visit?.assessmentFinalized === false &&
+        lr.results.some((r) => r.interpretation === "Critical")
+      ) {
+        alerts.push({
+          id: `critical-lab-${lr.id}`,
+          type: "critical_lab_result",
+          patientId: patient.id,
+          patientName,
+          title: "Critical Laboratory Result",
+          message: `${patientName} has a critical lab finding at your facility — review before the ANC assessment is finalized.`,
+          date: (lr.results[0]?.completedAt ?? lr.requestDate).slice(0, 10),
+          priority: "Emergency",
+        });
+      }
+    }
+
     if (role === "nurse") {
       for (const rec of recommendations) {
         if (rec.status !== "open") continue;
@@ -1099,6 +1131,6 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       if (a.priority !== "Emergency" && b.priority === "Emergency") return 1;
       return b.date.localeCompare(a.date);
     });
-  }, [visits, patients, pregnancies, referrals, recommendations, facilities, followUpAssignments, role, currentUser.facility, currentUser.facilityLevel, currentUser.name, currentUser.id]);
+  }, [visits, patients, pregnancies, referrals, recommendations, facilities, labRequests, followUpAssignments, role, currentUser.facility, currentUser.facilityLevel, currentUser.name, currentUser.id]);
 }
 
