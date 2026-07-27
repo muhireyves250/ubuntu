@@ -61,7 +61,8 @@ export type LabStatus = "Pending" | "In Progress" | "Completed";
 export type ResultInterpretation = "Normal" | "Abnormal" | "Critical";
 
 export interface LabRequest {
-  id: string; // Same as visit.id in the old local-storage model — now the LabRequest's own id
+  id: string; // The LabRequest's own id (was the same as visit.id in the old local-storage model)
+  visitId: string;
   patientId: string;
   patientName: string;
   patientAge: number;

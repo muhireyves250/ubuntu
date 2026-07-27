@@ -110,6 +110,7 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
 
   return {
     id: r.id,
+    visitId: r.visit.id,
     patientId: patient.nationalId || patient.id,
     patientName: `${patient.firstName} ${patient.lastName}`,
     patientAge: computeAge(patient.dateOfBirth),
