@@ -997,7 +997,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
           patientId: patient.id,
           patientName,
           title: isReferringFacility ? "Your Referral Was Accepted" : "Emergency Case Accepted Elsewhere",
-          message: `${referral.acceptedByFacility} accepted the emergency referral for ${patientName}.`,
+          message: `${referral.acceptedByFacility} accepted the emergency referral for ${patientName} from ${referral.referredByFacility}.`,
           date: (referral.acceptedAt ?? referral.createdAt).slice(0, 10),
           priority: "Emergency",
         });
