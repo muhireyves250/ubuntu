@@ -178,16 +178,11 @@ export function usePatientLock(patientId: string): PatientLock {
 
     const latest = visits[0];
     if (!latest) return { locked: false, lockedByFacility: null };
-    // KNOWN GAP as of Slice C: labStatus is always undefined on real visits
-    // (see visit-api.ts's toFrontendVisit) since lab status lives in the
-    // backend's not-yet-migrated Lab Requests domain — so `inUse` can never
-    // be true for a real visit, and this cross-facility lock never engages.
-    // Deferred to a future Lab Requests integration slice, not fixed here.
-    const inUse =
-      latest.labStatus === "pending" ||
-      latest.labStatus === "in_progress" ||
-      (latest.labStatus === "completed" && latest.assessmentFinalized === false);
-    if (inUse && latest.hospital !== currentUser.facility) {
+    // A visit not yet finalized already covers the lab-pending case (a visit
+    // with an outstanding lab can never be finalized — see
+    // FinalizeAssessmentBlocker) as a strict subset, so this single check is
+    // both simpler and equivalent to the old three-way labStatus condition.
+    if (!latest.assessmentFinalized && latest.hospital !== currentUser.facility) {
       return { locked: true, lockedByFacility: latest.hospital };
     }
     return { locked: false, lockedByFacility: null };
