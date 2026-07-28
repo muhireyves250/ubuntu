@@ -7,6 +7,7 @@ import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from 
 import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
 import { fetchVisitsForPregnancy, fetchAllVisits, createVisitApi, finalizeVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
+import { fetchAllCommunityVisits } from "./community-visit-api";
 import {
   fetchReferrals,
   createReferralApi,
@@ -45,6 +46,7 @@ import type {
   FollowUpAssignment,
   FollowUpReason,
   FollowUpPriority,
+  CommunityVisit,
 } from "./types";
 
 function getCurrentUserSnapshot(): { id: string; name: string; facility: string; facilityLevel: string; role: string } {
@@ -206,6 +208,19 @@ export function useLatestRiskLevel(patientId: string): RiskLevel {
 export function useReferrals(): Referral[] {
   const { data } = useQuery({ queryKey: ["referrals"], queryFn: fetchReferrals });
   return data ?? [];
+}
+
+// Facility-wide community (CHW home) visits, used to drive the nurse-facing
+// "CHW report submitted" notification feed — scoped server-side to the
+// current user's facility via GET /community-visits.
+export function useAllCommunityVisits(): CommunityVisit[] {
+  const query = useQuery({
+    queryKey: ["community-visits", "all"],
+    queryFn: fetchAllCommunityVisits,
+    staleTime: 30_000,
+    retry: 1,
+  });
+  return query.data ?? [];
 }
 
 // Scoped to the current facility — this drives a dashboard widget, not the
@@ -800,13 +815,16 @@ export interface NotificationAlert {
     | "referral_pending"
     | "referral_accepted"
     | "referral_accepted_elsewhere"
+    | "referral_closed"
     | "recommendation_open"
     | "recommendation_responded"
     | "risk_pregnancy"
     | "critical_lab_result"
     | "emergency_arrival"
     | "facility_full"
-    | "new_followup_assignment";
+    | "new_followup_assignment"
+    | "visit_today"
+    | "chw_report_submitted";
   patientId: string;
   patientName: string;
   title: string;
@@ -825,6 +843,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
   const labRequests = useLabRequests();
   const currentUser = getCurrentUserSnapshot();
   const followUpAssignments = useFollowUpAssignmentsForChw();
+  const communityVisits = useAllCommunityVisits();
 
   return useMemo(() => {
     const alerts: NotificationAlert[] = [];
@@ -852,6 +871,19 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
             priority: "Emergency",
           });
         }
+      }
+
+      if (role === "nurse" && v.hospital === currentUser.facility && v.date === today) {
+        alerts.push({
+          id: `visit-today-${v.id}`,
+          type: "visit_today",
+          patientId: patient.id,
+          patientName,
+          title: "Visit Recorded Today",
+          message: `A ${v.type} visit was recorded today for ${patientName} at your facility.`,
+          date: v.date,
+          priority: "Normal",
+        });
       }
     }
 
@@ -897,35 +929,53 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
-    // Confirmation to everyone at the facility that accepted a case (the
-    // accepter themselves and colleagues alike), naming who referred it —
-    // broader audience than the gynecologist-only referral_pending alert
-    // above, since nurses accept cases too.
-    if (role !== "hospital_admin" && role !== "chw") {
+    // Confirmation to the specific nurse who referred a case that it was
+    // accepted, per-referring-nurse attribution rather than facility
+    // membership — only the nurse whose id is on the referral sees this.
+    if (role === "nurse") {
       for (const referral of referrals) {
         if (
           referral.urgency !== "emergency" ||
           referral.status !== "accepted" ||
-          referral.acceptedByFacility !== currentUser.facility
+          referral.referredByNurseId !== currentUser.id
         ) {
           continue;
         }
         const patient = patients.find((p) => p.id === referral.patientId);
         if (!patient) continue;
         const patientName = `${patient.firstName} ${patient.lastName}`;
-        const isAccepter = referral.acceptedByNurse === currentUser.name;
 
         alerts.push({
           id: `referral-accepted-${referral.id}`,
           type: "referral_accepted",
           patientId: patient.id,
           patientName,
-          title: "Emergency Case Accepted",
-          message: isAccepter
-            ? `You accepted the case of ${patientName} from ${referral.referredByFacility}.`
-            : `${referral.acceptedByNurse} accepted the emergency referral for ${patientName} from ${referral.referredByFacility} at your facility.`,
+          title: "Your Emergency Referral Was Accepted",
+          message: `${referral.acceptedByNurse ?? referral.acceptedByFacility} accepted your emergency referral for ${patientName}.`,
           date: (referral.acceptedAt ?? referral.createdAt).slice(0, 10),
           priority: "Emergency",
+        });
+      }
+    }
+
+    // The referring nurse also needs to know when their case is closed out,
+    // so they can follow up on the outcome.
+    if (role === "nurse") {
+      for (const referral of referrals) {
+        if (referral.status !== "closed" || referral.referredByNurseId !== currentUser.id) continue;
+        const patient = patients.find((p) => p.id === referral.patientId);
+        if (!patient) continue;
+        const patientName = `${patient.firstName} ${patient.lastName}`;
+
+        alerts.push({
+          id: `referral-closed-${referral.id}`,
+          type: "referral_closed",
+          patientId: patient.id,
+          patientName,
+          title: "Your Referral Was Closed",
+          message: `The case of ${patientName}, which you referred to ${referral.receivingFacility}, has been closed${referral.outcome ? ` — outcome: ${referral.outcome}` : ""}.`,
+          date: (referral.closedAt ?? referral.createdAt).slice(0, 10),
+          priority: "Normal",
         });
       }
     }
@@ -1125,12 +1175,28 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
+    if (role === "nurse") {
+      for (const cv of communityVisits) {
+        if (cv.visitDate.slice(0, 10) !== today) continue;
+        alerts.push({
+          id: `chw-report-${cv.id}`,
+          type: "chw_report_submitted",
+          patientId: cv.patientId,
+          patientName: cv.patientName,
+          title: "CHW Home Visit Report Submitted",
+          message: `${cv.chwName} submitted a home-visit report for ${cv.patientName}${cv.riskFlag ? " — flagged for review" : ""}.`,
+          date: cv.visitDate.slice(0, 10),
+          priority: cv.riskFlag ? "Urgent" : "Normal",
+        });
+      }
+    }
+
     // Sort by priority (Emergency first) and then by date (descending)
     return alerts.sort((a, b) => {
       if (a.priority === "Emergency" && b.priority !== "Emergency") return -1;
       if (a.priority !== "Emergency" && b.priority === "Emergency") return 1;
       return b.date.localeCompare(a.date);
     });
-  }, [visits, patients, pregnancies, referrals, recommendations, facilities, labRequests, followUpAssignments, role, currentUser.facility, currentUser.facilityLevel, currentUser.name, currentUser.id]);
+  }, [visits, patients, pregnancies, referrals, recommendations, facilities, labRequests, followUpAssignments, communityVisits, role, currentUser.facility, currentUser.facilityLevel, currentUser.name, currentUser.id]);
 }
 

@@ -52,6 +52,12 @@ export async function fetchCommunityVisitsForPregnancy(pregnancyId: string): Pro
   return visits.map(toFrontendCommunityVisit);
 }
 
+export async function fetchAllCommunityVisits(): Promise<CommunityVisit[]> {
+  const token = getStoredAccessToken();
+  const visits = await apiFetch<BackendCommunityVisit[]>("/community-visits", { token: token ?? undefined });
+  return visits.map(toFrontendCommunityVisit);
+}
+
 export async function fetchMyCommunityVisits(): Promise<CommunityVisit[]> {
   const token = getStoredAccessToken();
   const visits = await apiFetch<BackendCommunityVisit[]>(
