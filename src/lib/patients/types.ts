@@ -140,9 +140,11 @@ export interface Referral {
   reason: string;
   urgency: "routine" | "urgent" | "emergency";
   referredByNurse: string;
+  referredByNurseId: string;
   referredByFacility: string;
   acceptedAt?: string;
   acceptedByNurse?: string;
+  acceptedByNurseId?: string;
   acceptedByFacility?: string;
   closedAt?: string;
   outcome?: ReferralOutcome;
