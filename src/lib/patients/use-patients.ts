@@ -792,7 +792,7 @@ export async function acknowledgeAlert(patientId: string, note: string): Promise
 }
 
 export interface NotificationAlert {
-  id: string; // visitId
+  id: string; // synthetic per-alert-type key, not always a visitId
   type:
     | "lab_request"
     | "lab_request_accepted"
@@ -1013,7 +1013,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
         role === "nurse" &&
         lr.facility === currentUser.facility &&
         lr.status === "Completed" &&
-        visit?.assessmentFinalized === false
+        (!visit || visit.assessmentFinalized === false)
       ) {
         const hb = lr.results.find((r) => r.testName === "Hemoglobin (Hb)");
         const hbStr = hb ? ` (Hb: ${hb.result} g/dL)` : "";
@@ -1033,7 +1033,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
         role === "gynecologist" &&
         lr.facility === currentUser.facility &&
         lr.status === "Completed" &&
-        visit?.assessmentFinalized === false &&
+        (!visit || visit.assessmentFinalized === false) &&
         lr.results.some((r) => r.interpretation === "Critical")
       ) {
         alerts.push({
