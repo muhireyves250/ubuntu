@@ -119,6 +119,7 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
     gestationalAge: r.visit.gestationalWeek ? `${r.visit.gestationalWeek} weeks` : "-",
     requestDate: r.createdAt,
     requestingNurseId: `${r.requestedBy.firstName} ${r.requestedBy.lastName}`,
+    requestedById: r.requestedBy.id,
     visitType: VISIT_TYPE_TO_FRONTEND[r.visit.visitType] ?? "Scheduled ANC",
     priority: PRIORITY_TO_FRONTEND[r.priority] ?? "Normal",
     status: STATUS_TO_FRONTEND[r.status] ?? "Pending",
