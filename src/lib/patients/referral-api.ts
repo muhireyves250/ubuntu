@@ -21,8 +21,8 @@ interface BackendReferral {
   acceptedAt: string | null;
   closedAt: string | null;
   createdAt: string;
-  sentBy: { firstName: string; lastName: string };
-  receivedBy: { firstName: string; lastName: string } | null;
+  sentBy: { id: string; firstName: string; lastName: string };
+  receivedBy: { id: string; firstName: string; lastName: string } | null;
   fromFacility: { id: string; name: string; district: string };
   toFacility: { id: string; name: string; district: string };
   pregnancy: {
@@ -80,9 +80,11 @@ function toFrontendReferral(r: BackendReferral): Referral {
     reason: r.reason,
     urgency: URGENCY_TO_FRONTEND[r.urgency] ?? "routine",
     referredByNurse: `${r.sentBy.firstName} ${r.sentBy.lastName}`,
+    referredByNurseId: r.sentBy.id,
     referredByFacility: r.fromFacility.name,
     acceptedAt: r.acceptedAt ?? undefined,
     acceptedByNurse: r.receivedBy ? `${r.receivedBy.firstName} ${r.receivedBy.lastName}` : undefined,
+    acceptedByNurseId: r.receivedBy ? r.receivedBy.id : undefined,
     acceptedByFacility: r.status !== "PENDING" ? r.toFacility.name : undefined,
     closedAt: r.closedAt ?? undefined,
     outcome: r.outcome ? OUTCOME_TO_FRONTEND[r.outcome] : undefined,
