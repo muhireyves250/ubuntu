@@ -824,7 +824,9 @@ export interface NotificationAlert {
     | "facility_full"
     | "new_followup_assignment"
     | "visit_today"
-    | "chw_report_submitted";
+    | "chw_report_submitted"
+    | "lab_result_comment"
+    | "community_visit_flagged";
   patientId: string;
   patientName: string;
   title: string;
@@ -1097,6 +1099,42 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
           priority: "Emergency",
         });
       }
+
+      if (role === "lab_nurse" && lr.facility === currentUser.facility) {
+        for (const result of lr.results) {
+          for (const comment of result.resultComments ?? []) {
+            alerts.push({
+              id: `lab-comment-${comment.id}`,
+              type: "lab_result_comment",
+              patientId: patient.id,
+              patientName,
+              title: "New Comment on Lab Result",
+              message: `${comment.authorName}: "${comment.body}"`,
+              date: comment.createdAt.slice(0, 10),
+              priority: "Normal",
+            });
+          }
+        }
+      }
+
+      if (
+        role === "gynecologist" &&
+        lr.requestedById === currentUser.id &&
+        lr.status === "Completed" &&
+        (!visit || visit.assessmentFinalized === false) &&
+        !lr.results.some((r) => r.interpretation === "Critical")
+      ) {
+        alerts.push({
+          id: `lab-completed-gyn-${lr.id}`,
+          type: "lab_completed",
+          patientId: patient.id,
+          patientName,
+          title: "Laboratory Results Completed",
+          message: `Lab investigations you requested for ${patientName} are ready for review.`,
+          date: (lr.results[0]?.completedAt ?? lr.requestDate).slice(0, 10),
+          priority: lr.priority,
+        });
+      }
     }
 
     if (role === "nurse") {
@@ -1187,6 +1225,22 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
           message: `${cv.chwName} submitted a home-visit report for ${cv.patientName}${cv.riskFlag ? " — flagged for review" : ""}.`,
           date: cv.visitDate.slice(0, 10),
           priority: cv.riskFlag ? "Urgent" : "Normal",
+        });
+      }
+    }
+
+    if (role === "gynecologist") {
+      for (const cv of communityVisits) {
+        if (!cv.nurseFlaggedEmergency) continue;
+        alerts.push({
+          id: `community-visit-flagged-${cv.id}`,
+          type: "community_visit_flagged",
+          patientId: cv.patientId,
+          patientName: cv.patientName,
+          title: "CHW Report Flagged as Emergency",
+          message: `A nurse flagged ${cv.chwName}'s home-visit report for ${cv.patientName} as an emergency.`,
+          date: cv.visitDate.slice(0, 10),
+          priority: "Emergency",
         });
       }
     }
