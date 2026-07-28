@@ -13,6 +13,7 @@ interface BackendLabResult {
   interpretation: "NORMAL" | "ABNORMAL" | "CRITICAL";
   labNotes: string | null;
   createdAt: string;
+  comments: { id: string; body: string; createdAt: string; author: { id: string; firstName: string; lastName: string; role: string } }[];
 }
 
 interface BackendLabRequest {
@@ -95,16 +96,28 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
 
   const results: LabTestResult[] = labResult
     ? TEST_FIELD_MAP.filter(([, field]) => labResult[field] != null).map(
-        ([testName, field, unit], idx) => ({
-          id: `${labResult.id}-${idx}`,
-          testName,
-          result: String(labResult[field]),
-          unit,
-          referenceRange: "Varies",
-          interpretation: INTERPRETATION_TO_FRONTEND[labResult.interpretation],
-          completedAt: labResult.createdAt,
-          completedBy: r.assignedTo ? `${r.assignedTo.firstName} ${r.assignedTo.lastName}` : undefined,
-        }),
+        ([testName, field, unit], idx) => {
+          const resultId = `${labResult.id}-${idx}`;
+          return {
+            id: resultId,
+            testName,
+            result: String(labResult[field]),
+            unit,
+            referenceRange: "Varies",
+            interpretation: INTERPRETATION_TO_FRONTEND[labResult.interpretation],
+            resultComments: (labResult.comments || []).map((c) => ({
+              id: c.id,
+              labResultId: resultId,
+              authorId: c.author.id,
+              authorName: `${c.author.firstName} ${c.author.lastName}`,
+              authorRole: c.author.role,
+              body: c.body,
+              createdAt: c.createdAt,
+            })),
+            completedAt: labResult.createdAt,
+            completedBy: r.assignedTo ? `${r.assignedTo.firstName} ${r.assignedTo.lastName}` : undefined,
+          };
+        },
       )
     : [];
 

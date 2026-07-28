@@ -52,6 +52,7 @@ export interface LabTestResult {
   referenceRange: string;
   interpretation: "Normal" | "Abnormal" | "Critical";
   comments?: string;
+  resultComments?: LabResultComment[];
   completedAt?: string;
   completedBy?: string;
 }
