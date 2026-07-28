@@ -209,6 +209,35 @@ export interface FollowUpAssignment {
   status: FollowUpStatus;
 }
 
+export interface LabResultComment {
+  id: string;
+  labResultId: string;
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface CommunityVisit {
+  id: string;
+  pregnancyId: string;
+  patientId: string;
+  patientName: string;
+  chwId: string;
+  chwName: string;
+  visitDate: string;
+  notes: string;
+  systolic?: number;
+  diastolic?: number;
+  babyWeight?: number;
+  feedingStatus?: string;
+  concerns?: string;
+  riskFlag: boolean;
+  riskReasons: string[];
+  nurseFlaggedEmergency: boolean;
+}
+
 export interface Pregnancy {
   id: string;
   patientId: string;
