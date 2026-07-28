@@ -71,6 +71,7 @@ export interface LabRequest {
   gestationalAge: string;
   requestDate: string;
   requestingNurseId: string;
+  requestedById: string;
   visitType: "Scheduled ANC" | "Unscheduled ANC" | "Emergency Visit";
   priority: LabPriority;
   status: LabStatus;
