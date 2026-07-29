@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFollowUpAssignment } from "@/lib/patients/use-patients";
-import { fetchChwForFacility } from "@/lib/patients/chw-assignment-api";
+import { fetchChwsForFacility } from "@/lib/patients/chw-assignment-api";
 import { IconClose } from "@/components/dashboard/icons";
 import { fullName } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
@@ -29,16 +29,20 @@ export function AssignChwModal({
   const [reason, setReason] = useState<FollowUpReason>(REASON_OPTIONS[0]);
   const [priority, setPriority] = useState<FollowUpPriority>("routine");
   const [dueDate, setDueDate] = useState(defaultDueDate());
-  const [chw, setChw] = useState<{ id: string; name: string } | undefined>(undefined);
+  const [chws, setChws] = useState<{ id: string; name: string }[]>([]);
+  const [selectedChwId, setSelectedChwId] = useState<string | undefined>(undefined);
   const [chwLoading, setChwLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetchChwForFacility(patient.registrationFacility)
+    fetchChwsForFacility(patient.registrationFacility)
       .then((result) => {
-        if (!cancelled) setChw(result);
+        if (!cancelled) {
+          setChws(result);
+          setSelectedChwId(result[0]?.id);
+        }
       })
       .finally(() => {
         if (!cancelled) setChwLoading(false);
@@ -57,7 +61,7 @@ export function AssignChwModal({
   }, [onClose]);
 
   async function handleSubmit() {
-    if (!chw || isSubmitting) return;
+    if (!selectedChwId || isSubmitting) return;
     setError(null);
     setIsSubmitting(true);
     try {
@@ -66,7 +70,7 @@ export function AssignChwModal({
         reason,
         priority,
         dueDate,
-        assignedToChwId: chw.id,
+        assignedToChwId: selectedChwId,
       });
       onCreated();
       onClose();
@@ -105,15 +109,30 @@ export function AssignChwModal({
           </div>
         </div>
 
-        {chwLoading ? null : !chw ? (
+        {chwLoading ? null : chws.length === 0 ? (
           <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
             No Community Health Worker is available at this facility yet.
           </div>
         ) : (
           <div className="mt-4 flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
-            <p className="text-xs text-zinc-400">
-              Will be assigned to <span className="font-medium text-zinc-600 dark:text-zinc-300">{chw.name}</span>
-            </p>
+            {chws.length > 1 ? (
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Community Health Worker
+                <select
+                  value={selectedChwId}
+                  onChange={(e) => setSelectedChwId(e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                >
+                  {chws.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="text-xs text-zinc-400">
+                Will be assigned to <span className="font-medium text-zinc-600 dark:text-zinc-300">{chws[0].name}</span>
+              </p>
+            )}
 
             <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Reason
@@ -178,7 +197,7 @@ export function AssignChwModal({
               </button>
               <button
                 type="button"
-                disabled={!dueDate || isSubmitting}
+                disabled={!selectedChwId || !dueDate || isSubmitting}
                 onClick={handleSubmit}
                 className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
