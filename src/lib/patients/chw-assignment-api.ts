@@ -71,21 +71,19 @@ function toFrontendAssignment(a: BackendChwAssignment): FollowUpAssignment {
   };
 }
 
-export async function fetchChwForFacility(
+export async function fetchChwsForFacility(
   facilityName: string,
-): Promise<{ id: string; name: string } | undefined> {
+): Promise<{ id: string; name: string }[]> {
   const token = getStoredAccessToken();
   const facilities = await fetchFacilities();
   const facility = facilities.find((f) => f.name === facilityName);
-  if (!facility) return undefined;
+  if (!facility) return [];
 
   const chws = await apiFetch<BackendUser[]>(
     `/users?role=COMMUNITY_HEALTH_WORKER&facilityId=${facility.id}`,
     { token: token ?? undefined },
   );
-  const chw = chws[0];
-  if (!chw) return undefined;
-  return { id: chw.id, name: `${chw.firstName} ${chw.lastName}` };
+  return chws.map((chw) => ({ id: chw.id, name: `${chw.firstName} ${chw.lastName}` }));
 }
 
 export async function createChwAssignmentApi(data: {
