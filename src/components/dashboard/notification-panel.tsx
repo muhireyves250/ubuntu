@@ -17,7 +17,7 @@ export function NotificationPanel({
 
   const handleAlertClick = (type: NotificationAlert["type"], patientId: string) => {
     onClose();
-    if (type === "lab_request") {
+    if (type === "lab_request" || type === "lab_result_comment") {
       router.push("/dashboard/lab/requests");
     } else if (type === "facility_full") {
       router.push("/dashboard/hospital-admin");

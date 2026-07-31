@@ -214,11 +214,13 @@ export function useReferrals(): Referral[] {
 // "CHW report submitted" notification feed — scoped server-side to the
 // current user's facility via GET /community-visits.
 export function useAllCommunityVisits(): CommunityVisit[] {
+  const { role } = getCurrentUserSnapshot();
   const query = useQuery({
     queryKey: ["community-visits", "all"],
     queryFn: fetchAllCommunityVisits,
     staleTime: 30_000,
     retry: 1,
+    enabled: role === "nurse" || role === "gynecologist",
   });
   return query.data ?? [];
 }
@@ -1215,7 +1217,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
 
     if (role === "nurse") {
       for (const cv of communityVisits) {
-        if (cv.visitDate.slice(0, 10) !== today) continue;
+        if (cv.createdAt.slice(0, 10) !== today) continue;
         alerts.push({
           id: `chw-report-${cv.id}`,
           type: "chw_report_submitted",

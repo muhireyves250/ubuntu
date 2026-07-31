@@ -15,6 +15,7 @@ interface BackendCommunityVisit {
   riskFlag: boolean;
   riskReasons: string[];
   nurseFlaggedEmergency: boolean;
+  createdAt: string;
   chw: { id: string; firstName: string; lastName: string; phone: string | null };
   pregnancy: {
     patient: { id: string; firstName: string; lastName: string; nationalId: string; phone: string | null };
@@ -40,6 +41,7 @@ function toFrontendCommunityVisit(v: BackendCommunityVisit): CommunityVisit {
     riskFlag: v.riskFlag,
     riskReasons: v.riskReasons,
     nurseFlaggedEmergency: v.nurseFlaggedEmergency,
+    createdAt: v.createdAt,
   };
 }
 
