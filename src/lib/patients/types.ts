@@ -237,6 +237,7 @@ export interface CommunityVisit {
   riskFlag: boolean;
   riskReasons: string[];
   nurseFlaggedEmergency: boolean;
+  createdAt: string;
 }
 
 export interface Pregnancy {

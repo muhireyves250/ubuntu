@@ -8,12 +8,16 @@ import { queryClient } from "@/lib/query-client";
 export function CommunityVisitList() {
   const visits = useAllCommunityVisits();
   const [flaggingId, setFlaggingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleFlag(id: string) {
     setFlaggingId(id);
+    setError(null);
     try {
       await flagCommunityVisitEmergencyApi(id);
       await queryClient.invalidateQueries({ queryKey: ["community-visits", "all"] });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to flag visit as emergency. Please try again.");
     } finally {
       setFlaggingId(null);
     }
@@ -29,6 +33,11 @@ export function CommunityVisitList() {
 
   return (
     <div className="flex flex-col gap-3">
+      {error && (
+        <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+          {error}
+        </p>
+      )}
       {visits.map((v) => (
         <div key={v.id} className="flex items-center justify-between rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
           <div>
