@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
-import type { Patient } from "./types";
+import type { Patient, RiskLevel } from "./types";
 
 interface BackendPatient {
   id: string;
@@ -26,7 +26,17 @@ interface BackendPatient {
   createdAt: string;
   registeredBy: { id: string; firstName: string; lastName: string } | null;
   facility: { id: string; name: string } | null;
+  assignedChwId: string | null;
+  riskOverrideLevel: "GREEN" | "YELLOW" | "ORANGE" | "RED" | null;
+  riskOverrideSourceVisitId: string | null;
 }
+
+const RISK_LEVEL_TO_FRONTEND: Record<string, RiskLevel> = {
+  GREEN: "green",
+  YELLOW: "yellow",
+  ORANGE: "orange",
+  RED: "red",
+};
 
 function toFrontendPatient(p: BackendPatient): Patient {
   return {
@@ -51,6 +61,9 @@ function toFrontendPatient(p: BackendPatient): Patient {
     registeredAt: p.createdAt.slice(0, 10),
     registeredBy: p.registeredBy ? `${p.registeredBy.firstName} ${p.registeredBy.lastName}` : "",
     registrationFacility: p.facility?.name ?? "",
+    assignedChwId: p.assignedChwId ?? undefined,
+    riskOverrideLevel: p.riskOverrideLevel ? RISK_LEVEL_TO_FRONTEND[p.riskOverrideLevel] : undefined,
+    riskOverrideSourceVisitId: p.riskOverrideSourceVisitId ?? undefined,
   };
 }
 
