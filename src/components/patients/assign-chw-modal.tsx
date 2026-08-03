@@ -31,6 +31,7 @@ export function AssignChwModal({
   const [dueDate, setDueDate] = useState(defaultDueDate());
   const [match, setMatch] = useState<{ id: string; name: string; matchedTier: "isibo" | "village" } | null>(null);
   const [matchLoading, setMatchLoading] = useState(true);
+  const [matchError, setMatchError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -39,6 +40,11 @@ export function AssignChwModal({
     fetchChwMatch(patient.id)
       .then((result) => {
         if (!cancelled) setMatch(result);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMatchError("Could not check for a matching Community Health Worker. Please try again.");
+        }
       })
       .finally(() => {
         if (!cancelled) setMatchLoading(false);
@@ -105,7 +111,11 @@ export function AssignChwModal({
           </div>
         </div>
 
-        {matchLoading ? null : !match ? (
+        {matchLoading ? null : matchError ? (
+          <p className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+            {matchError}
+          </p>
+        ) : !match ? (
           <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
             No Community Health Worker is available for this patient&apos;s location yet.
           </div>
