@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
-import type { CommunityVisit } from "./types";
+import type { CommunityVisit, RiskLevel } from "./types";
 
 interface BackendCommunityVisit {
   id: string;
@@ -15,12 +15,23 @@ interface BackendCommunityVisit {
   riskFlag: boolean;
   riskReasons: string[];
   nurseFlaggedEmergency: boolean;
+  ancVisitNumber: number | null;
+  proposedRiskLevel: "GREEN" | "YELLOW" | "ORANGE" | "RED" | null;
+  reviewedAt: string | null;
+  rejected: boolean;
   createdAt: string;
   chw: { id: string; firstName: string; lastName: string; phone: string | null };
   pregnancy: {
     patient: { id: string; firstName: string; lastName: string; nationalId: string; phone: string | null };
   };
 }
+
+const RISK_LEVEL_TO_FRONTEND: Record<string, RiskLevel> = {
+  GREEN: "green",
+  YELLOW: "yellow",
+  ORANGE: "orange",
+  RED: "red",
+};
 
 function toFrontendCommunityVisit(v: BackendCommunityVisit): CommunityVisit {
   const { patient } = v.pregnancy;
@@ -41,6 +52,10 @@ function toFrontendCommunityVisit(v: BackendCommunityVisit): CommunityVisit {
     riskFlag: v.riskFlag,
     riskReasons: v.riskReasons,
     nurseFlaggedEmergency: v.nurseFlaggedEmergency,
+    ancVisitNumber: v.ancVisitNumber ?? undefined,
+    proposedRiskLevel: v.proposedRiskLevel ? RISK_LEVEL_TO_FRONTEND[v.proposedRiskLevel] : undefined,
+    reviewedAt: v.reviewedAt ?? undefined,
+    rejected: v.rejected,
     createdAt: v.createdAt,
   };
 }
@@ -78,11 +93,26 @@ export async function submitCommunityVisitApi(data: {
   babyWeight?: number;
   feedingStatus?: string;
   concerns?: string;
+  ancVisitNumber?: number;
+  checkedSigns?: string[];
 }): Promise<CommunityVisit> {
   const token = getStoredAccessToken();
   const v = await apiFetch<BackendCommunityVisit>("/community-visits", {
     method: "POST",
     body: data,
+    token: token ?? undefined,
+  });
+  return toFrontendCommunityVisit(v);
+}
+
+export async function reviewCommunityVisitApi(
+  id: string,
+  decision: "accept" | "reject",
+): Promise<CommunityVisit> {
+  const token = getStoredAccessToken();
+  const v = await apiFetch<BackendCommunityVisit>(`/community-visits/${id}/review`, {
+    method: "PATCH",
+    body: { decision },
     token: token ?? undefined,
   });
   return toFrontendCommunityVisit(v);

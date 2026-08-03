@@ -28,6 +28,9 @@ export interface Patient {
   registeredAt: string; // ISO date
   registeredBy: string;
   registrationFacility: string;
+  assignedChwId?: string;
+  riskOverrideLevel?: RiskLevel;
+  riskOverrideSourceVisitId?: string;
 }
 
 export interface VisitLabs {
@@ -238,6 +241,10 @@ export interface CommunityVisit {
   riskFlag: boolean;
   riskReasons: string[];
   nurseFlaggedEmergency: boolean;
+  ancVisitNumber?: number;
+  proposedRiskLevel?: RiskLevel;
+  reviewedAt?: string;
+  rejected: boolean;
   createdAt: string;
 }
 
