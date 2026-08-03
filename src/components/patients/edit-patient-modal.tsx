@@ -34,6 +34,7 @@ export function EditPatientModal({
   const [sector, setSector] = useState(patient.address.sector);
   const [cell, setCell] = useState(patient.address.cell);
   const [village, setVillage] = useState(patient.address.village);
+  const [isibo, setIsibo] = useState(patient.address.isibo);
 
   const [contactName, setContactName] = useState(patient.emergencyContact.name);
   const [relationship, setRelationship] = useState(patient.emergencyContact.relationship);
@@ -96,6 +97,7 @@ export function EditPatientModal({
           sector: sector.trim(),
           cell: cell.trim(),
           village: village.trim(),
+          isibo: isibo.trim(),
         },
         emergencyContact: {
           name: contactName.trim(),
@@ -206,6 +208,10 @@ export function EditPatientModal({
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Village
                     <input type="text" required value={village} onChange={(e) => setVillage(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Isibo
+                    <input type="text" required value={isibo} onChange={(e) => setIsibo(e.target.value)} className={inputCls} />
                   </label>
                 </div>
               </fieldset>

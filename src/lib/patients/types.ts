@@ -14,6 +14,7 @@ export interface Patient {
     sector: string;
     cell: string;
     village: string;
+    isibo: string;
   };
   emergencyContact: {
     name: string;
