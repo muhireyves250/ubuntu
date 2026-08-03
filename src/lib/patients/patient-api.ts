@@ -14,6 +14,7 @@ interface BackendPatient {
   sector: string;
   cell: string;
   village: string;
+  isibo: string;
   maritalStatus: string | null;
   emergencyContactName: string;
   emergencyContactRelationship: string;
@@ -37,7 +38,7 @@ function toFrontendPatient(p: BackendPatient): Patient {
     phone: p.phone,
     altPhone: p.altPhone ?? undefined,
     maritalStatus: p.maritalStatus ?? undefined,
-    address: { district: p.district, sector: p.sector, cell: p.cell, village: p.village },
+    address: { district: p.district, sector: p.sector, cell: p.cell, village: p.village, isibo: p.isibo },
     emergencyContact: {
       name: p.emergencyContactName,
       relationship: p.emergencyContactRelationship,
@@ -65,6 +66,7 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
     sector: data.address.sector,
     cell: data.address.cell,
     village: data.address.village,
+    isibo: data.address.isibo,
     maritalStatus: data.maritalStatus,
     emergencyContactName: data.emergencyContact.name,
     emergencyContactRelationship: data.emergencyContact.relationship,
