@@ -93,7 +93,11 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
     ? matchScheduledVisit(openPregnancy, pregnancyVisits, today)
     : null;
 
-  const currentRisk = activeReferral ? "red" : (allVisits[0]?.riskLevel ?? "green");
+  const currentRisk = activeReferral
+    ? "red"
+    : patient.riskOverrideLevel
+      ? patient.riskOverrideLevel
+      : (allVisits[0]?.riskLevel ?? "green");
   const latestVisit = allVisits[0];
   const isWaitingForLabs = latestVisit?.labStatus === "pending" || latestVisit?.labStatus === "in_progress";
   const needsFinalization = latestVisit?.labStatus === "completed" && latestVisit?.assessmentFinalized === false;

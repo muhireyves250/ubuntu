@@ -61,7 +61,9 @@ function PatientsPageContent() {
         patient,
         latestRisk: activeEmergencyPatientIds.has(patient.id)
           ? ("red" as RiskLevel)
-          : (latestVisit?.riskLevel ?? ("green" as RiskLevel)),
+          : patient.riskOverrideLevel
+            ? patient.riskOverrideLevel
+            : (latestVisit?.riskLevel ?? ("green" as RiskLevel)),
         lastVisitDate: latestVisit?.date,
         hospital: latestVisit?.hospital,
         gaWeeks: openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null,

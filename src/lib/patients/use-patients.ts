@@ -205,7 +205,9 @@ export function usePatientLock(patientId: string): PatientLock {
 export function useLatestRiskLevel(patientId: string): RiskLevel {
   const visits = useAllVisitsForPatient(patientId);
   const activeEmergency = useActiveEmergencyReferral(patientId);
+  const patient = usePatient(patientId);
   if (activeEmergency) return "red";
+  if (patient?.riskOverrideLevel) return patient.riskOverrideLevel;
   return visits[0]?.riskLevel ?? "green";
 }
 
