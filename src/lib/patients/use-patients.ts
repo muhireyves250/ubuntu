@@ -63,7 +63,17 @@ function getCurrentUserSnapshot(): { id: string; name: string; facility: string;
 // The system holds one shared patient record — every facility can see every
 // patient and their full history, not just the ones they registered.
 export function usePatients(): Patient[] {
-  const { data } = useQuery({ queryKey: ["patients"], queryFn: fetchPatients });
+  const { data } = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients() });
+  return data ?? [];
+}
+
+export function usePatientsForChw(): Patient[] {
+  const currentUser = getCurrentUserSnapshot();
+  const { data } = useQuery({
+    queryKey: ["patients", "assigned-chw", currentUser.id],
+    queryFn: () => fetchPatients({ assignedChwId: currentUser.id }),
+    enabled: currentUser.role === "chw" && !!currentUser.id,
+  });
   return data ?? [];
 }
 

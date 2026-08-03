@@ -94,10 +94,12 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
 // Large page size — no pagination UI exists yet, this approximates "fetch all"
 // for the current small seed dataset. Revisit if the patient count grows past
 // this limit.
-export async function fetchPatients(): Promise<Patient[]> {
+export async function fetchPatients(opts?: { assignedChwId?: string }): Promise<Patient[]> {
   const token = getStoredAccessToken();
+  const params = new URLSearchParams({ limit: "200" });
+  if (opts?.assignedChwId) params.set("assignedChwId", opts.assignedChwId);
   const result = await apiFetch<{ data: BackendPatient[]; meta: unknown }>(
-    "/patients?limit=200",
+    `/patients?${params.toString()}`,
     { token: token ?? undefined },
   );
   return result.data.map(toFrontendPatient);
