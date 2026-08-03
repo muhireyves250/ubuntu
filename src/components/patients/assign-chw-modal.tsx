@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFollowUpAssignment } from "@/lib/patients/use-patients";
 import { fetchChwMatch } from "@/lib/patients/chw-assignment-api";
+import { apiFetch } from "@/lib/api/client";
+import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import { IconClose } from "@/components/dashboard/icons";
 import { fullName } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
@@ -67,6 +69,12 @@ export function AssignChwModal({
     setError(null);
     setIsSubmitting(true);
     try {
+      const token = getStoredAccessToken();
+      await apiFetch(`/patients/${patient.id}/assign-chw`, {
+        method: "PATCH",
+        body: { chwId: match.id },
+        token: token ?? undefined,
+      });
       await createFollowUpAssignment({
         patientId: patient.id,
         reason,
