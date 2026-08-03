@@ -106,6 +106,28 @@ export function ancCalendar(pregnancy: Pregnancy): AncCalendarEntry[] {
   }));
 }
 
+export interface ChwVisitScheduleEntry {
+  visitNumber: number;
+  dueByWeek: number;
+  ancDueDate: string;
+  chwDueDate: string;
+}
+
+// The CHW's home-visit date for each checkpoint is always 2 days before the
+// corresponding hospital ANC visit date.
+export function chwVisitSchedule(pregnancy: Pregnancy): ChwVisitScheduleEntry[] {
+  return ancCalendar(pregnancy).map((entry) => {
+    const ancDate = new Date(`${entry.dueDate}T00:00:00`);
+    const chwDate = new Date(ancDate.getTime() - 2 * MS_PER_DAY);
+    return {
+      visitNumber: entry.visitNumber,
+      dueByWeek: entry.dueByWeek,
+      ancDueDate: entry.dueDate,
+      chwDueDate: chwDate.toISOString().slice(0, 10),
+    };
+  });
+}
+
 // When a mother walks in, check whether today falls within the tolerance
 // window of an unlogged scheduled visit date — if so, this is that
 // scheduled visit; otherwise it's unscheduled.
