@@ -12,6 +12,7 @@ import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { fullName, getInitials } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
 import { CommunityVisitForm } from "@/components/patients/community-visit-form";
+import { AncScheduleCalendar } from "@/components/patients/anc-schedule-calendar";
 
 export function ChwPatientView({ patientId }: { patientId: string }) {
   const patient = usePatient(patientId);
@@ -42,9 +43,14 @@ export function ChwPatientView({ patientId }: { patientId: string }) {
       <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">Pregnancy</p>
         {openPregnancy ? (
-          <p className="text-sm text-zinc-700 dark:text-zinc-300">
-            {gestationalAgeWeeks(openPregnancy.lmpDate)} weeks gestation • EDD {openPregnancy.eddDate}
-          </p>
+          <>
+            <p className="text-sm text-zinc-700 dark:text-zinc-300">
+              {gestationalAgeWeeks(openPregnancy.lmpDate)} weeks gestation • EDD {openPregnancy.eddDate}
+            </p>
+            <div className="mt-3">
+              <AncScheduleCalendar pregnancy={openPregnancy} />
+            </div>
+          </>
         ) : (
           <p className="text-sm text-zinc-400">No active pregnancy on file.</p>
         )}
