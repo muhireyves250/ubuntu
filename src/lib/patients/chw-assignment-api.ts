@@ -1,14 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
-import { fetchFacilities } from "./referral-api";
 import type { FollowUpAssignment, FollowUpReason, FollowUpPriority, FollowUpStatus } from "./types";
-
-interface BackendUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  facilityId: string;
-}
 
 interface BackendChwAssignment {
   id: string;
@@ -71,19 +63,23 @@ function toFrontendAssignment(a: BackendChwAssignment): FollowUpAssignment {
   };
 }
 
-export async function fetchChwsForFacility(
-  facilityName: string,
-): Promise<{ id: string; name: string }[]> {
-  const token = getStoredAccessToken();
-  const facilities = await fetchFacilities();
-  const facility = facilities.find((f) => f.name === facilityName);
-  if (!facility) return [];
+interface BackendChwMatch {
+  id: string;
+  firstName: string;
+  lastName: string;
+  matchedTier: "isibo" | "village";
+}
 
-  const chws = await apiFetch<BackendUser[]>(
-    `/users?role=COMMUNITY_HEALTH_WORKER&facilityId=${facility.id}`,
+export async function fetchChwMatch(
+  patientId: string,
+): Promise<{ id: string; name: string; matchedTier: "isibo" | "village" } | null> {
+  const token = getStoredAccessToken();
+  const match = await apiFetch<BackendChwMatch | null>(
+    `/users/chw-match/${patientId}`,
     { token: token ?? undefined },
   );
-  return chws.map((chw) => ({ id: chw.id, name: `${chw.firstName} ${chw.lastName}` }));
+  if (!match) return null;
+  return { id: match.id, name: `${match.firstName} ${match.lastName}`, matchedTier: match.matchedTier };
 }
 
 export async function createChwAssignmentApi(data: {
