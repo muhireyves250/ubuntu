@@ -29,6 +29,7 @@ import {
   finalizeAssessment,
   useActiveEmergencyReferral,
   usePatientLock,
+  useCommunityVisitsForPregnancy,
 } from "@/lib/patients/use-patients";
 import { gestationalAgeWeeks, matchScheduledVisit } from "@/lib/patients/pregnancy";
 import { getInitials, fullName, computeAge } from "@/lib/format";
@@ -64,6 +65,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const openPregnancy = pregnancies.find((p) => p.status === "open") ?? null;
   const allVisits = useAllVisitsForPatient(patientId);
   const pregnancyVisits = useVisitsForPregnancy(openPregnancy?.id ?? "");
+  const communityVisits = useCommunityVisitsForPregnancy(openPregnancy?.id ?? "");
 
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [showEditModal, setShowEditModal] = useState(false);
@@ -91,6 +93,10 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const today = new Date().toISOString().slice(0, 10);
   const todayScheduledMatch = openPregnancy
     ? matchScheduledVisit(openPregnancy, pregnancyVisits, today)
+    : null;
+
+  const matchingChwReport = todayScheduledMatch
+    ? communityVisits.find((v) => v.ancVisitNumber === todayScheduledMatch.visitNumber) ?? null
     : null;
 
   const currentRisk = activeReferral
@@ -324,6 +330,31 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               />
             ) : openPregnancy && !assessmentContext ? (
               <div className="flex flex-col items-center gap-4 py-6 text-center">
+                {matchingChwReport && (
+                  <div className="w-full max-w-md rounded-xl border border-teal-300 bg-teal-50 p-4 text-left dark:border-teal-800 dark:bg-teal-950/30">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400">
+                      Home Visit Report — {matchingChwReport.chwName}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                      {matchingChwReport.visitDate.slice(0, 10)}
+                      {matchingChwReport.systolic != null && matchingChwReport.diastolic != null &&
+                        ` • BP ${matchingChwReport.systolic}/${matchingChwReport.diastolic}`}
+                    </p>
+                    {matchingChwReport.concerns && (
+                      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{matchingChwReport.concerns}</p>
+                    )}
+                    {matchingChwReport.proposedRiskLevel && (
+                      <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                        Proposed risk color: {matchingChwReport.proposedRiskLevel.toUpperCase()}
+                        {matchingChwReport.reviewedAt
+                          ? matchingChwReport.rejected
+                            ? " (rejected)"
+                            : " (accepted)"
+                          : " — review on the Community Reports page"}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {todayScheduledMatch ? (
                   <div className="flex flex-col items-center gap-2 rounded-xl border border-teal-300 bg-teal-50 px-5 py-4 dark:border-teal-800 dark:bg-teal-950/30">
                     <p className="text-sm font-semibold text-teal-800 dark:text-teal-300">
