@@ -119,6 +119,7 @@ export async function updatePatientApi(
     body.sector = updates.address.sector;
     body.cell = updates.address.cell;
     body.village = updates.address.village;
+    body.isibo = updates.address.isibo;
     delete body.address;
   }
   if (updates.emergencyContact) {
