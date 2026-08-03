@@ -7,7 +7,7 @@ import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from 
 import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
 import { fetchVisitsForPregnancy, fetchAllVisits, createVisitApi, finalizeVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
-import { fetchAllCommunityVisits } from "./community-visit-api";
+import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy } from "./community-visit-api";
 import {
   fetchReferrals,
   createReferralApi,
@@ -235,6 +235,15 @@ export function useAllCommunityVisits(): CommunityVisit[] {
     enabled: role === "nurse" || role === "gynecologist",
   });
   return query.data ?? [];
+}
+
+export function useCommunityVisitsForPregnancy(pregnancyId: string): CommunityVisit[] {
+  const { data } = useQuery({
+    queryKey: ["community-visits", "pregnancy", pregnancyId],
+    queryFn: () => fetchCommunityVisitsForPregnancy(pregnancyId),
+    enabled: !!pregnancyId,
+  });
+  return data ?? [];
 }
 
 // Scoped to the current facility — this drives a dashboard widget, not the
