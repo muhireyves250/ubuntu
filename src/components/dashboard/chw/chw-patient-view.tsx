@@ -66,7 +66,7 @@ export function ChwPatientView({ patientId }: { patientId: string }) {
             </div>
           ) : (
             <CommunityVisitForm
-              pregnancyId={openPregnancy.id}
+              pregnancy={openPregnancy}
               onSubmitted={() => setVisitSubmitted(true)}
             />
           )}

@@ -2,12 +2,24 @@
 
 import { useState } from "react";
 import { submitCommunityVisitApi } from "@/lib/patients/community-visit-api";
+import { chwVisitSchedule } from "@/lib/patients/pregnancy";
+import { CHW_SYMPTOM_CHECKLIST } from "@/lib/patients/chw-symptom-checklist";
+import type { Pregnancy } from "@/lib/patients/types";
+
+function currentlyDueAncVisitNumber(pregnancy: Pregnancy): number | undefined {
+  const today = new Date().toISOString().slice(0, 10);
+  const schedule = chwVisitSchedule(pregnancy);
+  // The checkpoint whose CHW-due date is on or before today, and whose
+  // hospital date hasn't passed yet — the currently "open" home-visit window.
+  const due = schedule.find((s) => s.chwDueDate <= today && today <= s.ancDueDate);
+  return due?.visitNumber;
+}
 
 export function CommunityVisitForm({
-  pregnancyId,
+  pregnancy,
   onSubmitted,
 }: {
-  pregnancyId: string;
+  pregnancy: Pregnancy;
   onSubmitted: () => void;
 }) {
   const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10));
@@ -17,8 +29,15 @@ export function CommunityVisitForm({
   const [feedingStatus, setFeedingStatus] = useState("");
   const [concerns, setConcerns] = useState("");
   const [notes, setNotes] = useState("");
+  const [checkedSigns, setCheckedSigns] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function toggleSign(id: string) {
+    setCheckedSigns((current) =>
+      current.includes(id) ? current.filter((s) => s !== id) : [...current, id],
+    );
+  }
 
   async function handleSubmit() {
     if (isSubmitting) return;
@@ -26,7 +45,7 @@ export function CommunityVisitForm({
     setIsSubmitting(true);
     try {
       await submitCommunityVisitApi({
-        pregnancyId,
+        pregnancyId: pregnancy.id,
         visitDate,
         systolic: systolic ? Number(systolic) : undefined,
         diastolic: diastolic ? Number(diastolic) : undefined,
@@ -34,6 +53,8 @@ export function CommunityVisitForm({
         feedingStatus: feedingStatus || undefined,
         concerns: concerns || undefined,
         notes: notes || undefined,
+        ancVisitNumber: currentlyDueAncVisitNumber(pregnancy),
+        checkedSigns: checkedSigns.length > 0 ? checkedSigns : undefined,
       });
       onSubmitted();
     } catch (err) {
@@ -93,6 +114,22 @@ export function CommunityVisitForm({
           className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         />
       </label>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Physical signs observed
+        </legend>
+        {CHW_SYMPTOM_CHECKLIST.map((sign) => (
+          <label key={sign.id} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              checked={checkedSigns.includes(sign.id)}
+              onChange={() => toggleSign(sign.id)}
+              className="h-4 w-4 rounded border-zinc-300 text-teal-600 focus:ring-teal-600"
+            />
+            {sign.label}
+          </label>
+        ))}
+      </fieldset>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
         Concerns
         <textarea
