@@ -13,8 +13,8 @@ function CommunityReportsContent() {
         </h2>
       </div>
 
-      <div className="rounded-[1.25rem] border border-amber-300 bg-amber-50/60 p-6 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
-        <div className="flex items-center gap-2.5">
+      <div className="flex flex-col rounded-[1.25rem] border border-amber-300 bg-amber-50/60 p-6 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
+        <div className="flex shrink-0 items-center gap-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
             <IconReport className="h-4 w-4" />
           </span>
@@ -28,7 +28,7 @@ function CommunityReportsContent() {
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="scrollbar-hidden mt-4 max-h-128 overflow-y-auto pr-1">
           <CommunityVisitList />
         </div>
       </div>

@@ -12,6 +12,7 @@ interface BackendCommunityVisit {
   babyWeight: number | null;
   feedingStatus: string | null;
   concerns: string | null;
+  checkedSigns: string[];
   riskFlag: boolean;
   riskReasons: string[];
   nurseFlaggedEmergency: boolean;
@@ -49,6 +50,7 @@ function toFrontendCommunityVisit(v: BackendCommunityVisit): CommunityVisit {
     babyWeight: v.babyWeight ?? undefined,
     feedingStatus: v.feedingStatus ?? undefined,
     concerns: v.concerns ?? undefined,
+    checkedSigns: v.checkedSigns ?? [],
     riskFlag: v.riskFlag,
     riskReasons: v.riskReasons,
     nurseFlaggedEmergency: v.nurseFlaggedEmergency,

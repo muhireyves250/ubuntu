@@ -11,7 +11,7 @@ import {
   useFacilityCapacity,
 } from "@/lib/patients/use-patients";
 import { useAuth } from "@/lib/auth/auth-context";
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { fullName } from "@/lib/format";
 import type { Patient, Visit } from "@/lib/patients/types";
 import { ConfirmModal } from "./confirm-modal";
@@ -154,7 +154,7 @@ export function RedCaseAlertPanel() {
       const openPregnancy = pregnancies.find(
         (p) => p.patientId === referral.patientId && p.status === "open",
       );
-      const gaWeeks = openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null;
+      const gaWeeks = openPregnancy ? gestationalAgeWeeks(effectiveLmpDate(openPregnancy)) : null;
       results.push({ referral, patient, latestVisit, gaWeeks });
     }
 

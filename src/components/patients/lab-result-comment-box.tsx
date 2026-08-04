@@ -20,7 +20,7 @@ export function LabResultCommentBox({
     setIsSubmitting(true);
     setError(null);
     try {
-      await postLabResultCommentApi(result.id, body.trim());
+      await postLabResultCommentApi(result.labResultId, body.trim());
       setBody("");
       onPosted();
     } catch (err) {

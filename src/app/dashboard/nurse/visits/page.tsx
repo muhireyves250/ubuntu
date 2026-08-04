@@ -156,6 +156,8 @@ function VisitsPageContent() {
                 <th className="px-4 py-3">Risk</th>
                 <th className="px-4 py-3">Signs &amp; Symptoms</th>
                 <th className="px-4 py-3">Labs</th>
+                <th className="px-4 py-3">Hospital</th>
+                <th className="px-4 py-3">Nurse</th>
                 <th className="px-4 py-3">Notes</th>
               </tr>
             </thead>
@@ -218,6 +220,12 @@ function VisitsPageContent() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                    {visit.hospital}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                    {visit.attendingNurse}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                     {visit.notes || "—"}
                   </td>
                 </tr>
@@ -226,7 +234,7 @@ function VisitsPageContent() {
               {rows.length === 0 && (
                 <tr className="bg-white dark:bg-zinc-900">
                   <td
-                    colSpan={6}
+                    colSpan={8}
                     className="px-4 py-10 text-center text-zinc-500 dark:text-zinc-400"
                   >
                     {dateFilter === "today" && !hasActiveFilters

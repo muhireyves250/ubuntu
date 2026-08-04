@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState } from "react";
-import { notFound } from "next/navigation";
+import { notFound, useSearchParams } from "next/navigation";
 import { RoleGuard } from "@/components/role-guard";
 import { PatientDetailsTab } from "@/components/patients/patient-details-tab";
 import { SignsSymptomsTab } from "@/components/patients/signs-symptoms-tab";
@@ -19,6 +19,7 @@ import { FinalizeAssessmentBlocker } from "@/components/patients/finalize-assess
 import { ActiveReferralBlocker, ActiveReferralBanner } from "@/components/patients/active-referral-blocker";
 import { PatientLockedBlocker } from "@/components/patients/patient-locked-blocker";
 import { SpecialistNotesTab } from "@/components/patients/specialist-notes-tab";
+import { ChwReportsTab } from "@/components/patients/chw-reports-tab";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
   usePatient,
@@ -30,8 +31,9 @@ import {
   useActiveEmergencyReferral,
   usePatientLock,
   useCommunityVisitsForPregnancy,
+  useAllCommunityVisitsForPatient,
 } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks, matchScheduledVisit } from "@/lib/patients/pregnancy";
+import { gestationalAgeWeeks, matchScheduledVisit, effectiveLmpDate, chwVisitSchedule } from "@/lib/patients/pregnancy";
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
@@ -43,6 +45,7 @@ const TABS = [
   "Signs & Symptoms",
   "Pregnancy",
   "Visit History",
+  "CHW Reports",
   "New Assessment",
   "AI Prediction",
   "Specialist Notes",
@@ -66,8 +69,13 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const allVisits = useAllVisitsForPatient(patientId);
   const pregnancyVisits = useVisitsForPregnancy(openPregnancy?.id ?? "");
   const communityVisits = useCommunityVisitsForPregnancy(openPregnancy?.id ?? "");
+  const allCommunityVisits = useAllCommunityVisitsForPatient(patientId);
 
-  const [activeTab, setActiveTab] = useState<Tab>("Overview");
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<Tab>(
+    (TABS as readonly string[]).includes(requestedTab ?? "") ? (requestedTab as Tab) : "Overview",
+  );
   const [showEditModal, setShowEditModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showAssignChwModal, setShowAssignChwModal] = useState(false);
@@ -95,8 +103,22 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
     ? matchScheduledVisit(openPregnancy, pregnancyVisits, today)
     : null;
 
+  // Each hospital checkpoint is preceded by two CHW home visits (see
+  // chwVisitSchedule), not one — so surface whichever of that pair's
+  // reports was submitted most recently, rather than a single 1:1 match.
   const matchingChwReport = todayScheduledMatch
-    ? communityVisits.find((v) => v.ancVisitNumber === todayScheduledMatch.visitNumber) ?? null
+    ? (() => {
+        const checkpointVisitNumbers = new Set(
+          (openPregnancy ? chwVisitSchedule(openPregnancy) : [])
+            .filter((s) => s.dueByWeek === todayScheduledMatch.dueByWeek)
+            .map((s) => s.visitNumber),
+        );
+        return (
+          communityVisits
+            .filter((v) => v.ancVisitNumber != null && checkpointVisitNumbers.has(v.ancVisitNumber))
+            .sort((a, b) => b.visitDate.localeCompare(a.visitDate))[0] ?? null
+        );
+      })()
     : null;
 
   const currentRisk = activeReferral
@@ -149,7 +171,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
             {computeAge(patient.dateOfBirth)} years •{" "}
             {openPregnancy
-              ? `${gestationalAgeWeeks(openPregnancy.lmpDate)} weeks gestation`
+              ? `${gestationalAgeWeeks(effectiveLmpDate(openPregnancy))} weeks gestation`
               : "no active pregnancy"}
           </p>
           <span className="mt-1.5 inline-flex rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-800 dark:bg-teal-950 dark:text-teal-300">
@@ -237,7 +259,10 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               />
         )}
         {activeTab === "Patient Details" && (
-          <PatientDetailsTab patient={patient} />
+          <PatientDetailsTab
+            patient={patient}
+            onEdit={isReadOnlyAdmin ? undefined : () => setShowEditModal(true)}
+          />
         )}
         {activeTab === "Signs & Symptoms" && (
           <>
@@ -446,6 +471,9 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               </p>
             )}
           </>
+        )}
+        {activeTab === "CHW Reports" && (
+          <ChwReportsTab communityVisits={allCommunityVisits} canReview={user?.role === "nurse"} />
         )}
         {activeTab === "AI Prediction" && (
           <AiPredictionTab visits={allVisits} />

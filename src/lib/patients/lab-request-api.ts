@@ -96,28 +96,34 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
 
   const results: LabTestResult[] = labResult
     ? TEST_FIELD_MAP.filter(([, field]) => labResult[field] != null).map(
-        ([testName, field, unit], idx) => {
-          const resultId = `${labResult.id}-${idx}`;
-          return {
-            id: resultId,
-            testName,
-            result: String(labResult[field]),
-            unit,
-            referenceRange: "Varies",
-            interpretation: INTERPRETATION_TO_FRONTEND[labResult.interpretation],
-            resultComments: (labResult.comments || []).map((c) => ({
-              id: c.id,
-              labResultId: resultId,
-              authorId: c.author.id,
-              authorName: `${c.author.firstName} ${c.author.lastName}`,
-              authorRole: c.author.role,
-              body: c.body,
-              createdAt: c.createdAt,
-            })),
-            completedAt: labResult.createdAt,
-            completedBy: r.assignedTo ? `${r.assignedTo.firstName} ${r.assignedTo.lastName}` : undefined,
-          };
-        },
+        ([testName, field, unit], idx) => ({
+          id: `${labResult.id}-${idx}`,
+          labResultId: labResult.id,
+          testName,
+          result: String(labResult[field]),
+          unit,
+          referenceRange: "Varies",
+          interpretation: INTERPRETATION_TO_FRONTEND[labResult.interpretation],
+          // The comment thread belongs to the whole lab panel (one LabResult
+          // row), not to any individual test field within it — attach it
+          // only to the first expanded row so it renders/counts once instead
+          // of once per populated field (duplicate React keys, duplicate
+          // notifications).
+          resultComments:
+            idx === 0
+              ? (labResult.comments || []).map((c) => ({
+                  id: c.id,
+                  labResultId: labResult.id,
+                  authorId: c.author.id,
+                  authorName: `${c.author.firstName} ${c.author.lastName}`,
+                  authorRole: c.author.role,
+                  body: c.body,
+                  createdAt: c.createdAt,
+                }))
+              : [],
+          completedAt: labResult.createdAt,
+          completedBy: r.assignedTo ? `${r.assignedTo.firstName} ${r.assignedTo.lastName}` : undefined,
+        }),
       )
     : [];
 

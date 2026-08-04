@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { IconAlert, IconActivity, IconBuilding, IconClock, IconCheckCircle } from "@/components/dashboard/icons";
 import { CloseReferralModal } from "@/components/dashboard/close-referral-modal";
-import { relativeTime } from "@/lib/format";
+import { formatExactDateTime } from "@/lib/format";
 import { getInitials, fullName } from "@/lib/format";
 import type { Patient, Referral } from "@/lib/patients/types";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -142,7 +142,7 @@ export function ActiveReferralBlocker({
             <StatusChip
               icon={<IconClock className="h-3.5 w-3.5" />}
               label="Opened"
-              value={relativeTime(referral.createdAt)}
+              value={formatExactDateTime(referral.createdAt)}
             />
           ) : (
             <StatusChip
@@ -209,8 +209,8 @@ export function ActiveReferralBanner({
           </p>
           <p className="text-xs text-red-700/80 dark:text-red-400/80">
             {isPending
-              ? `Broadcast to all capable facilities · opened ${relativeTime(referral.createdAt)}`
-              : `Managed by ${referral.acceptedByFacility} · accepted by ${referral.acceptedByNurse} · opened ${relativeTime(referral.createdAt)}`}
+              ? `Broadcast to all capable facilities · opened ${formatExactDateTime(referral.createdAt)}`
+              : `Managed by ${referral.acceptedByFacility} · accepted by ${referral.acceptedByNurse} · opened ${formatExactDateTime(referral.createdAt)}`}
           </p>
         </div>
       </div>
