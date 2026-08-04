@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import type { Patient, Referral, Visit } from "@/lib/patients/types";
-import { fullName, computeAge, relativeTime } from "@/lib/format";
+import { fullName, computeAge, formatExactDateTime } from "@/lib/format";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { IconClose, IconAlert, IconClock, IconBuilding, IconUsers, IconActivity } from "./icons";
@@ -124,7 +124,7 @@ export function PatientEmergencyInfoModal({
               <InfoField label="Referred from" value={referral.referredByFacility} />
               <InfoField label="Referring nurse" value={referral.referredByNurse} />
               <InfoField label="Receiving facility" value={facility} />
-              <InfoField label="Flagged" value={relativeTime(referral.createdAt)} />
+              <InfoField label="Flagged" value={formatExactDateTime(referral.createdAt)} />
             </div>
             <div className="mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFollowUpAssignment } from "@/lib/patients/use-patients";
-import { fetchChwForFacility } from "@/lib/patients/chw-assignment-api";
+import { fetchChwMatch } from "@/lib/patients/chw-assignment-api";
+import { apiFetch } from "@/lib/api/client";
+import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import { IconClose } from "@/components/dashboard/icons";
 import { fullName } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
@@ -29,24 +31,30 @@ export function AssignChwModal({
   const [reason, setReason] = useState<FollowUpReason>(REASON_OPTIONS[0]);
   const [priority, setPriority] = useState<FollowUpPriority>("routine");
   const [dueDate, setDueDate] = useState(defaultDueDate());
-  const [chw, setChw] = useState<{ id: string; name: string } | undefined>(undefined);
-  const [chwLoading, setChwLoading] = useState(true);
+  const [match, setMatch] = useState<{ id: string; name: string; matchedTier: "isibo" | "village" } | null>(null);
+  const [matchLoading, setMatchLoading] = useState(true);
+  const [matchError, setMatchError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetchChwForFacility(patient.registrationFacility)
+    fetchChwMatch(patient.id)
       .then((result) => {
-        if (!cancelled) setChw(result);
+        if (!cancelled) setMatch(result);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMatchError("Could not check for a matching Community Health Worker. Please try again.");
+        }
       })
       .finally(() => {
-        if (!cancelled) setChwLoading(false);
+        if (!cancelled) setMatchLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [patient.registrationFacility]);
+  }, [patient.id]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -57,16 +65,22 @@ export function AssignChwModal({
   }, [onClose]);
 
   async function handleSubmit() {
-    if (!chw || isSubmitting) return;
+    if (!match || isSubmitting) return;
     setError(null);
     setIsSubmitting(true);
     try {
+      const token = getStoredAccessToken();
+      await apiFetch(`/patients/${patient.id}/assign-chw`, {
+        method: "PATCH",
+        body: { chwId: match.id },
+        token: token ?? undefined,
+      });
       await createFollowUpAssignment({
         patientId: patient.id,
         reason,
         priority,
         dueDate,
-        assignedToChwId: chw.id,
+        assignedToChwId: match.id,
       });
       onCreated();
       onClose();
@@ -105,14 +119,20 @@ export function AssignChwModal({
           </div>
         </div>
 
-        {chwLoading ? null : !chw ? (
+        {matchLoading ? null : matchError ? (
+          <p className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+            {matchError}
+          </p>
+        ) : !match ? (
           <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-            No Community Health Worker is available at this facility yet.
+            No Community Health Worker is available for this patient&apos;s location yet.
           </div>
         ) : (
           <div className="mt-4 flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
             <p className="text-xs text-zinc-400">
-              Will be assigned to <span className="font-medium text-zinc-600 dark:text-zinc-300">{chw.name}</span>
+              This patient will be assigned to{" "}
+              <span className="font-medium text-zinc-600 dark:text-zinc-300">{match.name}</span>,
+              who covers the same {match.matchedTier === "isibo" ? "isibo" : "village"}.
             </p>
 
             <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -178,7 +198,7 @@ export function AssignChwModal({
               </button>
               <button
                 type="button"
-                disabled={!dueDate || isSubmitting}
+                disabled={!match || !dueDate || isSubmitting}
                 onClick={handleSubmit}
                 className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
               >

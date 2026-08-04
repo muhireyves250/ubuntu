@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
-import type { Patient } from "./types";
+import type { Patient, RiskLevel } from "./types";
 
 interface BackendPatient {
   id: string;
@@ -14,6 +14,7 @@ interface BackendPatient {
   sector: string;
   cell: string;
   village: string;
+  isibo: string;
   maritalStatus: string | null;
   emergencyContactName: string;
   emergencyContactRelationship: string;
@@ -25,7 +26,18 @@ interface BackendPatient {
   createdAt: string;
   registeredBy: { id: string; firstName: string; lastName: string } | null;
   facility: { id: string; name: string } | null;
+  assignedChwId: string | null;
+  assignedChwAt: string | null;
+  riskOverrideLevel: "GREEN" | "YELLOW" | "ORANGE" | "RED" | null;
+  riskOverrideSourceVisitId: string | null;
 }
+
+const RISK_LEVEL_TO_FRONTEND: Record<string, RiskLevel> = {
+  GREEN: "green",
+  YELLOW: "yellow",
+  ORANGE: "orange",
+  RED: "red",
+};
 
 function toFrontendPatient(p: BackendPatient): Patient {
   return {
@@ -37,7 +49,7 @@ function toFrontendPatient(p: BackendPatient): Patient {
     phone: p.phone,
     altPhone: p.altPhone ?? undefined,
     maritalStatus: p.maritalStatus ?? undefined,
-    address: { district: p.district, sector: p.sector, cell: p.cell, village: p.village },
+    address: { district: p.district, sector: p.sector, cell: p.cell, village: p.village, isibo: p.isibo },
     emergencyContact: {
       name: p.emergencyContactName,
       relationship: p.emergencyContactRelationship,
@@ -50,6 +62,10 @@ function toFrontendPatient(p: BackendPatient): Patient {
     registeredAt: p.createdAt.slice(0, 10),
     registeredBy: p.registeredBy ? `${p.registeredBy.firstName} ${p.registeredBy.lastName}` : "",
     registrationFacility: p.facility?.name ?? "",
+    assignedChwId: p.assignedChwId ?? undefined,
+    assignedChwAt: p.assignedChwAt ?? undefined,
+    riskOverrideLevel: p.riskOverrideLevel ? RISK_LEVEL_TO_FRONTEND[p.riskOverrideLevel] : undefined,
+    riskOverrideSourceVisitId: p.riskOverrideSourceVisitId ?? undefined,
   };
 }
 
@@ -65,6 +81,7 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
     sector: data.address.sector,
     cell: data.address.cell,
     village: data.address.village,
+    isibo: data.address.isibo,
     maritalStatus: data.maritalStatus,
     emergencyContactName: data.emergencyContact.name,
     emergencyContactRelationship: data.emergencyContact.relationship,
@@ -79,10 +96,12 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
 // Large page size — no pagination UI exists yet, this approximates "fetch all"
 // for the current small seed dataset. Revisit if the patient count grows past
 // this limit.
-export async function fetchPatients(): Promise<Patient[]> {
+export async function fetchPatients(opts?: { assignedChwId?: string }): Promise<Patient[]> {
   const token = getStoredAccessToken();
+  const params = new URLSearchParams({ limit: "200" });
+  if (opts?.assignedChwId) params.set("assignedChwId", opts.assignedChwId);
   const result = await apiFetch<{ data: BackendPatient[]; meta: unknown }>(
-    "/patients?limit=200",
+    `/patients?${params.toString()}`,
     { token: token ?? undefined },
   );
   return result.data.map(toFrontendPatient);
@@ -117,6 +136,7 @@ export async function updatePatientApi(
     body.sector = updates.address.sector;
     body.cell = updates.address.cell;
     body.village = updates.address.village;
+    body.isibo = updates.address.isibo;
     delete body.address;
   }
   if (updates.emergencyContact) {

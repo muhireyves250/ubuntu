@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { notFound } from "next/navigation";
 import {
   usePatient,
@@ -7,9 +8,11 @@ import {
   usePregnanciesForPatient,
   useFollowUpAssignmentsForPatient,
 } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { fullName, getInitials } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
+import { CommunityVisitForm } from "@/components/patients/community-visit-form";
+import { AncScheduleCalendar } from "@/components/patients/anc-schedule-calendar";
 
 export function ChwPatientView({ patientId }: { patientId: string }) {
   const patient = usePatient(patientId);
@@ -17,6 +20,7 @@ export function ChwPatientView({ patientId }: { patientId: string }) {
   const pregnancies = usePregnanciesForPatient(patientId);
   const openPregnancy = pregnancies.find((p) => p.status === "open") ?? null;
   const assignments = useFollowUpAssignmentsForPatient(patientId);
+  const [visitSubmitted, setVisitSubmitted] = useState(false);
 
   if (patientLoading) return null;
   if (!patient) return notFound();
@@ -39,13 +43,41 @@ export function ChwPatientView({ patientId }: { patientId: string }) {
       <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">Pregnancy</p>
         {openPregnancy ? (
-          <p className="text-sm text-zinc-700 dark:text-zinc-300">
-            {gestationalAgeWeeks(openPregnancy.lmpDate)} weeks gestation • EDD {openPregnancy.eddDate}
-          </p>
+          <>
+            <p className="text-sm text-zinc-700 dark:text-zinc-300">
+              {gestationalAgeWeeks(effectiveLmpDate(openPregnancy))} weeks gestation • EDD {openPregnancy.eddDate}
+            </p>
+            <div className="mt-3">
+              <AncScheduleCalendar pregnancy={openPregnancy} homeVisitsOnly />
+            </div>
+          </>
         ) : (
           <p className="text-sm text-zinc-400">No active pregnancy on file.</p>
         )}
       </div>
+
+      {openPregnancy && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">Home Visit Report</p>
+          {visitSubmitted ? (
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-teal-300 bg-teal-50 px-4 py-3 text-sm text-teal-800 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-300">
+              <p>Home visit report submitted successfully.</p>
+              <button
+                type="button"
+                onClick={() => setVisitSubmitted(false)}
+                className="rounded-lg border border-teal-400 bg-white px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 dark:border-teal-700 dark:bg-zinc-900 dark:text-teal-300 dark:hover:bg-teal-950/60"
+              >
+                Log another visit
+              </button>
+            </div>
+          ) : (
+            <CommunityVisitForm
+              pregnancy={openPregnancy}
+              onSubmitted={() => setVisitSubmitted(true)}
+            />
+          )}
+        </div>
+      )}
 
       <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">Follow-up History</p>

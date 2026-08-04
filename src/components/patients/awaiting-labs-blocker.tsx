@@ -1,7 +1,7 @@
 "use client";
 
 import { IconAlert, IconActivity, IconCalendar, IconUsers, IconCheckCircle } from "@/components/dashboard/icons";
-import { relativeTime } from "@/lib/format";
+import { formatExactDateTime } from "@/lib/format";
 import type { Patient, Visit } from "@/lib/patients/types";
 
 const STEPS = ["Requested", "Awaiting Results", "Unlocked"] as const;
@@ -94,7 +94,7 @@ export function AwaitingLabsBlocker({
               <span className="text-sm text-zinc-500 dark:text-zinc-400">Requested on</span>
               <span className="text-right text-sm font-medium text-zinc-900 dark:text-zinc-200">
                 {visit.date}
-                <span className="block text-xs font-normal text-zinc-400">{relativeTime(visit.date)}</span>
+                <span className="block text-xs font-normal text-zinc-400">{formatExactDateTime(visit.date)}</span>
               </span>
             </div>
           </div>

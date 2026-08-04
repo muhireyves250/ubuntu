@@ -76,6 +76,7 @@ function isCurrentShapeReferral(referral: Referral): boolean {
   return (
     typeof referral.createdAt === "string" &&
     typeof referral.referredByNurse === "string" &&
+    typeof referral.referredByNurseId === "string" &&
     typeof referral.referredByFacility === "string"
   );
 }

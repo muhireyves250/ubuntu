@@ -14,6 +14,7 @@ export interface Patient {
     sector: string;
     cell: string;
     village: string;
+    isibo: string;
   };
   emergencyContact: {
     name: string;
@@ -27,6 +28,10 @@ export interface Patient {
   registeredAt: string; // ISO date
   registeredBy: string;
   registrationFacility: string;
+  assignedChwId?: string;
+  assignedChwAt?: string; // ISO datetime — when assignedChwId was last set
+  riskOverrideLevel?: RiskLevel;
+  riskOverrideSourceVisitId?: string;
 }
 
 export interface VisitLabs {
@@ -45,13 +50,15 @@ export interface VisitLabs {
 }
 
 export interface LabTestResult {
-  id: string;
+  id: string; // synthetic per-row id (`${labResultId}-${idx}`) — for React keys only, never send to the API
+  labResultId: string; // the real backend LabResult id — use this to post/attribute comments
   testName: string;
   result: string;
   unit: string;
   referenceRange: string;
   interpretation: "Normal" | "Abnormal" | "Critical";
   comments?: string;
+  resultComments?: LabResultComment[];
   completedAt?: string;
   completedBy?: string;
 }
@@ -61,7 +68,8 @@ export type LabStatus = "Pending" | "In Progress" | "Completed";
 export type ResultInterpretation = "Normal" | "Abnormal" | "Critical";
 
 export interface LabRequest {
-  id: string; // Same as visit.id in the old local-storage model — now the LabRequest's own id
+  id: string; // The LabRequest's own id (was the same as visit.id in the old local-storage model)
+  visitId: string;
   patientId: string;
   patientName: string;
   patientAge: number;
@@ -70,6 +78,7 @@ export interface LabRequest {
   gestationalAge: string;
   requestDate: string;
   requestingNurseId: string;
+  requestedById: string;
   visitType: "Scheduled ANC" | "Unscheduled ANC" | "Emergency Visit";
   priority: LabPriority;
   status: LabStatus;
@@ -139,9 +148,11 @@ export interface Referral {
   reason: string;
   urgency: "routine" | "urgent" | "emergency";
   referredByNurse: string;
+  referredByNurseId: string;
   referredByFacility: string;
   acceptedAt?: string;
   acceptedByNurse?: string;
+  acceptedByNurseId?: string;
   acceptedByFacility?: string;
   closedAt?: string;
   outcome?: ReferralOutcome;
@@ -203,6 +214,41 @@ export interface FollowUpAssignment {
   priority: FollowUpPriority;
   dueDate: string; // ISO date "YYYY-MM-DD"
   status: FollowUpStatus;
+}
+
+export interface LabResultComment {
+  id: string;
+  labResultId: string;
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface CommunityVisit {
+  id: string;
+  pregnancyId: string;
+  patientId: string;
+  patientName: string;
+  chwId: string;
+  chwName: string;
+  visitDate: string;
+  notes: string;
+  systolic?: number;
+  diastolic?: number;
+  babyWeight?: number;
+  feedingStatus?: string;
+  concerns?: string;
+  checkedSigns: string[];
+  riskFlag: boolean;
+  riskReasons: string[];
+  nurseFlaggedEmergency: boolean;
+  ancVisitNumber?: number;
+  proposedRiskLevel?: RiskLevel;
+  reviewedAt?: string;
+  rejected: boolean;
+  createdAt: string;
 }
 
 export interface Pregnancy {

@@ -53,6 +53,12 @@ const NAV_ITEMS: NavItem[] = [
     enabledRoles: ["nurse"],
   },
   {
+    label: "Community Reports",
+    icon: IconReport,
+    href: "/dashboard/nurse/community-reports",
+    enabledRoles: ["nurse"],
+  },
+  {
     label: "Referral Log",
     icon: IconReport,
     href: "/dashboard/nurse/referrals",

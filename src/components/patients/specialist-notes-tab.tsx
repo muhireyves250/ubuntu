@@ -9,7 +9,7 @@ import {
   acknowledgeRecommendation,
 } from "@/lib/patients/use-patients";
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { relativeTime } from "@/lib/format";
+import { formatExactDateTime } from "@/lib/format";
 import type { RiskLevel } from "@/lib/patients/types";
 
 export function SpecialistNotesTab({
@@ -143,7 +143,7 @@ export function SpecialistNotesTab({
                     {rec.createdByGynecologist}
                   </p>
                   <p className="text-xs text-zinc-400">
-                    {rec.createdByFacility} · {relativeTime(rec.createdAt)}
+                    {rec.createdByFacility} · {formatExactDateTime(rec.createdAt)}
                   </p>
                 </div>
                 <RiskBadge level={rec.riskLevelAtCreation} size="sm" />

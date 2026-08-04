@@ -31,6 +31,7 @@ interface BackendVisit {
   vitalSigns: BackendVitalSigns | null;
   symptoms: { id: string; name: string; createdAt: string }[];
   riskAssessment: { riskLevel: "GREEN" | "YELLOW" | "ORANGE" | "RED" } | null;
+  labRequests: { status: "PENDING" | "IN_PROGRESS" | "COMPLETED" }[];
 }
 
 // Slice 5 (Antenatal-api, Risk Classification Unification) mapping, reused
@@ -121,6 +122,12 @@ const RISK_LEVEL_TO_FRONTEND: Record<string, "green" | "yellow" | "orange" | "re
   RED: "red",
 };
 
+const LAB_STATUS_TO_FRONTEND: Record<string, "pending" | "in_progress" | "completed" | undefined> = {
+  PENDING: "pending",
+  IN_PROGRESS: "in_progress",
+  COMPLETED: "completed",
+};
+
 export function toFrontendVisit(v: BackendVisit): Visit {
   const labs: VisitLabs | undefined = v.vitalSigns
     ? {
@@ -148,14 +155,7 @@ export function toFrontendVisit(v: BackendVisit): Visit {
     notes: v.notes ?? "",
     riskLevel: v.riskAssessment ? RISK_LEVEL_TO_FRONTEND[v.riskAssessment.riskLevel] : "green",
     labs,
-    // Always undefined: lab status lives in the backend's separate, not-yet-
-    // migrated LabRequest/LabResult domain, which this slice doesn't touch.
-    // Known consequence (found + accepted during Slice C's verification, not
-    // fixed here): usePatientLock()'s cross-facility lock check and
-    // patients/[id]/page.tsx's AwaitingLabsBlocker/FinalizeAssessmentBlocker
-    // gating both key off labStatus, so neither can ever trigger for a real
-    // visit until a future Lab Requests integration slice wires this field.
-    labStatus: undefined,
+    labStatus: LAB_STATUS_TO_FRONTEND[v.labRequests[0]?.status ?? ""],
     emergencySummary: v.emergencySummary ?? undefined,
     treatment: v.treatment ?? undefined,
     followUpPlan: v.followUpPlan ?? undefined,
