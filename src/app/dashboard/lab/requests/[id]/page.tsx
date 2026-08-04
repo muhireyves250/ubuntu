@@ -116,6 +116,7 @@ function RequestDetailContent({
         const form = resultsForm[name];
         return {
           id: `res-${Date.now()}-${idx}`,
+          labResultId: "", // not yet created — submitLabResultsApi never reads this field
           testName: name,
           result: form.result,
           unit: form.unit,

@@ -13,6 +13,7 @@ interface BackendLabResult {
   interpretation: "NORMAL" | "ABNORMAL" | "CRITICAL";
   labNotes: string | null;
   createdAt: string;
+  comments: { id: string; body: string; createdAt: string; author: { id: string; firstName: string; lastName: string; role: string } }[];
 }
 
 interface BackendLabRequest {
@@ -97,11 +98,29 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
     ? TEST_FIELD_MAP.filter(([, field]) => labResult[field] != null).map(
         ([testName, field, unit], idx) => ({
           id: `${labResult.id}-${idx}`,
+          labResultId: labResult.id,
           testName,
           result: String(labResult[field]),
           unit,
           referenceRange: "Varies",
           interpretation: INTERPRETATION_TO_FRONTEND[labResult.interpretation],
+          // The comment thread belongs to the whole lab panel (one LabResult
+          // row), not to any individual test field within it — attach it
+          // only to the first expanded row so it renders/counts once instead
+          // of once per populated field (duplicate React keys, duplicate
+          // notifications).
+          resultComments:
+            idx === 0
+              ? (labResult.comments || []).map((c) => ({
+                  id: c.id,
+                  labResultId: labResult.id,
+                  authorId: c.author.id,
+                  authorName: `${c.author.firstName} ${c.author.lastName}`,
+                  authorRole: c.author.role,
+                  body: c.body,
+                  createdAt: c.createdAt,
+                }))
+              : [],
           completedAt: labResult.createdAt,
           completedBy: r.assignedTo ? `${r.assignedTo.firstName} ${r.assignedTo.lastName}` : undefined,
         }),
@@ -110,6 +129,7 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
 
   return {
     id: r.id,
+    visitId: r.visit.id,
     patientId: patient.nationalId || patient.id,
     patientName: `${patient.firstName} ${patient.lastName}`,
     patientAge: computeAge(patient.dateOfBirth),
@@ -118,6 +138,7 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
     gestationalAge: r.visit.gestationalWeek ? `${r.visit.gestationalWeek} weeks` : "-",
     requestDate: r.createdAt,
     requestingNurseId: `${r.requestedBy.firstName} ${r.requestedBy.lastName}`,
+    requestedById: r.requestedBy.id,
     visitType: VISIT_TYPE_TO_FRONTEND[r.visit.visitType] ?? "Scheduled ANC",
     priority: PRIORITY_TO_FRONTEND[r.priority] ?? "Normal",
     status: STATUS_TO_FRONTEND[r.status] ?? "Pending",

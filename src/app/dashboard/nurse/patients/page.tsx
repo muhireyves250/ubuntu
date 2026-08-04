@@ -8,7 +8,7 @@ import { RiskBadge } from "@/components/patients/risk-badge";
 import { RegisterPatientModal } from "@/components/patients/register-patient-modal";
 import { useAuth } from "@/lib/auth/auth-context";
 import { usePatients, useVisits, usePregnancies, useActiveEmergencyPatientIds } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import type { RiskLevel } from "@/lib/patients/types";
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import {
@@ -61,10 +61,12 @@ function PatientsPageContent() {
         patient,
         latestRisk: activeEmergencyPatientIds.has(patient.id)
           ? ("red" as RiskLevel)
-          : (latestVisit?.riskLevel ?? ("green" as RiskLevel)),
+          : patient.riskOverrideLevel
+            ? patient.riskOverrideLevel
+            : (latestVisit?.riskLevel ?? ("green" as RiskLevel)),
         lastVisitDate: latestVisit?.date,
         hospital: latestVisit?.hospital,
-        gaWeeks: openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null,
+        gaWeeks: openPregnancy ? gestationalAgeWeeks(effectiveLmpDate(openPregnancy)) : null,
       };
     });
   }, [patients, visits, pregnancies, patientIdByPregnancyId, activeEmergencyPatientIds]);
@@ -90,8 +92,8 @@ function PatientsPageContent() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+    <div className="flex h-full min-h-0 flex-col gap-5">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">
           Patient List
         </h2>
@@ -122,7 +124,7 @@ function PatientsPageContent() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-[#ffeedb] p-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-[#ffeedb] p-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <div className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
           <IconSearch className="h-4 w-4 text-zinc-400" />
           <input
@@ -176,8 +178,8 @@ function PatientsPageContent() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-300 bg-[#ffeedb] shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <div className="scrollbar-hidden max-h-112 overflow-auto">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-300 bg-[#ffeedb] shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+        <div className="scrollbar-hidden min-h-0 flex-1 overflow-auto">
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-zinc-300 bg-[#ffeedb] text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:bg-orange-950/40 dark:text-zinc-400">
               <tr>
@@ -252,7 +254,7 @@ function PatientsPageContent() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t border-zinc-300 px-4 py-2.5 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+        <div className="flex shrink-0 items-center justify-between border-t border-zinc-300 px-4 py-2.5 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
           <span>
             Showing {rows.length} of {patients.length} patients
           </span>

@@ -5,6 +5,7 @@ import {
   IconClipboard,
   IconReport,
   IconGrid,
+  IconEdit,
 } from "@/components/dashboard/icons";
 import type { Patient } from "@/lib/patients/types";
 
@@ -49,7 +50,13 @@ function Section({
   );
 }
 
-export function PatientDetailsTab({ patient }: { patient: Patient }) {
+export function PatientDetailsTab({
+  patient,
+  onEdit,
+}: {
+  patient: Patient;
+  onEdit?: () => void;
+}) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -76,6 +83,16 @@ export function PatientDetailsTab({ patient }: { patient: Patient }) {
               {patient.maritalStatus}
             </span>
           )}
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="flex items-center gap-1.5 rounded-lg bg-teal-900 px-3.5 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-teal-800"
+            >
+              <IconEdit className="h-3.5 w-3.5" />
+              Update details
+            </button>
+          )}
         </div>
       </div>
 
@@ -92,19 +109,36 @@ export function PatientDetailsTab({ patient }: { patient: Patient }) {
 
         <Section icon={<IconGrid className="h-4 w-4" />} title="Address">
           <div className="sm:col-span-2">
-            <Field
-              label="Location"
-              value={
-                [
-                  patient.address.district,
-                  patient.address.sector,
-                  patient.address.cell,
-                  patient.address.village,
-                ]
-                  .filter(Boolean)
-                  .join(" / ") || "—"
-              }
-            />
+            <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Location
+            </dt>
+            <dd className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+              {[
+                patient.address.district,
+                patient.address.sector,
+                patient.address.cell,
+                patient.address.village,
+                patient.address.isibo,
+              ]
+                .filter(Boolean)
+                .map((part, i, arr) => (
+                  <span key={i} className="flex items-center gap-1.5">
+                    <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800 dark:bg-teal-950/30 dark:text-teal-300">
+                      {part}
+                    </span>
+                    {i < arr.length - 1 && (
+                      <span className="text-zinc-300 dark:text-zinc-700">/</span>
+                    )}
+                  </span>
+                ))}
+            </dd>
+          </div>
+          <div className="grid grid-cols-3 gap-x-4 gap-y-3 sm:col-span-2">
+            <Field label="District" value={patient.address.district || "—"} />
+            <Field label="Sector" value={patient.address.sector || "—"} />
+            <Field label="Cell" value={patient.address.cell || "—"} />
+            <Field label="Village" value={patient.address.village || "—"} />
+            <Field label="Isibo" value={patient.address.isibo || "—"} />
           </div>
         </Section>
 

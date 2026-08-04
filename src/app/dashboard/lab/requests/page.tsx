@@ -6,7 +6,7 @@ import { useLabRequests } from "@/lib/patients/lab-requests";
 
 import { IconSearch } from "@/components/dashboard/icons";
 import Link from "next/link";
-import { relativeTime } from "@/lib/format";
+import { formatExactDateTime } from "@/lib/format";
 
 export default function LabRequestsPage() {
   const requests = useLabRequests();
@@ -89,7 +89,7 @@ export default function LabRequestsPage() {
                       {req.status.replace("_", " ")}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{relativeTime(req.requestDate)}</td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{formatExactDateTime(req.requestDate)}</td>
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/dashboard/lab/requests/${req.id}`}

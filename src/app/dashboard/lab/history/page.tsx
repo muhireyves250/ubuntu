@@ -5,7 +5,7 @@ import { RoleGuard } from "@/components/role-guard";
 import { useLabRequests } from "@/lib/patients/lab-requests";
 import { IconSearch, IconReport } from "@/components/dashboard/icons";
 import Link from "next/link";
-import { relativeTime, getInitials } from "@/lib/format";
+import { formatExactDateTime, getInitials } from "@/lib/format";
 
 export default function LabHistoryPage() {
   const allRequests = useLabRequests();
@@ -82,7 +82,7 @@ export default function LabHistoryPage() {
                           {new Date(req.requestDate).toLocaleDateString()}
                         </span>
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {relativeTime(req.requestDate)}
+                          {formatExactDateTime(req.requestDate)}
                         </span>
                       </td>
                       <td className="px-4 py-3">

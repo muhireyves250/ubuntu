@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Fragment, useState, useMemo, useEffect, useRef } from "react";
 import { IconActivity, IconAlert } from "@/components/dashboard/icons";
 import type { Patient, Visit, LabTestResult, Referral } from "@/lib/patients/types";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import { computePrediction } from "@/lib/patients/ai-prediction";
 import { escalateVisitIfCritical } from "@/lib/patients/use-patients";
+import { queryClient } from "@/lib/query-client";
+import { LabResultCommentBox } from "@/components/patients/lab-result-comment-box";
 
 /* ─── Standardized SectionCard Component ─────────────────────────────────── */
 
@@ -330,18 +332,32 @@ function AssessmentSummaryStep({
                         const valNum = parseFloat(r.result);
                         const isAnemiaHb = (r.testName.toLowerCase().includes("hemoglobin") || r.testName.toLowerCase().includes("hb")) && !isNaN(valNum) && valNum < 7;
                         return (
-                          <tr key={r.id}>
-                            <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-50">{r.testName}</td>
-                            <td className="px-3 py-2 font-mono">
-                              <span className={isAnemiaHb ? "text-red-600 font-bold dark:text-red-400" : ""}>
-                                {r.result}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-zinc-500">{r.unit}</td>
-                            <td className="px-3 py-2">
-                              <InterpretationBadge value={isAnemiaHb ? "Critical" : r.interpretation} />
-                            </td>
-                          </tr>
+                          <Fragment key={r.id}>
+                            <tr>
+                              <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-50">{r.testName}</td>
+                              <td className="px-3 py-2 font-mono">
+                                <span className={isAnemiaHb ? "text-red-600 font-bold dark:text-red-400" : ""}>
+                                  {r.result}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-zinc-500">{r.unit}</td>
+                              <td className="px-3 py-2">
+                                <InterpretationBadge value={isAnemiaHb ? "Critical" : r.interpretation} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td colSpan={4} className="px-3 pb-3">
+                                <LabResultCommentBox
+                                  result={r}
+                                  onPosted={() =>
+                                    queryClient.invalidateQueries({
+                                      queryKey: ["visits", "pregnancy", visit.pregnancyId],
+                                    })
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          </Fragment>
                         );
                       })}
                     </tbody>

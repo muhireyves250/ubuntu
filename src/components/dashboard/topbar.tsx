@@ -8,14 +8,15 @@ import { IconBell, IconChevronDown, IconSearch } from "./icons";
 import { NotificationPanel } from "./notification-panel";
 import { PatientSearch } from "./patient-search";
 import { ProfilePanel } from "./profile-panel";
-import { useNotificationAlerts } from "@/lib/patients/use-patients";
+import { useNotificationAlerts, useReadNotificationIds } from "@/lib/patients/use-patients";
 
 export function Topbar() {
   const { user } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const alerts = useNotificationAlerts(user?.role ?? "");
-  const unreadCount = alerts.length;
+  const readIds = useReadNotificationIds();
+  const unreadCount = alerts.filter((a) => !readIds.has(a.id)).length;
 
   if (!user) return null;
 

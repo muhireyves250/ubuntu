@@ -2,8 +2,9 @@
 
 import { Fragment, useState } from "react";
 import { RiskBadge } from "@/components/patients/risk-badge";
+import { AncScheduleCalendar } from "@/components/patients/anc-schedule-calendar";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import { nextDueVisit, missedVisits, ancCalendar, gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { nextDueVisit, missedVisits, ancCalendar, gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { formatLabs } from "@/lib/format";
 import type { Pregnancy, Visit, VisitType } from "@/lib/patients/types";
 
@@ -54,25 +55,36 @@ export function VisitHistoryTab({
     (v) => v.type !== "emergency" && v.scheduledWeek != null,
   ).length;
 
-  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate, asOf);
+  const currentWeeks = gestationalAgeWeeks(effectiveLmpDate(pregnancy), asOf);
   const loggedWeeks = new Set(
     visits
       .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
       .map((v) => v.scheduledWeek as number),
   );
   const calendar = ancCalendar(pregnancy);
-  const arrivedUnloggedWeeks = calendar.filter(
-    (s) => s.dueByWeek <= currentWeeks && !loggedWeeks.has(s.dueByWeek),
-  ).map((s) => s.dueByWeek);
-  const currentDueWeek =
-    !readOnly && arrivedUnloggedWeeks.length > 0 ? Math.max(...arrivedUnloggedWeeks) : null;
+
+  // Status must follow the real calendar date, not the gestational week
+  // number — week granularity rounds down, so a visit a few days past its
+  // due date can still land on "the current week" and read as merely due
+  // instead of missed. Everything with a due date on or before today (and
+  // not logged) has arrived; the single most recent arrived-unlogged entry
+  // is the one actionable "due" visit, and every earlier arrived-unlogged
+  // entry is missed.
+  const today = asOf ?? new Date().toISOString().slice(0, 10);
+  const arrivedUnlogged = calendar.filter(
+    (s) => s.dueDate <= today && !loggedWeeks.has(s.dueByWeek),
+  );
+  const currentDueEntry =
+    !readOnly && arrivedUnlogged.length > 0
+      ? arrivedUnlogged.reduce((latest, s) => (s.dueDate > latest.dueDate ? s : latest))
+      : null;
 
   const scheduleRows = calendar.map((s) => {
     const status: "completed" | "due" | "missed" | "upcoming" = loggedWeeks.has(s.dueByWeek)
       ? "completed"
-      : s.dueByWeek > currentWeeks
+      : s.dueDate > today
         ? "upcoming"
-        : s.dueByWeek === currentDueWeek
+        : currentDueEntry && s.visitNumber === currentDueEntry.visitNumber
           ? "due"
           : "missed";
     return { ...s, status };
@@ -211,6 +223,8 @@ export function VisitHistoryTab({
             </div>
           );
         })()}
+
+        {!readOnly && <AncScheduleCalendar pregnancy={pregnancy} />}
       </div>
 
       <div className="scrollbar-hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">

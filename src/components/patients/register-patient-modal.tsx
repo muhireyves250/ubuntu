@@ -39,6 +39,7 @@ export function RegisterPatientModal({
   const [sector, setSector] = useState("");
   const [cell, setCell] = useState("");
   const [village, setVillage] = useState("");
+  const [isibo, setIsibo] = useState("");
 
   // Emergency Contact
   const [contactName, setContactName] = useState("");
@@ -94,6 +95,7 @@ export function RegisterPatientModal({
           sector: sector.trim(),
           cell: cell.trim(),
           village: village.trim(),
+          isibo: isibo.trim(),
         },
         emergencyContact: {
           name: contactName.trim(),
@@ -208,6 +210,10 @@ export function RegisterPatientModal({
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Village *
                     <input type="text" required value={village} onChange={(e) => setVillage(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Isibo *
+                    <input type="text" required value={isibo} onChange={(e) => setIsibo(e.target.value)} className={inputCls} />
                   </label>
                 </div>
               </fieldset>
