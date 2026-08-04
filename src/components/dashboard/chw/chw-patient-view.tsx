@@ -8,7 +8,7 @@ import {
   usePregnanciesForPatient,
   useFollowUpAssignmentsForPatient,
 } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { fullName, getInitials } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
 import { CommunityVisitForm } from "@/components/patients/community-visit-form";
@@ -45,10 +45,10 @@ export function ChwPatientView({ patientId }: { patientId: string }) {
         {openPregnancy ? (
           <>
             <p className="text-sm text-zinc-700 dark:text-zinc-300">
-              {gestationalAgeWeeks(openPregnancy.lmpDate)} weeks gestation • EDD {openPregnancy.eddDate}
+              {gestationalAgeWeeks(effectiveLmpDate(openPregnancy))} weeks gestation • EDD {openPregnancy.eddDate}
             </p>
             <div className="mt-3">
-              <AncScheduleCalendar pregnancy={openPregnancy} />
+              <AncScheduleCalendar pregnancy={openPregnancy} homeVisitsOnly />
             </div>
           </>
         ) : (

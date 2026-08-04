@@ -5,7 +5,7 @@ import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
 import { useReferrals, usePatients } from "@/lib/patients/use-patients";
 import { useAuth } from "@/lib/auth/auth-context";
-import { getInitials, relativeTime, fullName } from "@/lib/format";
+import { getInitials, formatExactDateTime, fullName } from "@/lib/format";
 import { CloseReferralModal } from "@/components/dashboard/close-referral-modal";
 import type { ReferralOutcome, ReferralStatus } from "@/lib/patients/types";
 
@@ -133,7 +133,7 @@ function ReferralLogContent() {
                     {referral.receivingFacility}
                   </td>
                   <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    <span title={referral.createdAt}>{relativeTime(referral.createdAt)}</span>
+                    <span title={referral.createdAt}>{formatExactDateTime(referral.createdAt)}</span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_BADGE[referral.status]}`}>

@@ -27,6 +27,7 @@ interface BackendPatient {
   registeredBy: { id: string; firstName: string; lastName: string } | null;
   facility: { id: string; name: string } | null;
   assignedChwId: string | null;
+  assignedChwAt: string | null;
   riskOverrideLevel: "GREEN" | "YELLOW" | "ORANGE" | "RED" | null;
   riskOverrideSourceVisitId: string | null;
 }
@@ -62,6 +63,7 @@ function toFrontendPatient(p: BackendPatient): Patient {
     registeredBy: p.registeredBy ? `${p.registeredBy.firstName} ${p.registeredBy.lastName}` : "",
     registrationFacility: p.facility?.name ?? "",
     assignedChwId: p.assignedChwId ?? undefined,
+    assignedChwAt: p.assignedChwAt ?? undefined,
     riskOverrideLevel: p.riskOverrideLevel ? RISK_LEVEL_TO_FRONTEND[p.riskOverrideLevel] : undefined,
     riskOverrideSourceVisitId: p.riskOverrideSourceVisitId ?? undefined,
   };

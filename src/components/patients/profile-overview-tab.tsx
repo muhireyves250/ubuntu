@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import { formatLabs, fullName, computeAge, relativeTime } from "@/lib/format";
-import { gestationalAgeWeeks, nextDueVisit } from "@/lib/patients/pregnancy";
+import { formatLabs, fullName, computeAge, formatExactDateTime } from "@/lib/format";
+import { gestationalAgeWeeks, nextDueVisit, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { useActiveEmergencyReferral } from "@/lib/patients/use-patients";
 import {
   IconUsers,
@@ -107,7 +107,7 @@ export function ProfileOverviewTab({
   const latestVisit = visits[0] ?? null;
   const activeEmergency = useActiveEmergencyReferral(patient.id);
   const currentRisk = activeEmergency ? "red" : (latestVisit?.riskLevel ?? "green");
-  const gaWeeks = pregnancy ? gestationalAgeWeeks(pregnancy.lmpDate) : null;
+  const gaWeeks = pregnancy ? gestationalAgeWeeks(effectiveLmpDate(pregnancy)) : null;
   const pregnancyVisits = pregnancy
     ? visits.filter((v) => v.pregnancyId === pregnancy.id)
     : [];
@@ -160,7 +160,7 @@ export function ProfileOverviewTab({
         </p>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           {latestVisit
-            ? `Last assessed ${relativeTime(latestVisit.date)} · ${latestVisit.date}`
+            ? `Last assessed ${formatExactDateTime(latestVisit.date)}`
             : "No assessments yet"}
         </p>
       </div>
@@ -220,7 +220,7 @@ export function ProfileOverviewTab({
             <div className="flex flex-col gap-2.5 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-zinc-500 dark:text-zinc-400">
-                  {latestVisit.date} · {relativeTime(latestVisit.date)}
+                  {formatExactDateTime(latestVisit.date)}
                 </span>
                 <RiskBadge level={latestVisit.riskLevel} size="sm" />
               </div>

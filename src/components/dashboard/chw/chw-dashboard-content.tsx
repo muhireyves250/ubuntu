@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { usePatientsForChw, useFollowUpAssignmentsForChw, usePregnanciesForPatient } from "@/lib/patients/use-patients";
+import { usePatientsForChw, useFollowUpAssignmentsForChw, usePregnanciesForPatient, useCommunityVisitsForPregnancy } from "@/lib/patients/use-patients";
 import { chwVisitSchedule } from "@/lib/patients/pregnancy";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { IconClipboard, IconClock, IconUsers } from "@/components/dashboard/icons";
@@ -13,11 +13,12 @@ interface PatientDue {
   patient: Patient;
   nextDueDate: string | null;
   source: "automatic" | "manual" | null;
+  allHomeVisitsDone: boolean;
 }
 
 function PatientRow({ patientDue }: { patientDue: PatientDue }) {
   const router = useRouter();
-  const { patient, nextDueDate, source } = patientDue;
+  const { patient, nextDueDate, source, allHomeVisitsDone } = patientDue;
   return (
     <button
       type="button"
@@ -36,6 +37,10 @@ function PatientRow({ patientDue }: { patientDue: PatientDue }) {
             </span>
             <span className="text-xs text-zinc-400">Due {nextDueDate}</span>
           </>
+        ) : allHomeVisitsDone ? (
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+            All home visits done
+          </span>
         ) : (
           <span className="text-xs text-zinc-400">No pregnancy on file</span>
         )}
@@ -60,11 +65,18 @@ function PatientRowWithSchedule({ patient }: { patient: Patient }) {
   const pregnancies = usePregnanciesForPatient(patient.id);
   const openPregnancy = pregnancies.find((p) => p.status === "open") ?? null;
   const assignments = useFollowUpAssignmentsForChw();
+  const communityVisits = useCommunityVisitsForPregnancy(openPregnancy?.id ?? "");
 
-  const { nextDueDate, source } = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+  const { nextDueDate, source, allHomeVisitsDone } = useMemo(() => {
+    const doneVisitNumbers = new Set(
+      communityVisits.map((v) => v.ancVisitNumber).filter((n): n is number => n != null),
+    );
+    // A completed checkpoint stops counting as "due" regardless of its date,
+    // so a home visit already submitted for it never keeps showing up here.
     const automatic = openPregnancy
-      ? chwVisitSchedule(openPregnancy).find((s) => s.chwDueDate >= today)?.chwDueDate ?? null
+      ? [...chwVisitSchedule(openPregnancy)]
+          .filter((s) => !doneVisitNumbers.has(s.visitNumber))
+          .sort((a, b) => a.chwDueDate.localeCompare(b.chwDueDate))[0]?.chwDueDate ?? null
       : null;
     const manual = assignments
       .filter((a) => a.patientId === patient.id && a.status === "pending")
@@ -72,10 +84,11 @@ function PatientRowWithSchedule({ patient }: { patient: Patient }) {
       .sort()[0] ?? null;
     const next = automatic && manual ? (automatic < manual ? automatic : manual) : (automatic ?? manual);
     const src: "automatic" | "manual" | null = next === automatic ? (automatic ? "automatic" : null) : next ? "manual" : null;
-    return { nextDueDate: next, source: src };
-  }, [openPregnancy, assignments, patient.id]);
+    const done = !!openPregnancy && !automatic && !manual;
+    return { nextDueDate: next, source: src, allHomeVisitsDone: done };
+  }, [openPregnancy, assignments, communityVisits, patient.id]);
 
-  return <PatientRow patientDue={{ patient, nextDueDate, source }} />;
+  return <PatientRow patientDue={{ patient, nextDueDate, source, allHomeVisitsDone }} />;
 }
 
 export function ChwDashboardContent() {

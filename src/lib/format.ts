@@ -53,3 +53,21 @@ export function relativeTime(isoString: string): string {
   const diffDays = Math.floor(diffHr / 24);
   return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
 }
+
+// "Aug 3, 2:15 PM" — falls back to a bare date when isoString has no time
+// component (e.g. schedule-derived "YYYY-MM-DD" values with nothing real to
+// show for the clock).
+export function formatExactDateTime(isoString: string): string {
+  const date = new Date(isoString);
+  const hasTime = isoString.includes("T");
+  if (!hasTime) {
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

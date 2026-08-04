@@ -3,14 +3,14 @@
 import Link from "next/link";
 import type { AuthenticatedUser } from "@/lib/auth/auth-context";
 import type { RoleOverviewCopy } from "@/lib/dashboard/role-copy";
-import { getInitials, relativeTime, fullName } from "@/lib/format";
+import { getInitials, formatExactDateTime, fullName } from "@/lib/format";
 import {
   useActiveReferrals,
   useFollowUpPatients,
   usePatients,
   usePregnancies,
 } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { IconAlert, IconReport } from "./icons";
 import type { RiskLevel, Referral } from "@/lib/patients/types";
@@ -142,7 +142,7 @@ export function SidePanel({
               const openPregnancy = pregnancies.find(
                 (p) => p.patientId === patient.id && p.status === "open",
               );
-              const gaWeeks = openPregnancy ? gestationalAgeWeeks(openPregnancy.lmpDate) : null;
+              const gaWeeks = openPregnancy ? gestationalAgeWeeks(effectiveLmpDate(openPregnancy)) : null;
               return (
                 <Link
                   key={referral.id}
@@ -161,7 +161,7 @@ export function SidePanel({
                     </p>
                   </div>
                   <p className="ml-2 shrink-0 text-xs text-zinc-400 dark:text-zinc-500">
-                    {relativeTime(referral.acceptedAt ?? referral.createdAt)}
+                    {formatExactDateTime(referral.acceptedAt ?? referral.createdAt)}
                   </p>
                 </Link>
               );

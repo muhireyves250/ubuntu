@@ -6,7 +6,7 @@ import {
   useVisitsForPregnancy,
   useReferrals,
 } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { NewPregnancyModal } from "@/components/patients/pregnancy/new-pregnancy-modal";
 import { ClosePregnancyModal } from "@/components/patients/pregnancy/close-pregnancy-modal";
 import { PregnancyTimeline } from "@/components/patients/pregnancy/pregnancy-timeline";
@@ -43,7 +43,7 @@ function StatChip({
 }
 
 function PregnancySummaryCard({ pregnancy }: { pregnancy: Pregnancy }) {
-  const weeks = gestationalAgeWeeks(pregnancy.lmpDate);
+  const weeks = gestationalAgeWeeks(effectiveLmpDate(pregnancy));
   const progressPct = Math.min(100, Math.round((weeks / FULL_TERM_WEEKS) * 100));
   const riskFlags = [
     pregnancy.previousPPH && "Previous PPH",

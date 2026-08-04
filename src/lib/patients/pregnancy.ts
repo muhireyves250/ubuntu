@@ -15,6 +15,23 @@ export function gestationalAgeWeeks(lmpDate: string, asOf?: string): number {
   return Math.max(0, Math.floor(diffDays / 7));
 }
 
+// pregnancy.lmpDate is "" whenever the backend's nullable lmp field is
+// null — a common, legitimate data state (LMP unknown, EDD estimated by
+// ultrasound instead). EDD is always required, so it's the reliable
+// fallback: derive an effective LMP by walking the same 280-day gestation
+// window computeEdd() uses, in reverse. Every gestational-age calculation
+// in this file and its callers must go through this instead of reading
+// pregnancy.lmpDate directly — otherwise gestationalAgeWeeks() silently
+// returns NaN for any pregnancy recorded from EDD only, which cascades
+// into every "current week" / "missed" / "due" comparison downstream.
+export function effectiveLmpDate(pregnancy: Pregnancy): string {
+  const lmp = new Date(`${pregnancy.lmpDate}T00:00:00`);
+  if (!isNaN(lmp.getTime())) return pregnancy.lmpDate;
+  const edd = new Date(`${pregnancy.eddDate}T00:00:00`);
+  if (isNaN(edd.getTime())) return "";
+  return new Date(edd.getTime() - 280 * MS_PER_DAY).toISOString().slice(0, 10);
+}
+
 export const ANC_SCHEDULE: { visitNumber: number; dueByWeek: number }[] = [
   { visitNumber: 1, dueByWeek: 8 },
   { visitNumber: 2, dueByWeek: 12 },
@@ -41,7 +58,7 @@ export function deriveMilestones(
   asOf?: string,
 ): Milestone[] {
   const loggedCount = visits.filter((v) => v.type !== "emergency").length;
-  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate, asOf);
+  const currentWeeks = gestationalAgeWeeks(effectiveLmpDate(pregnancy), asOf);
 
   return ANC_SCHEDULE.filter(
     (scheduled) => scheduled.visitNumber > loggedCount,
@@ -53,32 +70,36 @@ export function deriveMilestones(
   }));
 }
 
+// Both of these follow the real calendar date (via ancCalendar, defined
+// below) rather than the gestational week number — week granularity rounds
+// down, so a visit a few days past its due date can still land on "the
+// current week" and read as merely due instead of overdue/missed.
 export function nextDueVisit(
   pregnancy: Pregnancy,
   visits: Visit[],
   asOf?: string,
 ): { week: number; overdue: boolean } | null {
-  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate, asOf);
+  const today = asOf ?? new Date().toISOString().slice(0, 10);
   const loggedWeeks = new Set(
     visits
       .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
       .map((v) => v.scheduledWeek as number),
   );
-  const next = ANC_SCHEDULE.find((s) => !loggedWeeks.has(s.dueByWeek));
+  const next = ancCalendar(pregnancy).find((s) => !loggedWeeks.has(s.dueByWeek));
   if (!next) return null;
-  return { week: next.dueByWeek, overdue: currentWeeks > next.dueByWeek };
+  return { week: next.dueByWeek, overdue: next.dueDate < today };
 }
 
 export function missedVisits(pregnancy: Pregnancy, visits: Visit[], asOf?: string): number[] {
-  const currentWeeks = gestationalAgeWeeks(pregnancy.lmpDate, asOf);
+  const today = asOf ?? new Date().toISOString().slice(0, 10);
   const loggedWeeks = new Set(
     visits
       .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
       .map((v) => v.scheduledWeek as number),
   );
-  return ANC_SCHEDULE.filter(
-    (s) => s.dueByWeek < currentWeeks && !loggedWeeks.has(s.dueByWeek),
-  ).map((s) => s.dueByWeek);
+  return ancCalendar(pregnancy)
+    .filter((s) => s.dueDate < today && !loggedWeeks.has(s.dueByWeek))
+    .map((s) => s.dueByWeek);
 }
 
 const SCHEDULE_MATCH_TOLERANCE_DAYS = 3;
@@ -93,12 +114,9 @@ export interface AncCalendarEntry {
 // started (LMP) to the day she is due to give birth (EDD) — every ANC visit
 // gets a concrete date instead of just a gestational week.
 export function ancCalendar(pregnancy: Pregnancy): AncCalendarEntry[] {
-  const lmp = new Date(`${pregnancy.lmpDate}T00:00:00`);
-  // lmpDate can be "" when the backend's nullable lmp field is null (a
-  // legitimate, allowed data state — not every pregnancy has a recorded
-  // LMP) — without this guard, the invalid Date below throws RangeError
-  // on .toISOString(), crashing every page that renders an ANC calendar.
-  if (isNaN(lmp.getTime())) return [];
+  const lmpDate = effectiveLmpDate(pregnancy);
+  if (!lmpDate) return [];
+  const lmp = new Date(`${lmpDate}T00:00:00`);
   return ANC_SCHEDULE.map((s) => ({
     visitNumber: s.visitNumber,
     dueByWeek: s.dueByWeek,
@@ -107,25 +125,52 @@ export function ancCalendar(pregnancy: Pregnancy): AncCalendarEntry[] {
 }
 
 export interface ChwVisitScheduleEntry {
-  visitNumber: number;
-  dueByWeek: number;
-  ancDueDate: string;
-  chwDueDate: string;
+  visitNumber: number; // unique across the whole pregnancy (1..20) — what CommunityVisit.ancVisitNumber stores
+  checkpointNumber: number; // which hospital ANC checkpoint (1..10, matches ANC_SCHEDULE) this home visit leads up to
+  weekNumber: number; // this specific home visit's own gestational week (rounded), for display
+  dueByWeek: number; // the hospital checkpoint's week
+  ancDueDate: string; // the hospital checkpoint's date — closes out this stage
+  chwDueDate: string; // this specific home visit's date
 }
 
-// The CHW's home-visit date for each checkpoint is always 2 days before the
-// corresponding hospital ANC visit date.
+// The CHW's home-visit cadence runs in stages, one per hospital ANC
+// checkpoint: [week 1 → week 8], [week 8 → week 12], [week 12 → week 16], …
+// each stage gets exactly two evenly-spaced home visits and is closed out by
+// the hospital visit at its far end (so week 8's hospital visit both ends
+// stage one and starts stage two). This yields 2 home visits per stage × 10
+// stages = 20 home visits total, starting at week 1 instead of waiting for
+// the first hospital checkpoint at week 8.
 export function chwVisitSchedule(pregnancy: Pregnancy): ChwVisitScheduleEntry[] {
-  return ancCalendar(pregnancy).map((entry) => {
-    const ancDate = new Date(`${entry.dueDate}T00:00:00`);
-    const chwDate = new Date(ancDate.getTime() - 2 * MS_PER_DAY);
-    return {
-      visitNumber: entry.visitNumber,
-      dueByWeek: entry.dueByWeek,
-      ancDueDate: entry.dueDate,
-      chwDueDate: chwDate.toISOString().slice(0, 10),
-    };
+  const lmpDate = effectiveLmpDate(pregnancy);
+  if (!lmpDate) return [];
+  const lmp = new Date(`${lmpDate}T00:00:00`);
+  const dateAtWeek = (week: number) => lmp.getTime() + week * 7 * MS_PER_DAY;
+
+  const stageBoundaryWeeks = [1, ...ANC_SCHEDULE.map((s) => s.dueByWeek)];
+
+  const entries: ChwVisitScheduleEntry[] = [];
+  let visitNumber = 0;
+  ANC_SCHEDULE.forEach((checkpoint, i) => {
+    const stageStart = dateAtWeek(stageBoundaryWeeks[i]);
+    const stageEnd = dateAtWeek(stageBoundaryWeeks[i + 1]);
+    const ancDueDate = new Date(stageEnd).toISOString().slice(0, 10);
+    const span = stageEnd - stageStart;
+
+    for (const fraction of [1 / 3, 2 / 3]) {
+      visitNumber += 1;
+      const chwDate = new Date(stageStart + span * fraction);
+      entries.push({
+        visitNumber,
+        checkpointNumber: checkpoint.visitNumber,
+        weekNumber: Math.round((chwDate.getTime() - lmp.getTime()) / (7 * MS_PER_DAY)),
+        dueByWeek: checkpoint.dueByWeek,
+        ancDueDate,
+        chwDueDate: chwDate.toISOString().slice(0, 10),
+      });
+    }
   });
+
+  return entries;
 }
 
 // When a mother walks in, check whether today falls within the tolerance

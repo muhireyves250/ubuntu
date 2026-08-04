@@ -29,6 +29,7 @@ export interface Patient {
   registeredBy: string;
   registrationFacility: string;
   assignedChwId?: string;
+  assignedChwAt?: string; // ISO datetime — when assignedChwId was last set
   riskOverrideLevel?: RiskLevel;
   riskOverrideSourceVisitId?: string;
 }
@@ -49,7 +50,8 @@ export interface VisitLabs {
 }
 
 export interface LabTestResult {
-  id: string;
+  id: string; // synthetic per-row id (`${labResultId}-${idx}`) — for React keys only, never send to the API
+  labResultId: string; // the real backend LabResult id — use this to post/attribute comments
   testName: string;
   result: string;
   unit: string;
@@ -238,6 +240,7 @@ export interface CommunityVisit {
   babyWeight?: number;
   feedingStatus?: string;
   concerns?: string;
+  checkedSigns: string[];
   riskFlag: boolean;
   riskReasons: string[];
   nurseFlaggedEmergency: boolean;
