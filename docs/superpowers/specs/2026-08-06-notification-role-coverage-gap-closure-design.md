@@ -51,12 +51,14 @@ existing notification type or trigger.
 
 ### `lab_nurse` branch
 
-1. **`lab_result_escalated`** — a critical result they submitted
-   (`labResult.submittedById === currentUser.id`) has been acknowledged or
-   acted on by a nurse/gynecologist. Sourced from the same lab-results query
-   already used for `lab_request`/`lab_result_comment`, filtered on
-   `status === "acknowledged"` (or equivalent field — confirmed against
-   actual `LabResult` shape during implementation) and `submittedById` match.
+1. **`lab_result_unacknowledged`** — a critical result they personally
+   completed (`result.completedBy === currentUser.name`) with zero comments
+   after a 2-hour grace period. Substituted for the originally-proposed
+   `lab_result_escalated` "acknowledged" feedback loop, which turned out to
+   require a field (`LabTestResult` has no review/acknowledgement status)
+   that doesn't exist and can't be added without a backend change — this
+   achieves the same "close the loop" goal using data that's actually
+   available.
 2. **`lab_request_overdue`** — a pending `LabRequest` at their facility
    whose `createdAt` is more than 24 hours old and still unprocessed.
    24h is a proposed threshold, not a backend-enforced SLA — flag during
