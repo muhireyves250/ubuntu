@@ -964,6 +964,28 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
           priority: "Normal",
         });
       }
+
+      // A hospital director doesn't act on individual recommendations the
+      // way a gynecologist does — they need oversight of the most severe
+      // cases at their own facility, so this fires for every RED
+      // classification today rather than gating on "no recommendation yet."
+      if (
+        role === "hospital_admin" &&
+        v.hospital === currentUser.facility &&
+        v.riskLevel === "red" &&
+        v.date === today
+      ) {
+        alerts.push({
+          id: `red-risk-${v.id}`,
+          type: "red_risk_escalation",
+          patientId: patient.id,
+          patientName,
+          title: "RED-Risk Case at Your Facility",
+          message: `${patientName} was classified RED risk at your facility today — highest-severity case requiring oversight.`,
+          date: v.createdAt ?? v.date,
+          priority: "Emergency",
+        });
+      }
     }
 
     if (role === "gynecologist") {
