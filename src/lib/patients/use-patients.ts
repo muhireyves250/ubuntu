@@ -1349,6 +1349,30 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
+    if (role === "hospital_admin") {
+      for (const referral of referrals) {
+        const isOutgoing = referral.referredByFacility === currentUser.facility;
+        const isIncoming = referral.receivingFacility === currentUser.facility;
+        if (!isOutgoing && !isIncoming) continue;
+        if (referral.createdAt.slice(0, 10) !== today) continue;
+
+        const patient = patients.find((p) => p.id === referral.patientId);
+        if (!patient) continue;
+        const patientName = `${patient.firstName} ${patient.lastName}`;
+
+        alerts.push({
+          id: `referral-activity-${referral.id}`,
+          type: "referral_activity",
+          patientId: patient.id,
+          patientName,
+          title: "Referral Activity at Your Facility",
+          message: `A ${referral.urgency} referral for ${patientName} was ${isOutgoing ? "sent from" : "received at"} your facility today.`,
+          date: referral.createdAt,
+          priority: referral.urgency === "emergency" ? "Emergency" : "Normal",
+        });
+      }
+    }
+
     if (role === "chw") {
       for (const assignment of followUpAssignments) {
         if (assignment.status !== "pending") continue;
