@@ -927,6 +927,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
     const alerts: NotificationAlert[] = [];
     const pregnancyIdMap = new Map(pregnancies.map((p) => [p.id, p]));
     const today = new Date().toISOString().slice(0, 10);
+    const now = new Date().getTime();
 
     for (const v of visits) {
       const preg = pregnancyIdMap.get(v.pregnancyId);
@@ -1121,6 +1122,29 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
           message: `${lr.requestingNurseId} requested a lab screen for ${patientName}.`,
           date: lr.requestDate,
           priority: lr.priority,
+          targetId: lr.id,
+        });
+      }
+
+      // A pending request that's been sitting unworked for a full day is
+      // worth surfacing on its own — separate from the initial
+      // "new request" alert above, which fades from attention once it's
+      // no longer the newest item in the list.
+      if (
+        role === "lab_nurse" &&
+        lr.facility === currentUser.facility &&
+        lr.status !== "Completed" &&
+        now - new Date(lr.requestDate).getTime() > 24 * 60 * 60 * 1000
+      ) {
+        alerts.push({
+          id: `lab-request-overdue-${lr.id}`,
+          type: "lab_request_overdue",
+          patientId: patient.id,
+          patientName,
+          title: "Lab Request Overdue",
+          message: `A lab request for ${patientName} has been pending for over 24 hours.`,
+          date: lr.requestDate,
+          priority: "Urgent",
           targetId: lr.id,
         });
       }
