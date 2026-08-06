@@ -892,7 +892,12 @@ export interface NotificationAlert {
     | "chw_visit_due_today"
     | "chw_visit_missed"
     | "chw_new_assignment"
-    | "chw_case_accepted";
+    | "chw_case_accepted"
+    | "lab_request_overdue"
+    | "lab_result_unacknowledged"
+    | "red_risk_escalation"
+    | "referral_activity"
+    | "community_visit_emergency";
   patientId: string;
   patientName: string;
   title: string;

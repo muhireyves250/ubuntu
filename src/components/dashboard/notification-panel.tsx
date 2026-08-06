@@ -96,6 +96,11 @@ const TYPE_CATEGORY: Record<NotificationAlert["type"], Category> = {
   chw_new_assignment: "chw",
   new_followup_assignment: "chw",
   facility_full: "system",
+  lab_request_overdue: "lab",
+  lab_result_unacknowledged: "lab",
+  red_risk_escalation: "urgent",
+  referral_activity: "referral",
+  community_visit_emergency: "urgent",
 };
 
 export function NotificationPanel({
