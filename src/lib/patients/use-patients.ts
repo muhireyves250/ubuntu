@@ -1222,6 +1222,33 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
         }
       }
 
+      // A critical result the lab_nurse completed themselves, still with
+      // zero comments from anyone a couple of hours later, means nobody
+      // has acted on it yet — there's no acknowledgement field to check
+      // (LabTestResult tracks no review status), so absence of any comment
+      // after a grace period is the closest real signal available.
+      if (role === "lab_nurse" && lr.facility === currentUser.facility) {
+        for (const result of lr.results) {
+          if (result.interpretation !== "Critical") continue;
+          if (result.completedBy !== currentUser.name) continue;
+          if ((result.resultComments ?? []).length > 0) continue;
+          if (!result.completedAt) continue;
+          if (now - new Date(result.completedAt).getTime() < 2 * 60 * 60 * 1000) continue;
+
+          alerts.push({
+            id: `lab-result-unacknowledged-${result.id}`,
+            type: "lab_result_unacknowledged",
+            patientId: patient.id,
+            patientName,
+            title: "Critical Result Awaiting Review",
+            message: `Your critical result (${result.testName}) for ${patientName} has had no response yet — consider following up.`,
+            date: result.completedAt,
+            priority: "Urgent",
+            targetId: lr.id,
+          });
+        }
+      }
+
       if (
         role === "gynecologist" &&
         lr.requestedById === currentUser.id &&
