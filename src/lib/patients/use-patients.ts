@@ -1564,6 +1564,30 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
+    // Unlike the gynecologist's community_visit_flagged above (deliberately
+    // facility-unscoped — gynecologists see every flagged visit system-
+    // wide), a director's "your facility" oversight is scoped to their own
+    // facility, joined through the patient since CommunityVisit carries no
+    // facility field of its own.
+    if (role === "hospital_admin") {
+      for (const cv of communityVisits) {
+        if (!cv.nurseFlaggedEmergency) continue;
+        const patient = patients.find((p) => p.id === cv.patientId);
+        if (!patient || patient.registrationFacility !== currentUser.facility) continue;
+
+        alerts.push({
+          id: `community-visit-emergency-admin-${cv.id}`,
+          type: "community_visit_emergency",
+          patientId: cv.patientId,
+          patientName: cv.patientName,
+          title: "CHW Report Flagged as Emergency",
+          message: `A nurse flagged ${cv.chwName}'s home-visit report for ${cv.patientName} at your facility as an emergency.`,
+          date: cv.visitDate,
+          priority: "Emergency",
+        });
+      }
+    }
+
     // Sort by priority (Emergency first) and then by date (descending)
     return alerts.sort((a, b) => {
       if (a.priority === "Emergency" && b.priority !== "Emergency") return -1;
