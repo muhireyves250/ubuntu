@@ -66,8 +66,8 @@ function getCurrentUserSnapshot(): { id: string; name: string; facility: string;
   };
 }
 
-// Scoped server-side to the caller's own facility — see usePatientsByIds
-// for the one legitimate cross-facility case (referrals).
+// The system holds one shared patient record — every facility can see every
+// patient and their full history, not just the ones they registered.
 export function usePatients(): Patient[] {
   const { data } = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients() });
   return data ?? [];
@@ -96,30 +96,6 @@ export function usePatient(patientId: string): Patient | undefined {
     enabled: !!patientId,
   });
   return data;
-}
-
-// GET /patients (the bulk list) is scoped to the caller's own facility, so
-// it can't resolve patients from other facilities — needed here because a
-// referral is inherently cross-facility (e.g. the receiving facility must
-// be able to see who they're being referred before they have any other
-// relationship to that patient). GET /patients/:id has no such scoping, so
-// resolving each id individually is the correct way to fill that gap.
-export function usePatientsByIds(patientIds: string[]): Map<string, Patient> {
-  const uniqueIds = useMemo(() => [...new Set(patientIds)], [patientIds]);
-  const results = useQueries({
-    queries: uniqueIds.map((id) => ({
-      queryKey: ["patients", id],
-      queryFn: () => fetchPatient(id),
-      enabled: !!id,
-    })),
-  });
-  return useMemo(() => {
-    const map = new Map<string, Patient>();
-    for (const result of results) {
-      if (result.data) map.set(result.data.id, result.data);
-    }
-    return map;
-  }, [results]);
 }
 
 // `usePatient()` returns `undefined` both while the fetch is in flight and when the
