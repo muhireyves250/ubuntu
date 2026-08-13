@@ -10,6 +10,7 @@ export interface Patient {
   altPhone?: string;
   maritalStatus?: string;
   address: {
+    province: string;
     district: string;
     sector: string;
     cell: string;
