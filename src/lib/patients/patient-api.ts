@@ -10,6 +10,7 @@ interface BackendPatient {
   dateOfBirth: string;
   phone: string;
   altPhone: string | null;
+  province: string;
   district: string;
   sector: string;
   cell: string;
@@ -49,7 +50,7 @@ function toFrontendPatient(p: BackendPatient): Patient {
     phone: p.phone,
     altPhone: p.altPhone ?? undefined,
     maritalStatus: p.maritalStatus ?? undefined,
-    address: { district: p.district, sector: p.sector, cell: p.cell, village: p.village, isibo: p.isibo },
+    address: { province: p.province, district: p.district, sector: p.sector, cell: p.cell, village: p.village, isibo: p.isibo },
     emergencyContact: {
       name: p.emergencyContactName,
       relationship: p.emergencyContactRelationship,
@@ -77,6 +78,7 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
     dateOfBirth: data.dateOfBirth,
     phone: data.phone,
     altPhone: data.altPhone,
+    province: data.address.province,
     district: data.address.district,
     sector: data.address.sector,
     cell: data.address.cell,
@@ -132,6 +134,7 @@ export async function updatePatientApi(
   const token = getStoredAccessToken();
   const body: Record<string, unknown> = { ...updates };
   if (updates.address) {
+    body.province = updates.address.province;
     body.district = updates.address.district;
     body.sector = updates.address.sector;
     body.cell = updates.address.cell;
