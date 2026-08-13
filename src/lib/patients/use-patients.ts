@@ -581,15 +581,21 @@ export function useFollowUpPatients(): FollowUpPatient[] {
   const visits = useVisits();
   const pregnancies = usePregnancies();
   const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
+  const currentUser = getCurrentUserSnapshot();
 
   return useMemo(() => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 14);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
 
+    // usePatients() is the shared, cross-facility registry — this widget is
+    // a facility-specific worklist, so it only considers patients
+    // registered at the viewer's own facility.
+    const scopedPatients = patients.filter((p) => p.registrationFacility === currentUser.facility);
+
     const results: FollowUpPatient[] = [];
 
-    for (const patient of patients) {
+    for (const patient of scopedPatients) {
       const latestVisit = latestVisitFor(patient.id, pregnancies, visits);
       const latestRiskLevel: RiskLevel = activeEmergencyPatientIds.has(patient.id)
         ? "red"
@@ -603,7 +609,7 @@ export function useFollowUpPatients(): FollowUpPatient[] {
     }
 
     return results;
-  }, [patients, visits, pregnancies, activeEmergencyPatientIds]);
+  }, [patients, visits, pregnancies, activeEmergencyPatientIds, currentUser.facility]);
 }
 
 export interface TodaysVisit {
@@ -621,36 +627,46 @@ export function useTodaysVisits(): TodaysVisit[] {
   const visits = useVisits();
   const patients = usePatients();
   const pregnancies = usePregnancies();
+  const currentUser = getCurrentUserSnapshot();
 
   return useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
+    // usePatients() is the shared, cross-facility registry — this widget is
+    // a facility-specific worklist, so it only considers patients
+    // registered at the viewer's own facility.
+    const scopedPatients = patients.filter((p) => p.registrationFacility === currentUser.facility);
+    const scopedPatientIds = new Set(scopedPatients.map((p) => p.id));
     const patientIdByPregnancyId = new Map(pregnancies.map((p) => [p.id, p.patientId]));
 
-    const todaysLoggedVisits = visits.filter((v) => v.date === today);
+    const todaysLoggedVisits = visits.filter(
+      (v) => v.date === today && scopedPatientIds.has(patientIdByPregnancyId.get(v.pregnancyId) ?? ""),
+    );
     const logged: TodaysVisit[] = todaysLoggedVisits.map((visit) => ({
       kind: "logged",
       visit,
-      patient: patients.find((p) => p.id === patientIdByPregnancyId.get(visit.pregnancyId)),
+      patient: scopedPatients.find((p) => p.id === patientIdByPregnancyId.get(visit.pregnancyId)),
     }));
 
     const loggedPregnancyIdsToday = new Set(todaysLoggedVisits.map((v) => v.pregnancyId));
 
     const due: TodaysVisit[] = pregnancies
-      .filter((p) => p.status === "open" && !loggedPregnancyIdsToday.has(p.id))
+      .filter(
+        (p) => p.status === "open" && !loggedPregnancyIdsToday.has(p.id) && scopedPatientIds.has(p.patientId),
+      )
       .map((pregnancy): TodaysVisit | null => {
         const pregnancyVisits = visits.filter((v) => v.pregnancyId === pregnancy.id);
         const match = matchScheduledVisit(pregnancy, pregnancyVisits, today);
         if (!match) return null;
         return {
           kind: "due",
-          patient: patients.find((p) => p.id === pregnancy.patientId),
+          patient: scopedPatients.find((p) => p.id === pregnancy.patientId),
           dueWeek: match.dueByWeek,
         };
       })
       .filter((entry): entry is TodaysVisit => entry !== null);
 
     return [...due, ...logged];
-  }, [visits, patients, pregnancies]);
+  }, [visits, patients, pregnancies, currentUser.facility]);
 }
 
 export interface RiskSummary {
@@ -665,6 +681,7 @@ export function useRiskSummary(days?: number): RiskSummary {
   const visits = useVisits();
   const pregnancies = usePregnancies();
   const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
+  const currentUser = getCurrentUserSnapshot();
 
   return useMemo(() => {
     const cutoff =
@@ -680,9 +697,13 @@ export function useRiskSummary(days?: number): RiskSummary {
     const activePatientIdsInWindow = new Set(
       scopedVisits.map((v) => patientIdByPregnancyId.get(v.pregnancyId)).filter(Boolean),
     );
+    // usePatients() is the shared, cross-facility registry — this is a
+    // facility-specific dashboard summary, so it only considers patients
+    // registered at the viewer's own facility.
+    const facilityPatients = patients.filter((p) => p.registrationFacility === currentUser.facility);
     const scopedPatients = cutoff
-      ? patients.filter((p) => p.registeredAt >= cutoff || activePatientIdsInWindow.has(p.id))
-      : patients;
+      ? facilityPatients.filter((p) => p.registeredAt >= cutoff || activePatientIdsInWindow.has(p.id))
+      : facilityPatients;
 
     const counts: Record<RiskLevel, number> = {
       green: 0,
@@ -706,7 +727,7 @@ export function useRiskSummary(days?: number): RiskSummary {
         : Math.round(((counts.red + counts.orange) / totalPatients) * 100);
 
     return { totalPatients, totalVisits: scopedVisits.length, counts, highRiskRate };
-  }, [patients, visits, pregnancies, days, activeEmergencyPatientIds]);
+  }, [patients, visits, pregnancies, days, activeEmergencyPatientIds, currentUser.facility]);
 }
 
 export async function registerPatient(
