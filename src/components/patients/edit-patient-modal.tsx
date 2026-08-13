@@ -30,11 +30,67 @@ export function EditPatientModal({
   const [altPhone, setAltPhone] = useState(patient.altPhone ?? "");
   const [maritalStatus, setMaritalStatus] = useState(patient.maritalStatus ?? "");
 
+  const [province, setProvince] = useState(patient.address.province);
   const [district, setDistrict] = useState(patient.address.district);
   const [sector, setSector] = useState(patient.address.sector);
   const [cell, setCell] = useState(patient.address.cell);
   const [village, setVillage] = useState(patient.address.village);
   const [isibo, setIsibo] = useState(patient.address.isibo);
+  const [locations, setLocations] = useState<typeof import("@/lib/locations/rwanda") | null>(null);
+
+  useEffect(() => {
+    import("@/lib/locations/rwanda").then((mod) => {
+      setLocations(mod);
+      // Patients created before this feature have no stored province and may
+      // have a district value that predates Rwanda's 2006 administrative
+      // reform — resolve what we can, but never overwrite a province the
+      // patient already has.
+      if (!province) {
+        const resolved = mod.findProvinceForDistrict(district);
+        if (resolved) setProvince(resolved);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const knownDistricts = province && locations ? locations.getDistricts(province) : [];
+  const districts = knownDistricts.includes(district) || !district ? knownDistricts : [district, ...knownDistricts];
+  const knownSectors = province && district && locations ? locations.getSectors(province, district) : [];
+  const sectors = knownSectors.includes(sector) || !sector ? knownSectors : [sector, ...knownSectors];
+  const knownCells = province && district && sector && locations ? locations.getCells(province, district, sector) : [];
+  const cells = knownCells.includes(cell) || !cell ? knownCells : [cell, ...knownCells];
+  const knownVillages =
+    province && district && sector && cell && locations
+      ? locations.getVillages(province, district, sector, cell)
+      : [];
+  const villages = knownVillages.includes(village) || !village ? knownVillages : [village, ...knownVillages];
+  const provinces = locations?.getProvinces() ?? [];
+
+  function handleProvinceChange(value: string) {
+    setProvince(value);
+    setDistrict("");
+    setSector("");
+    setCell("");
+    setVillage("");
+  }
+
+  function handleDistrictChange(value: string) {
+    setDistrict(value);
+    setSector("");
+    setCell("");
+    setVillage("");
+  }
+
+  function handleSectorChange(value: string) {
+    setSector(value);
+    setCell("");
+    setVillage("");
+  }
+
+  function handleCellChange(value: string) {
+    setCell(value);
+    setVillage("");
+  }
 
   const [contactName, setContactName] = useState(patient.emergencyContact.name);
   const [relationship, setRelationship] = useState(patient.emergencyContact.relationship);
@@ -93,10 +149,11 @@ export function EditPatientModal({
         altPhone: altPhone.trim() || undefined,
         maritalStatus: maritalStatus.trim() || undefined,
         address: {
-          district: district.trim(),
-          sector: sector.trim(),
-          cell: cell.trim(),
-          village: village.trim(),
+          province,
+          district,
+          sector,
+          cell,
+          village,
           isibo: isibo.trim(),
         },
         emergencyContact: {
@@ -194,20 +251,84 @@ export function EditPatientModal({
                 </legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Country
+                    <select value="Rwanda" disabled className={inputCls}>
+                      <option value="Rwanda">Rwanda</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Province
+                    <select
+                      required
+                      value={province}
+                      onChange={(e) => handleProvinceChange(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="" disabled>Select province</option>
+                      {provinces.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     District
-                    <input type="text" required value={district} onChange={(e) => setDistrict(e.target.value)} className={inputCls} />
+                    <select
+                      required
+                      disabled={!province}
+                      value={district}
+                      onChange={(e) => handleDistrictChange(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="" disabled>Select district</option>
+                      {districts.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Sector
-                    <input type="text" required value={sector} onChange={(e) => setSector(e.target.value)} className={inputCls} />
+                    <select
+                      required
+                      disabled={!district}
+                      value={sector}
+                      onChange={(e) => handleSectorChange(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="" disabled>Select sector</option>
+                      {sectors.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Cell
-                    <input type="text" required value={cell} onChange={(e) => setCell(e.target.value)} className={inputCls} />
+                    <select
+                      required
+                      disabled={!sector}
+                      value={cell}
+                      onChange={(e) => handleCellChange(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="" disabled>Select cell</option>
+                      {cells.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Village
-                    <input type="text" required value={village} onChange={(e) => setVillage(e.target.value)} className={inputCls} />
+                    <select
+                      required
+                      disabled={!cell}
+                      value={village}
+                      onChange={(e) => setVillage(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="" disabled>Select village</option>
+                      {villages.map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Isibo
