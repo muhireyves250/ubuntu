@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
-import { useReferrals, usePatients } from "@/lib/patients/use-patients";
+import { useReferrals, usePatientsByIds } from "@/lib/patients/use-patients";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getInitials, formatExactDateTime, fullName } from "@/lib/format";
 import { CloseReferralModal } from "@/components/dashboard/close-referral-modal";
@@ -36,29 +36,33 @@ const OUTCOME_TEXT_COLOR: Record<ReferralOutcome, string> = {
 
 function ReferralLogContent() {
   const referrals = useReferrals();
-  const patients = usePatients();
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState<"all" | ReferralStatus>("all");
   const [closeTargetId, setCloseTargetId] = useState<string | null>(null);
 
-  const patientById = useMemo(
-    () => new Map(patients.map((patient) => [patient.id, patient])),
-    [patients],
-  );
-
-  const rows = useMemo(() => {
-    return referrals
-      .filter(
+  const facilityReferrals = useMemo(
+    () =>
+      referrals.filter(
         (r) =>
           r.referredByFacility === user?.facility ||
           r.receivingFacility === user?.facility ||
           r.acceptedByFacility === user?.facility,
-      )
+      ),
+    [referrals, user?.facility],
+  );
+
+  // Referrals cross facility boundaries by design, so their patients can't
+  // be resolved from the (now facility-scoped) bulk patient list — each is
+  // fetched individually instead, which has no facility restriction.
+  const patientById = usePatientsByIds(facilityReferrals.map((r) => r.patientId));
+
+  const rows = useMemo(() => {
+    return facilityReferrals
       .map((referral) => ({ referral, patient: patientById.get(referral.patientId) }))
       .filter((row) => row.patient)
       .filter((row) => statusFilter === "all" || row.referral.status === statusFilter)
       .sort((a, b) => b.referral.createdAt.localeCompare(a.referral.createdAt));
-  }, [referrals, patientById, statusFilter, user?.facility]);
+  }, [facilityReferrals, patientById, statusFilter]);
 
   const closeTarget = rows.find((row) => row.referral.id === closeTargetId);
 
