@@ -1,8 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { usePregnanciesForPatient, updatePregnancy } from "@/lib/patients/use-patients";
-import type { PregnancyMedicalHistory, ScreeningResult } from "@/lib/patients/types";
+import { usePregnanciesForPatient, usePatient, updatePregnancy } from "@/lib/patients/use-patients";
+import type { Patient, Pregnancy, PregnancyMedicalHistory, ScreeningResult } from "@/lib/patients/types";
+
+function OnFileField({ label, value }: { label: string; value: React.ReactNode }) {
+  const filled = value !== null && value !== undefined && value !== "" && value !== 0 && value !== false;
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
+      <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+        {filled ? value : "—"}
+      </p>
+    </div>
+  );
+}
+
+// Surfaces data already captured elsewhere in the system (Patient record,
+// pregnancy-creation fields) so the nurse can see it during consultation
+// without re-entering it — read-only here, edited from its own source
+// (Patient Details / New Pregnancy) rather than duplicated as input.
+function AlreadyOnFileSection({ patient, pregnancy }: { patient?: Patient; pregnancy?: Pregnancy }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        Already on file
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <OnFileField label="Known allergies" value={patient?.allergies} />
+        <OnFileField
+          label="Chronic conditions"
+          value={patient?.chronicConditions?.length ? patient.chronicConditions.join(", ") : undefined}
+        />
+        <OnFileField label="Blood group" value={patient?.bloodGroup} />
+        <OnFileField label="Rh factor" value={patient?.rhFactor} />
+        <OnFileField label="Previous C-sections" value={pregnancy?.previousCS} />
+        <OnFileField label="Previous PPH" value={pregnancy?.previousPPH ? "Yes" : undefined} />
+        <OnFileField label="Previous eclampsia" value={pregnancy?.previousEclampsia ? "Yes" : undefined} />
+        <OnFileField label="Previous stillbirth" value={pregnancy?.previousStillbirth ? "Yes" : undefined} />
+      </div>
+    </div>
+  );
+}
 
 const HISTORY_CHECKBOX_FIELDS: { key: keyof PregnancyMedicalHistory; label: string }[] = [
   { key: "historySurgicalOrCervicalTrauma", label: "Surgical history or cervical trauma or cerclage" },
@@ -53,6 +92,7 @@ export function ConsultationStep({
   patientId: string;
   onSaved: () => void;
 }) {
+  const patient = usePatient(patientId);
   const pregnancies = usePregnanciesForPatient(patientId);
   const openPregnancy = pregnancies.find((p) => p.status === "open");
 
@@ -136,6 +176,8 @@ export function ConsultationStep({
 
   return (
     <div className="flex flex-col gap-4">
+      <AlreadyOnFileSection patient={patient} pregnancy={openPregnancy} />
+
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Consultation — General Information
       </p>
