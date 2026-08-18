@@ -158,6 +158,7 @@ export function AssessmentWizard({
           vitals={vitals}
           symptoms={symptoms}
           labsOrdered={labsOrdered}
+          patientId={patientId}
           pregnancyId={pregnancyId}
           type={type}
           scheduledWeek={scheduledWeek}
