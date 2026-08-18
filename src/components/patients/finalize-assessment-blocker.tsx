@@ -95,10 +95,12 @@ export function FinalizeAssessmentBlocker({
   patient,
   visit,
   onFinalized,
+  onDone,
 }: {
   patient: Patient;
   visit: Visit;
   onFinalized: (visitId: string, treatment: string, followUpPlan: string) => Promise<void>;
+  onDone?: () => void;
 }) {
   const [step, setStep] = useState<Step>("AI Review");
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
@@ -156,7 +158,11 @@ export function FinalizeAssessmentBlocker({
         />
       )}
       {step === "Vaccination" && (
-        <VaccinationStep pregnancyId={visit.pregnancyId} onContinue={() => { /* no-op: last step, unlocked already */ }} />
+        <VaccinationStep
+          pregnancyId={visit.pregnancyId}
+          onContinue={() => onDone?.()}
+          continueLabel="Finish Assessment"
+        />
       )}
     </div>
   );
