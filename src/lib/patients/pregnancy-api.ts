@@ -279,6 +279,10 @@ export interface PregnancyUpdatableFields extends PregnancyMedicalHistory {
   aliveChildren?: number;
   ageOfLastBornYears?: number;
   monthsOfLastBorn?: number;
+  previousCS?: number;
+  previousPPH?: boolean;
+  previousEclampsia?: boolean;
+  previousStillbirth?: boolean;
 }
 
 export async function updatePregnancyApi(
@@ -292,6 +296,10 @@ export async function updatePregnancyApi(
   }
   if (updates.stiScreeningResult) {
     body.stiScreeningResult = SCREENING_RESULT_TO_BACKEND[updates.stiScreeningResult];
+  }
+  if (updates.previousCS !== undefined) {
+    body.previousCSCount = updates.previousCS;
+    delete body.previousCS;
   }
   const p = await apiFetch<BackendPregnancy>(`/pregnancies/${pregnancyId}`, {
     method: "PATCH",
