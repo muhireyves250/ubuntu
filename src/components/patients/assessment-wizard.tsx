@@ -12,6 +12,7 @@ import { ConsultationStep } from "@/components/patients/assessment/consultation-
 import { LabsStep } from "@/components/patients/assessment/labs-step";
 import { SummaryStep } from "@/components/patients/assessment/summary-step";
 import { FinalizeAssessmentBlocker } from "@/components/patients/finalize-assessment-blocker";
+import { AwaitingLabsBlocker } from "@/components/patients/awaiting-labs-blocker";
 import { finalizeAssessment } from "@/lib/patients/use-patients";
 import type { Patient, Visit } from "@/lib/patients/types";
 
@@ -73,15 +74,6 @@ export function AssessmentWizard({
     setCurrentStep((step) => (step > 1 ? ((step - 1) as StepNumber) : step));
   }
 
-  function reset() {
-    setCurrentStep(1);
-    setMaxReachedStep(1);
-    setVitals(emptyVitalSigns());
-    setSymptoms([]);
-    setLabsOrdered(false);
-    setSavedVisit(null);
-  }
-
   // A visit that didn't need labs is unlocked for the full Final
   // Diagnosis → … → Discharge pipeline immediately. A visit that needs
   // labs exits the wizard here — page.tsx shows AwaitingLabsBlocker, then
@@ -92,28 +84,13 @@ export function AssessmentWizard({
         patient={patient}
         visit={savedVisit}
         onFinalized={finalizeAssessment}
+        onDone={onSubmitted}
       />
     );
   }
 
   if (savedVisit && labsOrdered) {
-    return (
-      <div className="flex flex-col items-center gap-4 py-6 text-center">
-        <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-          Sent to the laboratory nurse.
-        </p>
-        <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
-          This visit will continue automatically once lab results are submitted.
-        </p>
-        <button
-          type="button"
-          onClick={() => { reset(); onSubmitted?.(); }}
-          className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-        >
-          Back to Patient
-        </button>
-      </div>
-    );
+    return <AwaitingLabsBlocker patient={patient} visit={savedVisit} />;
   }
 
   return (
