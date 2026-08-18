@@ -3,10 +3,61 @@
 import { Fragment, useState } from "react";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { AncScheduleCalendar } from "@/components/patients/anc-schedule-calendar";
+import { VisitDiagnosisSection } from "@/components/patients/visit-diagnosis-section";
+import { VisitPharmacySection } from "@/components/patients/visit-pharmacy-section";
+import { VisitInvoiceSection } from "@/components/patients/visit-invoice-section";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import { nextDueVisit, missedVisits, ancCalendar, gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { formatLabs } from "@/lib/format";
+import { useRiskPredictionForVisit } from "@/lib/patients/use-patients";
 import type { Pregnancy, Visit, VisitType } from "@/lib/patients/types";
+
+function VisitAiPredictionSection({ visitId }: { visitId: string }) {
+  const prediction = useRiskPredictionForVisit(visitId);
+  if (!prediction) {
+    return (
+      <div>
+        <span className="font-medium text-zinc-400">AI Assessment: </span>
+        <span className="text-zinc-400">Not run for this visit</span>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <span className="font-medium text-zinc-400">AI Assessment: </span>
+      <span className="font-semibold uppercase text-zinc-700 dark:text-zinc-300">
+        {prediction.predictedRiskLevel}
+      </span>
+      <p className="mt-1 text-zinc-600 dark:text-zinc-400">{prediction.recommendation}</p>
+    </div>
+  );
+}
+
+function VisitConsultationSection({ pregnancy }: { pregnancy: Pregnancy }) {
+  const notedHistory = ([
+    ["Surgical/cervical trauma", pregnancy.historySurgicalOrCervicalTrauma],
+    ["Diabetes", pregnancy.historyDiabetes],
+    ["Hypertension", pregnancy.historyHypertension],
+    ["Heart disease", pregnancy.historyHeartDisease],
+    ["Kidney problems", pregnancy.historyKidneyProblems],
+  ] as const)
+    .filter(([, value]) => value)
+    .map(([label]) => label);
+
+  return (
+    <div>
+      <span className="font-medium text-zinc-400">Consultation history: </span>
+      {notedHistory.length === 0 ? (
+        <span className="text-zinc-400">No notable history flagged</span>
+      ) : (
+        <span className="text-zinc-700 dark:text-zinc-300">{notedHistory.join(", ")}</span>
+      )}
+      {pregnancy.hivTestResult && (
+        <span className="ml-2 text-zinc-700 dark:text-zinc-300">· HIV: {pregnancy.hivTestResult}</span>
+      )}
+    </div>
+  );
+}
 
 const SYMPTOM_LABEL = new Map(
   SYMPTOM_CHECKLIST.map((symptom) => [symptom.id, symptom.label]),
@@ -92,7 +143,7 @@ export function VisitHistoryTab({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         {readOnly ? "Antenatal Care Summary" : "Antenatal Care Followup"}
       </p>
 
@@ -124,7 +175,7 @@ export function VisitHistoryTab({
       </div>
 
       <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           ANC Schedule
         </p>
         <div className="flex flex-wrap gap-2">
@@ -330,6 +381,7 @@ export function VisitHistoryTab({
                               {visit.notes}
                             </p>
                           ) : null}
+                          <VisitConsultationSection pregnancy={pregnancy} />
                           {visit.labs ? (
                             <p>
                               <span className="font-medium text-zinc-400">
@@ -338,6 +390,10 @@ export function VisitHistoryTab({
                               {formatLabs(visit)}
                             </p>
                           ) : null}
+                          <VisitAiPredictionSection visitId={visit.id} />
+                          <VisitDiagnosisSection visitId={visit.id} readOnly={readOnly} />
+                          <VisitPharmacySection visitId={visit.id} readOnly={readOnly} />
+                          <VisitInvoiceSection visitId={visit.id} readOnly={readOnly} />
                           {!visit.notes && !visit.labs && !visit.emergencySummary && !visit.treatment && !visit.followUpPlan && (
                             <p className="text-zinc-400">
                               No additional details recorded.
