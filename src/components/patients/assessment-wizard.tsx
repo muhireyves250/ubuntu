@@ -8,30 +8,34 @@ import {
   type VitalSigns,
 } from "@/components/patients/assessment/vital-signs-step";
 import { SymptomsStep } from "@/components/patients/assessment/symptoms-step";
+import { ConsultationStep } from "@/components/patients/assessment/consultation-step";
 import { LabsStep } from "@/components/patients/assessment/labs-step";
 import { SummaryStep } from "@/components/patients/assessment/summary-step";
-import { RiskBadge } from "@/components/patients/risk-badge";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import type { Visit } from "@/lib/patients/types";
+import { FinalizeAssessmentBlocker } from "@/components/patients/finalize-assessment-blocker";
+import { finalizeAssessment } from "@/lib/patients/use-patients";
+import type { Patient, Visit } from "@/lib/patients/types";
 
 const STEPS = [
   { number: 1, label: "Vitals" },
   { number: 2, label: "Symptoms" },
-  { number: 3, label: "Labs" },
-  { number: 4, label: "Summary" },
+  { number: 3, label: "Consultation" },
+  { number: 4, label: "Labs" },
+  { number: 5, label: "Summary" },
 ] as const;
 
 type StepNumber = (typeof STEPS)[number]["number"];
 
-const SYMPTOM_LABEL = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s.label]));
-
 export function AssessmentWizard({
+  patient,
+  patientId,
   pregnancyId,
   type,
   scheduledWeek,
   ancNumber,
   onSubmitted,
 }: {
+  patient: Patient;
+  patientId: string;
   pregnancyId: string;
   type: "scheduled" | "unscheduled";
   scheduledWeek?: number;
@@ -59,7 +63,7 @@ export function AssessmentWizard({
   function goNext() {
     if (!canAdvance) return;
     setCurrentStep((step) => {
-      const next = step < 4 ? ((step + 1) as StepNumber) : step;
+      const next = step < 5 ? ((step + 1) as StepNumber) : step;
       setMaxReachedStep((reached) => (next > reached ? next : reached));
       return next;
     });
@@ -78,54 +82,36 @@ export function AssessmentWizard({
     setSavedVisit(null);
   }
 
-  if (savedVisit) {
-    const triggeredSymptoms = savedVisit.symptomIds.map(
-      (id) => SYMPTOM_LABEL.get(id) ?? id,
-    );
-    const isHighRisk =
-      savedVisit.riskLevel === "orange" || savedVisit.riskLevel === "red";
-
+  // A visit that didn't need labs is unlocked for the full Final
+  // Diagnosis → … → Discharge pipeline immediately. A visit that needs
+  // labs exits the wizard here — page.tsx shows AwaitingLabsBlocker, then
+  // FinalizeAssessmentBlocker once labs land (same component, reused).
+  if (savedVisit && !labsOrdered) {
     return (
-      <div className="flex flex-col items-center gap-6 py-4 text-center">
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
-            Assessment Result
-          </p>
-          <RiskBadge level={savedVisit.riskLevel} />
-        </div>
+      <FinalizeAssessmentBlocker
+        patient={patient}
+        visit={savedVisit}
+        onFinalized={finalizeAssessment}
+      />
+    );
+  }
 
-        {triggeredSymptoms.length > 0 && (
-          <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Flagged symptoms
-            </p>
-            <ul className="list-disc pl-4 text-zinc-700 dark:text-zinc-300">
-              {triggeredSymptoms.map((label) => (
-                <li key={label}>{label}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="flex w-full gap-3">
-          <button
-            type="button"
-            onClick={() => { reset(); onSubmitted?.(); }}
-            className="flex-1 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-          >
-            Back to Patient
-          </button>
-          {isHighRisk && (
-            <button
-              type="button"
-              disabled
-              title="Referral creation coming in issue #31"
-              className="flex-1 cursor-not-allowed rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-medium text-white opacity-50"
-            >
-              Create Referral
-            </button>
-          )}
-        </div>
+  if (savedVisit && labsOrdered) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6 text-center">
+        <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+          Sent to the laboratory nurse.
+        </p>
+        <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
+          This visit will continue automatically once lab results are submitted.
+        </p>
+        <button
+          type="button"
+          onClick={() => { reset(); onSubmitted?.(); }}
+          className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        >
+          Back to Patient
+        </button>
       </div>
     );
   }
@@ -162,9 +148,12 @@ export function AssessmentWizard({
         <SymptomsStep selectedIds={symptoms} onChange={setSymptoms} />
       )}
       {currentStep === 3 && (
-        <LabsStep labsOrdered={labsOrdered} onChange={setLabsOrdered} />
+        <ConsultationStep patientId={patientId} onSaved={goNext} />
       )}
       {currentStep === 4 && (
+        <LabsStep labsOrdered={labsOrdered} onChange={setLabsOrdered} />
+      )}
+      {currentStep === 5 && (
         <SummaryStep
           vitals={vitals}
           symptoms={symptoms}
@@ -177,7 +166,7 @@ export function AssessmentWizard({
         />
       )}
 
-      {currentStep !== 4 && (
+      {currentStep !== 3 && currentStep !== 5 && (
         <div className="flex items-center justify-between">
           <button
             type="button"
