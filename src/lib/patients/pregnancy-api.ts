@@ -286,9 +286,16 @@ export async function updatePregnancyApi(
   updates: PregnancyUpdatableFields,
 ): Promise<Pregnancy> {
   const token = getStoredAccessToken();
+  const body: Record<string, unknown> = { ...updates };
+  if (updates.hivTestResult) {
+    body.hivTestResult = SCREENING_RESULT_TO_BACKEND[updates.hivTestResult];
+  }
+  if (updates.stiScreeningResult) {
+    body.stiScreeningResult = SCREENING_RESULT_TO_BACKEND[updates.stiScreeningResult];
+  }
   const p = await apiFetch<BackendPregnancy>(`/pregnancies/${pregnancyId}`, {
     method: "PATCH",
-    body: updates,
+    body,
     token: token ?? undefined,
   });
   return toFrontendPregnancy(p);
