@@ -1,13 +1,19 @@
 import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import { computeEdd } from "./pregnancy";
-import type { Pregnancy } from "./types";
+import type { Pregnancy, ScreeningResult, PregnancyMedicalHistory } from "./types";
 
 interface BackendPregnancy {
   id: string;
   patientId: string;
   gravidity: number;
   parity: number;
+  termDeliveries: number | null;
+  prematureDeliveriesCount: number | null;
+  numberOfAbortions: number | null;
+  aliveChildren: number | null;
+  ageOfLastBornYears: number | null;
+  monthsOfLastBorn: number | null;
   previousCSCount: number;
   previousPPH: boolean;
   previousEclampsia: boolean;
@@ -25,7 +31,47 @@ interface BackendPregnancy {
   birthWeightKg: number | null;
   motherCondition: string | null;
   pregnancySummary: string | null;
+  historySurgicalOrCervicalTrauma: boolean;
+  historyGynecologicalProblem: boolean;
+  currentlyOnMedication: boolean;
+  currentMedicationDetails: string | null;
+  historyDiabetes: boolean;
+  historyLungDisease: boolean;
+  historyHypertension: boolean;
+  alcoholUse: boolean;
+  mentalIllnessNotes: string | null;
+  historyKidneyProblems: boolean;
+  tobaccoUse: boolean;
+  hivTestResult: "NEGATIVE" | "POSITIVE" | "UNKNOWN" | null;
+  historyHeartDisease: boolean;
+  torchScreeningNotes: string | null;
+  stiScreeningResult: "NEGATIVE" | "POSITIVE" | "UNKNOWN" | null;
+  historyPretermDelivery: boolean;
+  historyMacrosomia: boolean;
+  historyCongenitalMalformation: boolean;
+  historyMultiplePregnancy: boolean;
+  historyAntepartumBleeding: boolean;
+  recurrentPregnancyLoss: boolean;
+  familyPlanningBeforePregnancy: boolean;
+  familyPlanningMethod: string | null;
+  familyPlanningDurationMonths: number | null;
+  historyLowBirthWeightDelivery: boolean;
+  disabilitiesNotes: string | null;
+  numberOfBabies: number;
+  hadHypertensionDisorder: boolean;
+  partnerAccompanied: boolean;
 }
+
+const SCREENING_RESULT_TO_FRONTEND: Record<string, ScreeningResult> = {
+  NEGATIVE: "negative",
+  POSITIVE: "positive",
+  UNKNOWN: "unknown",
+};
+const SCREENING_RESULT_TO_BACKEND: Record<ScreeningResult, "NEGATIVE" | "POSITIVE" | "UNKNOWN"> = {
+  negative: "NEGATIVE",
+  positive: "POSITIVE",
+  unknown: "UNKNOWN",
+};
 
 const DELIVERY_OUTCOME_TO_BACKEND = {
   "live-birth": "LIVE_BIRTH",
@@ -62,6 +108,12 @@ export function toFrontendPregnancy(p: BackendPregnancy): Pregnancy {
     pregnancyNumber: p.pregnancyNumber,
     gravidity: p.gravidity,
     parity: p.parity,
+    termDeliveries: p.termDeliveries ?? undefined,
+    prematureDeliveriesCount: p.prematureDeliveriesCount ?? undefined,
+    numberOfAbortions: p.numberOfAbortions ?? undefined,
+    aliveChildren: p.aliveChildren ?? undefined,
+    ageOfLastBornYears: p.ageOfLastBornYears ?? undefined,
+    monthsOfLastBorn: p.monthsOfLastBorn ?? undefined,
     previousCS: p.previousCSCount,
     previousPPH: p.previousPPH,
     previousEclampsia: p.previousEclampsia,
@@ -71,6 +123,35 @@ export function toFrontendPregnancy(p: BackendPregnancy): Pregnancy {
     startDate: p.startDate.slice(0, 10),
     status: p.status === "OPEN" ? "open" : "closed",
     createdAt: p.createdAt,
+    numberOfBabies: p.numberOfBabies,
+    hadHypertensionDisorder: p.hadHypertensionDisorder,
+    partnerAccompanied: p.partnerAccompanied,
+    historySurgicalOrCervicalTrauma: p.historySurgicalOrCervicalTrauma,
+    historyGynecologicalProblem: p.historyGynecologicalProblem,
+    currentlyOnMedication: p.currentlyOnMedication,
+    currentMedicationDetails: p.currentMedicationDetails ?? undefined,
+    historyDiabetes: p.historyDiabetes,
+    historyLungDisease: p.historyLungDisease,
+    historyHypertension: p.historyHypertension,
+    alcoholUse: p.alcoholUse,
+    mentalIllnessNotes: p.mentalIllnessNotes ?? undefined,
+    historyKidneyProblems: p.historyKidneyProblems,
+    tobaccoUse: p.tobaccoUse,
+    hivTestResult: p.hivTestResult ? SCREENING_RESULT_TO_FRONTEND[p.hivTestResult] : undefined,
+    historyHeartDisease: p.historyHeartDisease,
+    torchScreeningNotes: p.torchScreeningNotes ?? undefined,
+    stiScreeningResult: p.stiScreeningResult ? SCREENING_RESULT_TO_FRONTEND[p.stiScreeningResult] : undefined,
+    historyPretermDelivery: p.historyPretermDelivery,
+    historyMacrosomia: p.historyMacrosomia,
+    historyCongenitalMalformation: p.historyCongenitalMalformation,
+    historyMultiplePregnancy: p.historyMultiplePregnancy,
+    historyAntepartumBleeding: p.historyAntepartumBleeding,
+    recurrentPregnancyLoss: p.recurrentPregnancyLoss,
+    familyPlanningBeforePregnancy: p.familyPlanningBeforePregnancy,
+    familyPlanningMethod: p.familyPlanningMethod ?? undefined,
+    familyPlanningDurationMonths: p.familyPlanningDurationMonths ?? undefined,
+    historyLowBirthWeightDelivery: p.historyLowBirthWeightDelivery,
+    disabilitiesNotes: p.disabilitiesNotes ?? undefined,
     delivery:
       p.deliveryOutcome && p.deliveryDate && p.deliveryMethod && p.babyStatus && p.motherCondition
         ? {
@@ -81,6 +162,8 @@ export function toFrontendPregnancy(p: BackendPregnancy): Pregnancy {
             birthWeightKg: p.birthWeightKg ?? 0,
             motherCondition: p.motherCondition,
             summary: p.pregnancySummary ?? "",
+            numberOfBabies: p.numberOfBabies,
+            hadHypertensionDisorder: p.hadHypertensionDisorder,
           }
         : undefined,
   };
@@ -106,7 +189,10 @@ export async function fetchAllPregnancies(): Promise<Pregnancy[]> {
 }
 
 export async function createPregnancyApi(
-  data: Omit<Pregnancy, "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "delivery">,
+  data: Omit<
+    Pregnancy,
+    "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "delivery" | "numberOfBabies" | "hadHypertensionDisorder"
+  >,
 ): Promise<Pregnancy> {
   const token = getStoredAccessToken();
   const p = await apiFetch<BackendPregnancy>(`/patients/${data.patientId}/pregnancies`, {
@@ -114,6 +200,12 @@ export async function createPregnancyApi(
     body: {
       gravidity: data.gravidity,
       parity: data.parity,
+      termDeliveries: data.termDeliveries,
+      prematureDeliveriesCount: data.prematureDeliveriesCount,
+      numberOfAbortions: data.numberOfAbortions,
+      aliveChildren: data.aliveChildren,
+      ageOfLastBornYears: data.ageOfLastBornYears,
+      monthsOfLastBorn: data.monthsOfLastBorn,
       previousCSCount: data.previousCS,
       previousPPH: data.previousPPH,
       previousEclampsia: data.previousEclampsia,
@@ -121,6 +213,33 @@ export async function createPregnancyApi(
       edd: computeEdd(data.lmpDate),
       lmp: data.lmpDate,
       startDate: data.startDate,
+      historySurgicalOrCervicalTrauma: data.historySurgicalOrCervicalTrauma,
+      historyGynecologicalProblem: data.historyGynecologicalProblem,
+      currentlyOnMedication: data.currentlyOnMedication,
+      currentMedicationDetails: data.currentMedicationDetails,
+      historyDiabetes: data.historyDiabetes,
+      historyLungDisease: data.historyLungDisease,
+      historyHypertension: data.historyHypertension,
+      alcoholUse: data.alcoholUse,
+      mentalIllnessNotes: data.mentalIllnessNotes,
+      historyKidneyProblems: data.historyKidneyProblems,
+      tobaccoUse: data.tobaccoUse,
+      hivTestResult: data.hivTestResult ? SCREENING_RESULT_TO_BACKEND[data.hivTestResult] : undefined,
+      historyHeartDisease: data.historyHeartDisease,
+      torchScreeningNotes: data.torchScreeningNotes,
+      stiScreeningResult: data.stiScreeningResult ? SCREENING_RESULT_TO_BACKEND[data.stiScreeningResult] : undefined,
+      historyPretermDelivery: data.historyPretermDelivery,
+      historyMacrosomia: data.historyMacrosomia,
+      historyCongenitalMalformation: data.historyCongenitalMalformation,
+      historyMultiplePregnancy: data.historyMultiplePregnancy,
+      historyAntepartumBleeding: data.historyAntepartumBleeding,
+      recurrentPregnancyLoss: data.recurrentPregnancyLoss,
+      familyPlanningBeforePregnancy: data.familyPlanningBeforePregnancy,
+      familyPlanningMethod: data.familyPlanningMethod,
+      familyPlanningDurationMonths: data.familyPlanningDurationMonths,
+      historyLowBirthWeightDelivery: data.historyLowBirthWeightDelivery,
+      disabilitiesNotes: data.disabilitiesNotes,
+      partnerAccompanied: data.partnerAccompanied,
     },
     token: token ?? undefined,
   });
@@ -142,7 +261,34 @@ export async function closePregnancyApi(
       birthWeightKg: delivery.birthWeightKg,
       motherCondition: delivery.motherCondition,
       pregnancySummary: delivery.summary,
+      numberOfBabies: delivery.numberOfBabies,
+      hadHypertensionDisorder: delivery.hadHypertensionDisorder,
     },
+    token: token ?? undefined,
+  });
+  return toFrontendPregnancy(p);
+}
+
+export interface PregnancyUpdatableFields extends PregnancyMedicalHistory {
+  partnerAccompanied?: boolean;
+  gravidity?: number;
+  parity?: number;
+  termDeliveries?: number;
+  prematureDeliveriesCount?: number;
+  numberOfAbortions?: number;
+  aliveChildren?: number;
+  ageOfLastBornYears?: number;
+  monthsOfLastBorn?: number;
+}
+
+export async function updatePregnancyApi(
+  pregnancyId: string,
+  updates: PregnancyUpdatableFields,
+): Promise<Pregnancy> {
+  const token = getStoredAccessToken();
+  const p = await apiFetch<BackendPregnancy>(`/pregnancies/${pregnancyId}`, {
+    method: "PATCH",
+    body: updates,
     token: token ?? undefined,
   });
   return toFrontendPregnancy(p);
