@@ -259,7 +259,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         <>
           {activeReferral && <ActiveReferralBanner patient={patient} referral={activeReferral} />}
           <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-            {TABS.filter((tab) => !(isReadOnlyAdmin && tab === "New Assessment")).map((tab) => (
+            {TABS.filter((tab) => tab !== "Signs & Symptoms" && !(isReadOnlyAdmin && tab === "New Assessment")).map((tab) => (
               <button
                 key={tab}
                 type="button"
