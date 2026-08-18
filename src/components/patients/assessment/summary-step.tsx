@@ -5,9 +5,30 @@ import {
   computeBmi,
   type VitalSigns,
 } from "@/components/patients/assessment/vital-signs-step";
-import { recordVisit } from "@/lib/patients/use-patients";
+import { recordVisit, usePregnanciesForPatient } from "@/lib/patients/use-patients";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import type { Visit, VisitLabs } from "@/lib/patients/types";
+import type { Visit, VisitLabs, PregnancyMedicalHistory } from "@/lib/patients/types";
+
+const HISTORY_REVIEW_LABELS: { key: keyof PregnancyMedicalHistory; label: string }[] = [
+  { key: "historySurgicalOrCervicalTrauma", label: "Surgical history or cervical trauma or cerclage" },
+  { key: "historyGynecologicalProblem", label: "History of gynecological problem" },
+  { key: "currentlyOnMedication", label: "Currently taking medicines" },
+  { key: "historyDiabetes", label: "History of diabetes" },
+  { key: "historyLungDisease", label: "Lung disease history" },
+  { key: "historyHypertension", label: "History or current hypertension" },
+  { key: "alcoholUse", label: "Alcohol use" },
+  { key: "historyKidneyProblems", label: "History of kidney problems" },
+  { key: "tobaccoUse", label: "Tobacco use" },
+  { key: "historyHeartDisease", label: "History of heart disease" },
+  { key: "historyPretermDelivery", label: "History of preterm delivery" },
+  { key: "historyMacrosomia", label: "History of macrosomia (birth weight >= 4kg)" },
+  { key: "historyCongenitalMalformation", label: "History of congenital fetal malformation" },
+  { key: "historyMultiplePregnancy", label: "History of multiple pregnancy" },
+  { key: "historyAntepartumBleeding", label: "History of antepartum or postpartum bleeding" },
+  { key: "recurrentPregnancyLoss", label: "Recurrent pregnancy loss (3+ times)" },
+  { key: "familyPlanningBeforePregnancy", label: "Used family planning before this pregnancy" },
+  { key: "historyLowBirthWeightDelivery", label: "History of delivery with birth weight < 2.5kg" },
+];
 
 const SYMPTOM_MAP = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s]));
 
@@ -25,6 +46,7 @@ export function SummaryStep({
   vitals,
   symptoms,
   labsOrdered,
+  patientId,
   pregnancyId,
   type,
   scheduledWeek,
@@ -34,6 +56,7 @@ export function SummaryStep({
   vitals: VitalSigns;
   symptoms: string[];
   labsOrdered: boolean;
+  patientId: string;
   pregnancyId: string;
   type: "scheduled" | "unscheduled";
   scheduledWeek?: number;
@@ -45,6 +68,12 @@ export function SummaryStep({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const bmi = computeBmi(vitals);
+
+  const pregnancies = usePregnanciesForPatient(patientId);
+  const openPregnancy = pregnancies.find((p) => p.id === pregnancyId);
+  const notedHistory = openPregnancy
+    ? HISTORY_REVIEW_LABELS.filter((f) => !!openPregnancy[f.key]).map((f) => f.label)
+    : [];
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -157,6 +186,36 @@ export function SummaryStep({
               );
             })}
           </ul>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Consultation
+        </p>
+        {notedHistory.length === 0 ? (
+          <p className="text-sm text-zinc-400">No notable history flagged</p>
+        ) : (
+          <ul className="flex flex-wrap gap-2">
+            {notedHistory.map((label) => (
+              <li
+                key={label}
+                className="rounded-full border border-zinc-200 bg-white px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300"
+              >
+                {label}
+              </li>
+            ))}
+          </ul>
+        )}
+        {openPregnancy?.hivTestResult && (
+          <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+            HIV test: <span className="font-medium capitalize">{openPregnancy.hivTestResult}</span>
+          </p>
+        )}
+        {openPregnancy?.stiScreeningResult && (
+          <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+            STI screening: <span className="font-medium capitalize">{openPregnancy.stiScreeningResult}</span>
+          </p>
         )}
       </section>
 
