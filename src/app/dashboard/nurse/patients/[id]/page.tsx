@@ -39,7 +39,7 @@ import { gestationalAgeWeeks, matchScheduledVisit, effectiveLmpDate, chwVisitSch
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
-import { IconChevronDown, IconEdit } from "@/components/dashboard/icons";
+import { IconChevronDown, IconEdit, IconAlert } from "@/components/dashboard/icons";
 
 const TABS = [
   "Patient Details",
@@ -195,6 +195,17 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
 
         <div className="flex items-center gap-2.5">
           <RiskBadge level={currentRisk} />
+          {!isReadOnlyAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("Signs & Symptoms")}
+              title="Emergency Danger-Sign Triage"
+              className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700"
+            >
+              <IconAlert className="h-3.5 w-3.5" />
+              Emergency Triage
+            </button>
+          )}
           {!isReadOnlyAdmin && (
             <button
               type="button"
