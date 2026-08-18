@@ -4,10 +4,35 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
-import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi } from "./pregnancy-api";
+import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
 import { fetchVisitsForPregnancy, fetchAllVisits, createVisitApi, finalizeVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
 import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy, fetchMyCommunityVisits } from "./community-visit-api";
+import { fetchVaccinationsForPregnancy, recordVaccinationApi, type Vaccination } from "./vaccination-api";
+import { fetchDiagnosesForVisit, createDiagnosisApi, type VisitDiagnosis } from "./diagnosis-api";
+import {
+  fetchPartnerForPatient,
+  upsertPartnerApi,
+  fetchPartnerLabTests,
+  addPartnerLabTestApi,
+  type Partner,
+  type PartnerLabTest,
+} from "./partner-api";
+import {
+  fetchInventory,
+  createInventoryItemApi,
+  adjustStockApi,
+  fetchPrescriptionsForVisit,
+  createPrescriptionApi,
+  fetchConsumablesForVisit,
+  createConsumableUsageApi,
+  type InventoryItem,
+  type InventoryCategory,
+  type Prescription,
+  type ConsumableUsage,
+} from "./pharmacy-api";
+import { fetchInvoiceForVisit, generateInvoiceApi, markInvoicePaidApi, type Invoice } from "./billing-api";
+import { runAiPredictionApi, fetchRiskPredictionForVisit, type RiskPrediction } from "./risk-prediction-api";
 import {
   fetchReferrals,
   createReferralApi,
@@ -268,6 +293,207 @@ export function useCommunityVisitsForPregnancy(pregnancyId: string): CommunityVi
     enabled: !!pregnancyId,
   });
   return data ?? [];
+}
+
+export function useInvoiceForVisit(visitId: string): Invoice | null {
+  const { data } = useQuery({
+    queryKey: ["invoice", "visit", visitId],
+    queryFn: () => fetchInvoiceForVisit(visitId),
+    enabled: !!visitId,
+  });
+  return data ?? null;
+}
+
+export async function generateInvoice(visitId: string, coveragePercentOverride?: number): Promise<Invoice> {
+  const invoice = await generateInvoiceApi(visitId, coveragePercentOverride);
+  await queryClient.invalidateQueries({ queryKey: ["invoice", "visit", visitId] });
+  return invoice;
+}
+
+export async function markInvoicePaid(id: string, visitId: string): Promise<Invoice> {
+  const invoice = await markInvoicePaidApi(id);
+  await queryClient.invalidateQueries({ queryKey: ["invoice", "visit", visitId] });
+  return invoice;
+}
+
+export function useRiskPredictionForVisit(visitId: string): RiskPrediction | null {
+  const { data } = useQuery({
+    queryKey: ["risk-prediction", "visit", visitId],
+    queryFn: () => fetchRiskPredictionForVisit(visitId),
+    enabled: !!visitId,
+  });
+  return data ?? null;
+}
+
+export async function runAiPrediction(visitId: string): Promise<RiskPrediction> {
+  const prediction = await runAiPredictionApi(visitId);
+  queryClient.setQueryData(["risk-prediction", "visit", visitId], prediction);
+  return prediction;
+}
+
+export function useInventory(): InventoryItem[] {
+  const { data } = useQuery({ queryKey: ["inventory"], queryFn: fetchInventory });
+  return data ?? [];
+}
+
+export async function createInventoryItem(data: {
+  name: string;
+  category: InventoryCategory;
+  unit: string;
+  quantityOnHand?: number;
+  reorderLevel?: number;
+  unitPrice?: number;
+}): Promise<InventoryItem> {
+  const item = await createInventoryItemApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["inventory"] });
+  return item;
+}
+
+export async function adjustStock(id: string, delta: number): Promise<InventoryItem> {
+  const item = await adjustStockApi(id, delta);
+  await queryClient.invalidateQueries({ queryKey: ["inventory"] });
+  return item;
+}
+
+export function usePrescriptionsForVisit(visitId: string): Prescription[] {
+  const { data } = useQuery({
+    queryKey: ["prescriptions", visitId],
+    queryFn: () => fetchPrescriptionsForVisit(visitId),
+    enabled: !!visitId,
+  });
+  return data ?? [];
+}
+
+export async function createPrescription(data: {
+  visitId: string;
+  inventoryItemId?: string;
+  drugName: string;
+  perDose?: string;
+  unit?: string;
+  frequency?: string;
+  durationDays?: number;
+  quantity?: number;
+  patientInstructions?: string;
+  forPartner?: boolean;
+}): Promise<Prescription> {
+  const prescription = await createPrescriptionApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["prescriptions", data.visitId] });
+  if (data.inventoryItemId) await queryClient.invalidateQueries({ queryKey: ["inventory"] });
+  return prescription;
+}
+
+export function useConsumablesForVisit(visitId: string): ConsumableUsage[] {
+  const { data } = useQuery({
+    queryKey: ["consumables", visitId],
+    queryFn: () => fetchConsumablesForVisit(visitId),
+    enabled: !!visitId,
+  });
+  return data ?? [];
+}
+
+export async function createConsumableUsage(data: {
+  visitId: string;
+  inventoryItemId?: string;
+  itemName: string;
+  quantity: number;
+  unit?: string;
+  comment?: string;
+  forPartner?: boolean;
+}): Promise<ConsumableUsage> {
+  const usage = await createConsumableUsageApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["consumables", data.visitId] });
+  if (data.inventoryItemId) await queryClient.invalidateQueries({ queryKey: ["inventory"] });
+  return usage;
+}
+
+export function usePartnerForPatient(patientId: string): Partner | null {
+  const { data } = useQuery({
+    queryKey: ["partner", "patient", patientId],
+    queryFn: () => fetchPartnerForPatient(patientId),
+    enabled: !!patientId,
+  });
+  return data ?? null;
+}
+
+export async function upsertPartner(data: {
+  patientId: string;
+  name: string;
+  phone?: string;
+  nationalId?: string;
+  hivTestResult?: Partner["hivTestResult"];
+}): Promise<Partner> {
+  const partner = await upsertPartnerApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["partner", "patient", data.patientId] });
+  return partner;
+}
+
+export function usePartnerLabTests(partnerId: string, pregnancyId: string): PartnerLabTest[] {
+  const { data } = useQuery({
+    queryKey: ["partner-lab-tests", partnerId, pregnancyId],
+    queryFn: () => fetchPartnerLabTests(partnerId, pregnancyId),
+    enabled: !!partnerId && !!pregnancyId,
+  });
+  return data ?? [];
+}
+
+export async function addPartnerLabTest(
+  partnerId: string,
+  data: {
+    pregnancyId: string;
+    testName: string;
+    dateTaken?: string;
+    resultValue?: string;
+    interpretation?: string;
+    notes?: string;
+  },
+): Promise<PartnerLabTest> {
+  const test = await addPartnerLabTestApi(partnerId, data);
+  await queryClient.invalidateQueries({ queryKey: ["partner-lab-tests", partnerId, data.pregnancyId] });
+  return test;
+}
+
+export function useDiagnosesForVisit(visitId: string): VisitDiagnosis[] {
+  const { data } = useQuery({
+    queryKey: ["diagnoses", "visit", visitId],
+    queryFn: () => fetchDiagnosesForVisit(visitId),
+    enabled: !!visitId,
+  });
+  return data ?? [];
+}
+
+export async function createDiagnosis(data: {
+  visitId: string;
+  code: string;
+  title: string;
+  uri?: string;
+  caseStatus?: string;
+  diagnosisType?: string;
+  department?: string;
+  treatmentNotes?: string;
+}): Promise<VisitDiagnosis> {
+  const diagnosis = await createDiagnosisApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["diagnoses", "visit", data.visitId] });
+  return diagnosis;
+}
+
+export function useVaccinationsForPregnancy(pregnancyId: string): Vaccination[] {
+  const { data } = useQuery({
+    queryKey: ["vaccinations", "pregnancy", pregnancyId],
+    queryFn: () => fetchVaccinationsForPregnancy(pregnancyId),
+    enabled: !!pregnancyId,
+  });
+  return data ?? [];
+}
+
+export async function recordVaccination(data: {
+  pregnancyId: string;
+  vaccineName?: string;
+  dosage: string;
+  dateTaken?: string;
+}): Promise<Vaccination> {
+  const vaccination = await recordVaccinationApi(data);
+  await queryClient.invalidateQueries({ queryKey: ["vaccinations", "pregnancy", data.pregnancyId] });
+  return vaccination;
 }
 
 // Every community visit the current CHW has ever submitted, across all of
@@ -796,7 +1022,10 @@ export async function recordVisit(data: {
 }
 
 export async function createPregnancy(
-  data: Omit<Pregnancy, "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "delivery">,
+  data: Omit<
+    Pregnancy,
+    "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "delivery" | "numberOfBabies" | "hadHypertensionDisorder"
+  >,
 ): Promise<Pregnancy> {
   const pregnancy = await createPregnancyApi(data);
   await queryClient.invalidateQueries({ queryKey: ["pregnancies", data.patientId] });
@@ -809,6 +1038,15 @@ export async function closePregnancy(
 ): Promise<void> {
   const pregnancy = await closePregnancyApi(pregnancyId, delivery);
   await queryClient.invalidateQueries({ queryKey: ["pregnancies", pregnancy.patientId] });
+}
+
+export async function updatePregnancy(
+  pregnancyId: string,
+  updates: PregnancyUpdatableFields,
+): Promise<Pregnancy> {
+  const pregnancy = await updatePregnancyApi(pregnancyId, updates);
+  await queryClient.invalidateQueries({ queryKey: ["pregnancies", pregnancy.patientId] });
+  return pregnancy;
 }
 
 export async function createEmergencyVisit(
