@@ -8,8 +8,10 @@ import { SignsSymptomsTab } from "@/components/patients/signs-symptoms-tab";
 import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
 import { AssessmentWizard } from "@/components/patients/assessment-wizard";
 import { PregnancyTab } from "@/components/patients/pregnancy-tab";
+import { MedicalHistoryCard } from "@/components/patients/pregnancy/medical-history-card";
+import { ObstetricHistoryTable } from "@/components/patients/pregnancy/obstetric-history-table";
+import { VaccinationCard } from "@/components/patients/pregnancy/vaccination-card";
 import { ActivityTimeline } from "@/components/patients/activity-timeline";
-import { ProfileOverviewTab } from "@/components/patients/profile-overview-tab";
 import { AiPredictionTab } from "@/components/patients/ai-prediction-panel";
 import { EditPatientModal } from "@/components/patients/edit-patient-modal";
 import { CreateReferralModal } from "@/components/patients/create-referral-modal";
@@ -37,13 +39,14 @@ import { gestationalAgeWeeks, matchScheduledVisit, effectiveLmpDate, chwVisitSch
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
-import { IconChevronDown } from "@/components/dashboard/icons";
+import { IconChevronDown, IconEdit } from "@/components/dashboard/icons";
 
 const TABS = [
-  "Overview",
   "Patient Details",
-  "Signs & Symptoms",
   "Pregnancy",
+  "Signs & Symptoms",
+  "Medical History",
+  "Vaccination",
   "Visit History",
   "CHW Reports",
   "New Assessment",
@@ -74,7 +77,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<Tab>(
-    (TABS as readonly string[]).includes(requestedTab ?? "") ? (requestedTab as Tab) : "Overview",
+    (TABS as readonly string[]).includes(requestedTab ?? "") ? (requestedTab as Tab) : "Patient Details",
   );
   const [showEditModal, setShowEditModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
@@ -130,11 +133,22 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const isWaitingForLabs = latestVisit?.labStatus === "pending" || latestVisit?.labStatus === "in_progress";
   const needsFinalization = latestVisit?.labStatus === "completed" && latestVisit?.assessmentFinalized === false;
 
+  // A small "needs attention" marker on tabs with a real pending action — a
+  // scheduled visit due today not yet started, or a CHW report awaiting the
+  // nurse's accept/reject decision — mirrors the reference system's
+  // incomplete-section dot rather than being purely decorative.
+  const tabsNeedingAttention = new Set<Tab>();
+  if (todayScheduledMatch && !assessmentContext) tabsNeedingAttention.add("New Assessment");
+  if (allCommunityVisits.some((v) => v.proposedRiskLevel && !v.reviewedAt)) {
+    tabsNeedingAttention.add("CHW Reports");
+  }
+
   return (
     <div className="flex flex-col gap-5">
       {showEditModal && (
         <EditPatientModal
           patient={patient}
+          pregnancy={openPregnancy}
           onClose={() => setShowEditModal(false)}
         />
       )}
@@ -182,6 +196,16 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         <div className="flex items-center gap-2.5">
           <RiskBadge level={currentRisk} />
           {!isReadOnlyAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowEditModal(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-[#0f766e] px-3.5 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800"
+            >
+              <IconEdit className="h-3.5 w-3.5" />
+              Update details
+            </button>
+          )}
+          {!isReadOnlyAdmin && (
             <div className="relative">
               <button
                 type="button"
@@ -193,13 +217,6 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               </button>
               {actionsOpen && (
                 <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                  <button
-                    type="button"
-                    onClick={() => { setActionsOpen(false); setShowEditModal(true); }}
-                    className="block w-full px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950"
-                  >
-                    Edit patient
-                  </button>
                   <button
                     type="button"
                     onClick={() => { setActionsOpen(false); setShowReferralModal(true); }}
@@ -223,8 +240,6 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         </div>
       </div>
 
-
-
       {isWaitingForLabs ? (
         <AwaitingLabsBlocker patient={patient} visit={latestVisit!} />
       ) : needsFinalization ? (
@@ -232,37 +247,29 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
       ) : (
         <>
           {activeReferral && <ActiveReferralBanner patient={patient} referral={activeReferral} />}
-          <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-300 bg-[#ffeedb] p-1 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+          <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
             {TABS.filter((tab) => !(isReadOnlyAdmin && tab === "New Assessment")).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? "bg-[#0f766e] text-white shadow-sm shadow-teal-700/20"
-                    : "text-zinc-600 hover:bg-white/60 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
+                    ? "bg-[#0f766e] text-white shadow-sm"
+                    : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                 }`}
               >
                 {tab}
+                {tabsNeedingAttention.has(tab) && (
+                  <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-red-500 align-super" />
+                )}
               </button>
             ))}
           </div>
 
-          <div className="rounded-xl border border-zinc-300 bg-[#ffeedb] p-5 dark:border-zinc-700 dark:bg-orange-950/40">
-            {activeTab === "Overview" && (
-              <ProfileOverviewTab
-                patient={patient}
-                visits={allVisits}
-                pregnancy={openPregnancy}
-                onAction={(tab) => setActiveTab(tab as Tab)}
-              />
-        )}
+          <div className="rounded-xl border border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
         {activeTab === "Patient Details" && (
-          <PatientDetailsTab
-            patient={patient}
-            onEdit={isReadOnlyAdmin ? undefined : () => setShowEditModal(true)}
-          />
+          <PatientDetailsTab patient={patient} />
         )}
         {activeTab === "Signs & Symptoms" && (
           <>
@@ -295,7 +302,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                   <RiskBadge level={emergencyResult.visit.riskLevel} />
                 </div>
                 <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm dark:border-zinc-800 dark:bg-zinc-900">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                     Summary
                   </p>
                   <p className="text-zinc-700 dark:text-zinc-300">
@@ -303,7 +310,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                   </p>
                 </div>
                 <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm dark:border-zinc-800 dark:bg-zinc-900">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                     Referral
                   </p>
                   <p className="text-zinc-700 dark:text-zinc-300">
@@ -347,6 +354,8 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               </div>
             ) : openPregnancy && assessmentContext ? (
               <AssessmentWizard
+                patient={patient}
+                patientId={patient.id}
                 pregnancyId={openPregnancy.id}
                 type={assessmentContext.type}
                 scheduledWeek={assessmentContext.scheduledWeek}
@@ -441,6 +450,29 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             onGoToVisitHistory={() => setActiveTab("Visit History")}
             readOnly={isReadOnlyAdmin}
           />
+        )}
+        {activeTab === "Medical History" && (
+          <div className="flex flex-col gap-5">
+            <ObstetricHistoryTable pregnancies={pregnancies} />
+            {openPregnancy ? (
+              <MedicalHistoryCard pregnancy={openPregnancy} />
+            ) : (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                This patient has no active pregnancy on record.
+              </p>
+            )}
+          </div>
+        )}
+        {activeTab === "Vaccination" && (
+          <>
+            {openPregnancy ? (
+              <VaccinationCard pregnancyId={openPregnancy.id} readOnly={isReadOnlyAdmin} />
+            ) : (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                This patient has no active pregnancy on record.
+              </p>
+            )}
+          </>
         )}
         {activeTab === "Visit History" && (
           <>

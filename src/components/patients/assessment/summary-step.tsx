@@ -41,8 +41,6 @@ export function SummaryStep({
   onRecorded: (visit: Visit) => void;
 }) {
   const [notes, setNotes] = useState("");
-  const [treatment, setTreatment] = useState("");
-  const [followUpPlan, setFollowUpPlan] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -71,8 +69,6 @@ export function SummaryStep({
         notes,
         labs: hasVisitLabs ? visitLabs : undefined,
         labStatus: labsOrdered ? "pending" : undefined,
-        treatment: treatment.trim() || undefined,
-        followUpPlan: followUpPlan.trim() || undefined,
       });
       onRecorded(visit);
     } catch (err) {
@@ -84,12 +80,12 @@ export function SummaryStep({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Review &amp; Submit
       </p>
 
       <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Vitals
         </p>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -141,7 +137,7 @@ export function SummaryStep({
       </section>
 
       <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Symptoms
         </p>
         {symptoms.length === 0 ? (
@@ -192,32 +188,6 @@ export function SummaryStep({
         />
       </label>
 
-      {!labsOrdered && (
-        <>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Treatment provided
-            <input
-              type="text"
-              value={treatment}
-              onChange={(e) => setTreatment(e.target.value)}
-              placeholder="e.g. IV magnesium sulfate administered…"
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Follow-up plan
-            <input
-              type="text"
-              value={followUpPlan}
-              onChange={(e) => setFollowUpPlan(e.target.value)}
-              placeholder="e.g. Return in 2 weeks for BP recheck…"
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
-        </>
-      )}
-
       {error && (
         <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
           {error}
@@ -229,7 +199,7 @@ export function SummaryStep({
         disabled={isSubmitting}
         className="w-full rounded-xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Submitting…" : labsOrdered ? "Submit Request to Laboratory" : "Submit Assessment"}
+        {isSubmitting ? "Submitting…" : labsOrdered ? "Submit Request to Laboratory" : "Continue to AI Review"}
       </button>
     </form>
   );
