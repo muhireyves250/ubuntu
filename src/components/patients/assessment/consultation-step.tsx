@@ -43,6 +43,16 @@ function AlreadyOnFileSection({ patient, pregnancy }: { patient?: Patient; pregn
   );
 }
 
+const TORCH_OPTIONS = [
+  "None",
+  "Rubella",
+  "Cytomegalovirus (CMV)",
+  "Herpes Simplex",
+  "Toxoplasmosis",
+  "Hepatitis",
+  "Other",
+];
+
 const HISTORY_CHECKBOX_FIELDS: { key: keyof PregnancyMedicalHistory; label: string }[] = [
   { key: "historySurgicalOrCervicalTrauma", label: "Surgical history or cervical trauma or cerclage" },
   { key: "historyGynecologicalProblem", label: "History of gynecological problem" },
@@ -107,20 +117,32 @@ export function ConsultationStep({
   const [stiScreeningResult, setStiScreeningResult] = useState<ScreeningResult | "">(
     openPregnancy?.stiScreeningResult ?? "",
   );
-  const [torchScreeningNotes, setTorchScreeningNotes] = useState(
-    openPregnancy?.torchScreeningNotes ?? "",
+  const initialTorch = openPregnancy?.torchScreeningNotes ?? "";
+  const [torchOption, setTorchOption] = useState(
+    initialTorch && !TORCH_OPTIONS.includes(initialTorch) ? "Other" : initialTorch,
+  );
+  const [torchOtherNotes, setTorchOtherNotes] = useState(
+    initialTorch && !TORCH_OPTIONS.includes(initialTorch) ? initialTorch : "",
   );
   const [currentMedicationDetails, setCurrentMedicationDetails] = useState(
     openPregnancy?.currentMedicationDetails ?? "",
   );
+  const initialMentalIllness = openPregnancy?.mentalIllnessNotes ?? "";
+  const [hasMentalIllness, setHasMentalIllness] = useState<"yes" | "no" | "">(
+    !initialMentalIllness ? "" : /^none/i.test(initialMentalIllness) ? "no" : "yes",
+  );
   const [mentalIllnessNotes, setMentalIllnessNotes] = useState(
-    openPregnancy?.mentalIllnessNotes ?? "",
+    !initialMentalIllness || /^none/i.test(initialMentalIllness) ? "" : initialMentalIllness,
+  );
+  const initialDisabilities = openPregnancy?.disabilitiesNotes ?? "";
+  const [hasDisabilities, setHasDisabilities] = useState<"yes" | "no" | "">(
+    !initialDisabilities ? "" : /^none/i.test(initialDisabilities) ? "no" : "yes",
   );
   const [disabilitiesNotes, setDisabilitiesNotes] = useState(
-    openPregnancy?.disabilitiesNotes ?? "",
+    !initialDisabilities || /^none/i.test(initialDisabilities) ? "" : initialDisabilities,
   );
-  const [familyPlanningBeforePregnancy, setFamilyPlanningBeforePregnancy] = useState(
-    !!openPregnancy?.familyPlanningBeforePregnancy,
+  const [familyPlanningBeforePregnancy, setFamilyPlanningBeforePregnancy] = useState<"yes" | "no" | "">(
+    openPregnancy?.familyPlanningBeforePregnancy ? "yes" : "no",
   );
   const [familyPlanningMethod, setFamilyPlanningMethod] = useState(
     openPregnancy?.familyPlanningMethod ?? "",
@@ -142,19 +164,25 @@ export function ConsultationStep({
     setError(null);
     setIsSaving(true);
     try {
+      const torchScreeningNotes =
+        torchOption === "Other" ? torchOtherNotes.trim() || undefined : torchOption || undefined;
+      const mentalIllnessValue =
+        hasMentalIllness === "no" ? "None reported" : hasMentalIllness === "yes" ? mentalIllnessNotes.trim() || undefined : undefined;
+      const disabilitiesValue =
+        hasDisabilities === "no" ? "None reported" : hasDisabilities === "yes" ? disabilitiesNotes.trim() || undefined : undefined;
+      const familyPlanningYes = familyPlanningBeforePregnancy === "yes";
+
       await updatePregnancy(openPregnancy.id, {
         ...history,
         hivTestResult: hivTestResult || undefined,
         stiScreeningResult: stiScreeningResult || undefined,
-        torchScreeningNotes: torchScreeningNotes || undefined,
+        torchScreeningNotes,
         currentMedicationDetails: currentMedicationDetails.trim() || undefined,
-        mentalIllnessNotes: mentalIllnessNotes.trim() || undefined,
-        disabilitiesNotes: disabilitiesNotes.trim() || undefined,
-        familyPlanningBeforePregnancy,
-        familyPlanningMethod: familyPlanningBeforePregnancy
-          ? familyPlanningMethod.trim() || undefined
-          : undefined,
-        familyPlanningDurationMonths: familyPlanningBeforePregnancy && familyPlanningDurationMonths
+        mentalIllnessNotes: mentalIllnessValue,
+        disabilitiesNotes: disabilitiesValue,
+        familyPlanningBeforePregnancy: familyPlanningYes,
+        familyPlanningMethod: familyPlanningYes ? familyPlanningMethod.trim() || undefined : undefined,
+        familyPlanningDurationMonths: familyPlanningYes && familyPlanningDurationMonths
           ? Number(familyPlanningDurationMonths)
           : undefined,
       });
@@ -210,27 +238,54 @@ export function ConsultationStep({
         </label>
       )}
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-        Mental illness
-        <input
-          type="text"
-          value={mentalIllnessNotes}
-          onChange={(e) => setMentalIllnessNotes(e.target.value)}
-          placeholder="e.g. None reported"
-          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
-      </label>
-
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-        Do you have any disabilities?
-        <input
-          type="text"
-          value={disabilitiesNotes}
-          onChange={(e) => setDisabilitiesNotes(e.target.value)}
-          placeholder="e.g. None reported"
-          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
-      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Mental illness
+          <select
+            value={hasMentalIllness}
+            onChange={(e) => setHasMentalIllness(e.target.value as "yes" | "no" | "")}
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            <option value="">Not recorded</option>
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Do you have any disabilities?
+          <select
+            value={hasDisabilities}
+            onChange={(e) => setHasDisabilities(e.target.value as "yes" | "no" | "")}
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            <option value="">Not recorded</option>
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </label>
+        {hasMentalIllness === "yes" && (
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2">
+            Mental illness details
+            <input
+              type="text"
+              value={mentalIllnessNotes}
+              onChange={(e) => setMentalIllnessNotes(e.target.value)}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </label>
+        )}
+        {hasDisabilities === "yes" && (
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2">
+            Disability details
+            <input
+              type="text"
+              value={disabilitiesNotes}
+              onChange={(e) => setDisabilitiesNotes(e.target.value)}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </label>
+        )}
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -259,24 +314,46 @@ export function ConsultationStep({
             <option value="unknown">Unknown</option>
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2">
-          TORCH Screening Notes
-          <input
-            type="text"
-            value={torchScreeningNotes}
-            onChange={(e) => setTorchScreeningNotes(e.target.value)}
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          TORCH Screening
+          <select
+            value={torchOption}
+            onChange={(e) => setTorchOption(e.target.value)}
             className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
+          >
+            <option value="">Not recorded</option>
+            {TORCH_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
         </label>
+        {torchOption === "Other" && (
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Specify
+            <input
+              type="text"
+              value={torchOtherNotes}
+              onChange={(e) => setTorchOtherNotes(e.target.value)}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </label>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-        <HistoryCheckbox
-          label="Use of Family Planning before this pregnancy?"
-          checked={familyPlanningBeforePregnancy}
-          onChange={setFamilyPlanningBeforePregnancy}
-        />
-        {familyPlanningBeforePregnancy && (
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Use of Family Planning before this pregnancy?
+          <select
+            value={familyPlanningBeforePregnancy}
+            onChange={(e) => setFamilyPlanningBeforePregnancy(e.target.value as "yes" | "no" | "")}
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            <option value="">Not recorded</option>
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </label>
+        {familyPlanningBeforePregnancy === "yes" && (
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Specify Method Used
