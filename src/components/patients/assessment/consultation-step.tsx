@@ -1,9 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { usePregnanciesForPatient, usePatient, updatePregnancy, updatePatient } from "@/lib/patients/use-patients";
-import { BLOOD_GROUP_OPTIONS, CHRONIC_CONDITION_OPTIONS } from "@/lib/patients/form-options";
-import type { PregnancyMedicalHistory, ScreeningResult } from "@/lib/patients/types";
+import { usePregnanciesForPatient, usePatient, updatePregnancy } from "@/lib/patients/use-patients";
+import type { Patient, Pregnancy, PregnancyMedicalHistory, ScreeningResult } from "@/lib/patients/types";
+
+function OnFileField({ label, value }: { label: string; value: React.ReactNode }) {
+  const filled = value !== null && value !== undefined && value !== "" && value !== 0 && value !== false;
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
+      <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+        {filled ? value : "—"}
+      </p>
+    </div>
+  );
+}
+
+// Surfaces data already captured elsewhere in the system (Patient record,
+// pregnancy-creation fields) so the nurse can see it during consultation
+// without re-entering it — read-only here, edited from its own source
+// (Patient Details / New Pregnancy) rather than duplicated as input.
+function AlreadyOnFileSection({ patient, pregnancy }: { patient?: Patient; pregnancy?: Pregnancy }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        Already on file
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <OnFileField label="Known allergies" value={patient?.allergies} />
+        <OnFileField
+          label="Chronic conditions"
+          value={patient?.chronicConditions?.length ? patient.chronicConditions.join(", ") : undefined}
+        />
+        <OnFileField label="Blood group" value={patient?.bloodGroup} />
+        <OnFileField label="Rh factor" value={patient?.rhFactor} />
+        <OnFileField label="Previous C-sections" value={pregnancy?.previousCS} />
+        <OnFileField label="Previous PPH" value={pregnancy?.previousPPH ? "Yes" : undefined} />
+        <OnFileField label="Previous eclampsia" value={pregnancy?.previousEclampsia ? "Yes" : undefined} />
+        <OnFileField label="Previous stillbirth" value={pregnancy?.previousStillbirth ? "Yes" : undefined} />
+      </div>
+    </div>
+  );
+}
 
 const TORCH_OPTIONS = [
   "None",
@@ -114,30 +152,8 @@ export function ConsultationStep({
       ? String(openPregnancy.familyPlanningDurationMonths)
       : "",
   );
-  const [allergies, setAllergies] = useState(patient?.allergies ?? "");
-  const [chronicConditions, setChronicConditions] = useState<string[]>(
-    (patient?.chronicConditions ?? []).filter((c) =>
-      (CHRONIC_CONDITION_OPTIONS as readonly string[]).includes(c),
-    ),
-  );
-  const [bloodGroup, setBloodGroup] = useState(patient?.bloodGroup ?? "");
-  const [rhFactor, setRhFactor] = useState<"" | "positive" | "negative">(
-    patient?.rhFactor ?? "",
-  );
-  const [previousCS, setPreviousCS] = useState(
-    openPregnancy ? String(openPregnancy.previousCS) : "0",
-  );
-  const [previousPPH, setPreviousPPH] = useState(!!openPregnancy?.previousPPH);
-  const [previousEclampsia, setPreviousEclampsia] = useState(!!openPregnancy?.previousEclampsia);
-  const [previousStillbirth, setPreviousStillbirth] = useState(!!openPregnancy?.previousStillbirth);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  function toggleChronicCondition(condition: string) {
-    setChronicConditions((current) =>
-      current.includes(condition) ? current.filter((c) => c !== condition) : [...current, condition],
-    );
-  }
 
   function toggle(key: keyof PregnancyMedicalHistory) {
     setHistory((current) => ({ ...current, [key]: !current[key] }));
@@ -156,32 +172,20 @@ export function ConsultationStep({
         hasDisabilities === "no" ? "None reported" : hasDisabilities === "yes" ? disabilitiesNotes.trim() || undefined : undefined;
       const familyPlanningYes = familyPlanningBeforePregnancy === "yes";
 
-      await Promise.all([
-        updatePregnancy(openPregnancy.id, {
-          ...history,
-          hivTestResult: hivTestResult || undefined,
-          stiScreeningResult: stiScreeningResult || undefined,
-          torchScreeningNotes,
-          currentMedicationDetails: currentMedicationDetails.trim() || undefined,
-          mentalIllnessNotes: mentalIllnessValue,
-          disabilitiesNotes: disabilitiesValue,
-          familyPlanningBeforePregnancy: familyPlanningYes,
-          familyPlanningMethod: familyPlanningYes ? familyPlanningMethod.trim() || undefined : undefined,
-          familyPlanningDurationMonths: familyPlanningYes && familyPlanningDurationMonths
-            ? Number(familyPlanningDurationMonths)
-            : undefined,
-          previousCS: previousCS ? Number(previousCS) : undefined,
-          previousPPH,
-          previousEclampsia,
-          previousStillbirth,
-        }),
-        updatePatient(patientId, {
-          allergies: allergies.trim() || undefined,
-          chronicConditions: chronicConditions.length > 0 ? chronicConditions : undefined,
-          bloodGroup: bloodGroup.trim() || undefined,
-          rhFactor: rhFactor || undefined,
-        }),
-      ]);
+      await updatePregnancy(openPregnancy.id, {
+        ...history,
+        hivTestResult: hivTestResult || undefined,
+        stiScreeningResult: stiScreeningResult || undefined,
+        torchScreeningNotes,
+        currentMedicationDetails: currentMedicationDetails.trim() || undefined,
+        mentalIllnessNotes: mentalIllnessValue,
+        disabilitiesNotes: disabilitiesValue,
+        familyPlanningBeforePregnancy: familyPlanningYes,
+        familyPlanningMethod: familyPlanningYes ? familyPlanningMethod.trim() || undefined : undefined,
+        familyPlanningDurationMonths: familyPlanningYes && familyPlanningDurationMonths
+          ? Number(familyPlanningDurationMonths)
+          : undefined,
+      });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save consultation history");
@@ -200,89 +204,7 @@ export function ConsultationStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Already on file
-        </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Update anything that&apos;s changed based on what you observe on this patient.
-        </p>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Known allergies
-          <input
-            type="text"
-            value={allergies}
-            onChange={(e) => setAllergies(e.target.value)}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </label>
-
-        <div>
-          <p className="mb-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Chronic conditions
-          </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {CHRONIC_CONDITION_OPTIONS.map((condition) => (
-              <label
-                key={condition}
-                className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 has-checked:border-teal-600 has-checked:bg-teal-50 dark:border-zinc-800 dark:text-zinc-300 dark:has-checked:border-teal-600 dark:has-checked:bg-teal-950/40"
-              >
-                <input
-                  type="checkbox"
-                  checked={chronicConditions.includes(condition)}
-                  onChange={() => toggleChronicCondition(condition)}
-                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
-                />
-                {condition}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Blood group
-            <select
-              value={bloodGroup}
-              onChange={(e) => setBloodGroup(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            >
-              <option value="">Unknown</option>
-              {BLOOD_GROUP_OPTIONS.map((bg) => (
-                <option key={bg} value={bg}>{bg}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Rh factor
-            <select
-              value={rhFactor}
-              onChange={(e) => setRhFactor(e.target.value as typeof rhFactor)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            >
-              <option value="">Unknown</option>
-              <option value="positive">Positive</option>
-              <option value="negative">Negative</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Previous C-sections
-            <input
-              type="number"
-              min={0}
-              value={previousCS}
-              onChange={(e) => setPreviousCS(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
-        </div>
-
-        <div className="grid gap-2 sm:grid-cols-3">
-          <HistoryCheckbox label="Previous PPH" checked={previousPPH} onChange={setPreviousPPH} />
-          <HistoryCheckbox label="Previous eclampsia" checked={previousEclampsia} onChange={setPreviousEclampsia} />
-          <HistoryCheckbox label="Previous stillbirth" checked={previousStillbirth} onChange={setPreviousStillbirth} />
-        </div>
-      </div>
+      <AlreadyOnFileSection patient={patient} pregnancy={openPregnancy} />
 
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Consultation — General Information
