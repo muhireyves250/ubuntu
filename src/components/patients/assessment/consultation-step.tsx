@@ -207,16 +207,39 @@ export function ConsultationStep({
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Update anything that&apos;s changed based on what you observe on this patient.
         </p>
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Known allergies
+          <input
+            type="text"
+            value={allergies}
+            onChange={(e) => setAllergies(e.target.value)}
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+        </label>
+
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Chronic conditions
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {CHRONIC_CONDITION_OPTIONS.map((condition) => (
+              <label
+                key={condition}
+                className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 has-checked:border-teal-600 has-checked:bg-teal-50 dark:border-zinc-800 dark:text-zinc-300 dark:has-checked:border-teal-600 dark:has-checked:bg-teal-950/40"
+              >
+                <input
+                  type="checkbox"
+                  checked={chronicConditions.includes(condition)}
+                  onChange={() => toggleChronicCondition(condition)}
+                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+                />
+                {condition}
+              </label>
+            ))}
+          </div>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Known allergies
-            <input
-              type="text"
-              value={allergies}
-              onChange={(e) => setAllergies(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Blood group
             <select
@@ -252,28 +275,6 @@ export function ConsultationStep({
               className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
           </label>
-        </div>
-
-        <div>
-          <p className="mb-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Chronic conditions
-          </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {CHRONIC_CONDITION_OPTIONS.map((condition) => (
-              <label
-                key={condition}
-                className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 has-checked:border-teal-600 has-checked:bg-teal-50 dark:border-zinc-800 dark:text-zinc-300 dark:has-checked:border-teal-600 dark:has-checked:bg-teal-950/40"
-              >
-                <input
-                  type="checkbox"
-                  checked={chronicConditions.includes(condition)}
-                  onChange={() => toggleChronicCondition(condition)}
-                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
-                />
-                {condition}
-              </label>
-            ))}
-          </div>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-3">
