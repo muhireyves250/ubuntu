@@ -21,7 +21,6 @@ const HISTORY_CHECKBOX_FIELDS: { key: keyof PregnancyMedicalHistory; label: stri
   { key: "historyMultiplePregnancy", label: "History of multiple pregnancy" },
   { key: "historyAntepartumBleeding", label: "History of antepartum or postpartum bleeding" },
   { key: "recurrentPregnancyLoss", label: "Recurrent pregnancy loss (3+ times)" },
-  { key: "familyPlanningBeforePregnancy", label: "Used family planning before this pregnancy" },
   { key: "historyLowBirthWeightDelivery", label: "History of delivery with birth weight < 2.5kg" },
 ];
 
@@ -71,6 +70,26 @@ export function ConsultationStep({
   const [torchScreeningNotes, setTorchScreeningNotes] = useState(
     openPregnancy?.torchScreeningNotes ?? "",
   );
+  const [currentMedicationDetails, setCurrentMedicationDetails] = useState(
+    openPregnancy?.currentMedicationDetails ?? "",
+  );
+  const [mentalIllnessNotes, setMentalIllnessNotes] = useState(
+    openPregnancy?.mentalIllnessNotes ?? "",
+  );
+  const [disabilitiesNotes, setDisabilitiesNotes] = useState(
+    openPregnancy?.disabilitiesNotes ?? "",
+  );
+  const [familyPlanningBeforePregnancy, setFamilyPlanningBeforePregnancy] = useState(
+    !!openPregnancy?.familyPlanningBeforePregnancy,
+  );
+  const [familyPlanningMethod, setFamilyPlanningMethod] = useState(
+    openPregnancy?.familyPlanningMethod ?? "",
+  );
+  const [familyPlanningDurationMonths, setFamilyPlanningDurationMonths] = useState(
+    openPregnancy?.familyPlanningDurationMonths != null
+      ? String(openPregnancy.familyPlanningDurationMonths)
+      : "",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,6 +107,16 @@ export function ConsultationStep({
         hivTestResult: hivTestResult || undefined,
         stiScreeningResult: stiScreeningResult || undefined,
         torchScreeningNotes: torchScreeningNotes || undefined,
+        currentMedicationDetails: currentMedicationDetails.trim() || undefined,
+        mentalIllnessNotes: mentalIllnessNotes.trim() || undefined,
+        disabilitiesNotes: disabilitiesNotes.trim() || undefined,
+        familyPlanningBeforePregnancy,
+        familyPlanningMethod: familyPlanningBeforePregnancy
+          ? familyPlanningMethod.trim() || undefined
+          : undefined,
+        familyPlanningDurationMonths: familyPlanningBeforePregnancy && familyPlanningDurationMonths
+          ? Number(familyPlanningDurationMonths)
+          : undefined,
       });
       onSaved();
     } catch (err) {
@@ -126,6 +155,41 @@ export function ConsultationStep({
         ))}
       </div>
 
+      {!!history.currentlyOnMedication && (
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Current medication details
+          <input
+            type="text"
+            value={currentMedicationDetails}
+            onChange={(e) => setCurrentMedicationDetails(e.target.value)}
+            placeholder="e.g. Metformin 500mg twice daily"
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+        </label>
+      )}
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        Mental illness
+        <input
+          type="text"
+          value={mentalIllnessNotes}
+          onChange={(e) => setMentalIllnessNotes(e.target.value)}
+          placeholder="e.g. None reported"
+          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        Do you have any disabilities?
+        <input
+          type="text"
+          value={disabilitiesNotes}
+          onChange={(e) => setDisabilitiesNotes(e.target.value)}
+          placeholder="e.g. None reported"
+          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </label>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
           HIV Test
@@ -162,6 +226,38 @@ export function ConsultationStep({
             className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </label>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+        <HistoryCheckbox
+          label="Use of Family Planning before this pregnancy?"
+          checked={familyPlanningBeforePregnancy}
+          onChange={setFamilyPlanningBeforePregnancy}
+        />
+        {familyPlanningBeforePregnancy && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Specify Method Used
+              <input
+                type="text"
+                value={familyPlanningMethod}
+                onChange={(e) => setFamilyPlanningMethod(e.target.value)}
+                placeholder="e.g. Combined Oral Contraceptive Pills"
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Duration of method usage (months)
+              <input
+                type="number"
+                min={0}
+                value={familyPlanningDurationMonths}
+                onChange={(e) => setFamilyPlanningDurationMonths(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </label>
+          </div>
+        )}
       </div>
 
       {error && (
