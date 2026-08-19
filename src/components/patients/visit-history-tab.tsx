@@ -1,81 +1,10 @@
 "use client";
 
-import { Fragment, useState } from "react";
-import { RiskBadge } from "@/components/patients/risk-badge";
+import { useState } from "react";
 import { AncScheduleCalendar } from "@/components/patients/anc-schedule-calendar";
-import { VisitDiagnosisSection } from "@/components/patients/visit-diagnosis-section";
-import { VisitPharmacySection } from "@/components/patients/visit-pharmacy-section";
-import { VisitInvoiceSection } from "@/components/patients/visit-invoice-section";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import { nextDueVisit, missedVisits, ancCalendar, gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { formatLabs } from "@/lib/format";
-import { useRiskPredictionForVisit } from "@/lib/patients/use-patients";
-import type { Pregnancy, Visit, VisitType } from "@/lib/patients/types";
-
-function VisitAiPredictionSection({ visitId }: { visitId: string }) {
-  const prediction = useRiskPredictionForVisit(visitId);
-  if (!prediction) {
-    return (
-      <div>
-        <span className="font-medium text-zinc-400">AI Assessment: </span>
-        <span className="text-zinc-400">Not run for this visit</span>
-      </div>
-    );
-  }
-  return (
-    <div>
-      <span className="font-medium text-zinc-400">AI Assessment: </span>
-      <span className="font-semibold uppercase text-zinc-700 dark:text-zinc-300">
-        {prediction.predictedRiskLevel}
-      </span>
-      <p className="mt-1 text-zinc-600 dark:text-zinc-400">{prediction.recommendation}</p>
-    </div>
-  );
-}
-
-function VisitConsultationSection({ pregnancy }: { pregnancy: Pregnancy }) {
-  const notedHistory = ([
-    ["Surgical/cervical trauma", pregnancy.historySurgicalOrCervicalTrauma],
-    ["Diabetes", pregnancy.historyDiabetes],
-    ["Hypertension", pregnancy.historyHypertension],
-    ["Heart disease", pregnancy.historyHeartDisease],
-    ["Kidney problems", pregnancy.historyKidneyProblems],
-  ] as const)
-    .filter(([, value]) => value)
-    .map(([label]) => label);
-
-  return (
-    <div>
-      <span className="font-medium text-zinc-400">Consultation history: </span>
-      {notedHistory.length === 0 ? (
-        <span className="text-zinc-400">No notable history flagged</span>
-      ) : (
-        <span className="text-zinc-700 dark:text-zinc-300">{notedHistory.join(", ")}</span>
-      )}
-      {pregnancy.hivTestResult && (
-        <span className="ml-2 text-zinc-700 dark:text-zinc-300">· HIV: {pregnancy.hivTestResult}</span>
-      )}
-    </div>
-  );
-}
-
-const SYMPTOM_LABEL = new Map(
-  SYMPTOM_CHECKLIST.map((symptom) => [symptom.id, symptom.label]),
-);
-
-const TYPE_BADGE: Record<VisitType, string> = {
-  scheduled: "bg-teal-50 text-teal-800 dark:bg-teal-950/30 dark:text-teal-400",
-  unscheduled: "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
-  emergency: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
-};
-
-function TypeBadge({ type }: { type: VisitType }) {
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${TYPE_BADGE[type]}`}>
-      {type}
-    </span>
-  );
-}
+import type { Pregnancy, Visit } from "@/lib/patients/types";
 
 export function VisitHistoryTab({
   pregnancy,
@@ -90,7 +19,6 @@ export function VisitHistoryTab({
   onLogUnscheduledVisit?: () => void;
   readOnly?: boolean;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedScheduleWeek, setExpandedScheduleWeek] = useState<number | null>(null);
 
   // For a closed pregnancy, "today" is meaningless — measure against the
@@ -276,149 +204,6 @@ export function VisitHistoryTab({
         })()}
 
         {!readOnly && <AncScheduleCalendar pregnancy={pregnancy} />}
-      </div>
-
-      <div className="scrollbar-hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-            <tr>
-              <th className="px-3 py-2.5">No.</th>
-              <th className="px-3 py-2.5">ANC Week</th>
-              <th className="px-3 py-2.5">Visit Date</th>
-              <th className="px-3 py-2.5">Type</th>
-              <th className="px-3 py-2.5">Risk</th>
-              <th className="px-3 py-2.5">Signs &amp; Symptoms</th>
-              <th className="px-3 py-2.5">Labs</th>
-              <th className="px-3 py-2.5">Hospital</th>
-              <th className="px-3 py-2.5">Nurse</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {visits.map((visit, index) => {
-              const expanded = expandedId === visit.id;
-              return (
-                <Fragment key={visit.id}>
-                  <tr
-                    onClick={() =>
-                      setExpandedId(expanded ? null : visit.id)
-                    }
-                    className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
-                  >
-                    <td className="px-3 py-2.5 text-zinc-500 dark:text-zinc-400">
-                      {index + 1}
-                    </td>
-                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
-                      {visit.scheduledWeek != null ? `Week ${visit.scheduledWeek}` : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 font-medium text-zinc-900 dark:text-zinc-50">
-                      {visit.date}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <TypeBadge type={visit.type} />
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <RiskBadge level={visit.riskLevel} size="sm" />
-                    </td>
-                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
-                      {visit.symptomIds.length > 0
-                        ? visit.symptomIds
-                            .map((id) => SYMPTOM_LABEL.get(id) ?? id)
-                            .join(", ")
-                        : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
-                      {visit.labStatus === "pending" ? (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                          Pending labs
-                        </span>
-                      ) : (
-                        formatLabs(visit)
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
-                      {visit.hospital}
-                    </td>
-                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">
-                      {visit.attendingNurse}
-                    </td>
-                  </tr>
-                  {expanded && (
-                    <tr key={`${visit.id}-detail`}>
-                      <td
-                        colSpan={9}
-                        className="bg-zinc-50 px-4 py-3 dark:bg-zinc-900"
-                      >
-                        <div className="flex flex-col gap-1.5 text-sm text-zinc-700 dark:text-zinc-300">
-                          {visit.type === "emergency" && visit.emergencySummary ? (
-                            <p>
-                              <span className="font-medium text-zinc-400">
-                                Summary:{" "}
-                              </span>
-                              {visit.emergencySummary}
-                            </p>
-                          ) : null}
-                          {visit.treatment ? (
-                            <p>
-                              <span className="font-medium text-zinc-400">
-                                Treatment:{" "}
-                              </span>
-                              {visit.treatment}
-                            </p>
-                          ) : null}
-                          {visit.followUpPlan ? (
-                            <p>
-                              <span className="font-medium text-zinc-400">
-                                Follow-up plan:{" "}
-                              </span>
-                              {visit.followUpPlan}
-                            </p>
-                          ) : null}
-                          {visit.notes ? (
-                            <p>
-                              <span className="font-medium text-zinc-400">
-                                Notes:{" "}
-                              </span>
-                              {visit.notes}
-                            </p>
-                          ) : null}
-                          <VisitConsultationSection pregnancy={pregnancy} />
-                          {visit.labs ? (
-                            <p>
-                              <span className="font-medium text-zinc-400">
-                                Labs:{" "}
-                              </span>
-                              {formatLabs(visit)}
-                            </p>
-                          ) : null}
-                          <VisitAiPredictionSection visitId={visit.id} />
-                          <VisitDiagnosisSection visitId={visit.id} readOnly={readOnly} />
-                          <VisitPharmacySection visitId={visit.id} readOnly={readOnly} />
-                          <VisitInvoiceSection visitId={visit.id} readOnly={readOnly} />
-                          {!visit.notes && !visit.labs && !visit.emergencySummary && !visit.treatment && !visit.followUpPlan && (
-                            <p className="text-zinc-400">
-                              No additional details recorded.
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-
-            {visits.length === 0 && (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400"
-                >
-                  No visits recorded yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
       </div>
 
       {!readOnly && (
