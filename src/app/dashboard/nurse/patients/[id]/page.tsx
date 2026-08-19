@@ -400,53 +400,16 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                     )}
                   </div>
                 )}
-                {todayScheduledMatch ? (
-                  <div className="flex flex-col items-center gap-2 rounded-xl border border-teal-300 bg-teal-50 px-5 py-4 dark:border-teal-800 dark:bg-teal-950/30">
-                    <p className="text-sm font-semibold text-teal-800 dark:text-teal-300">
-                      Today matches the Week {todayScheduledMatch.dueByWeek} scheduled visit
-                    </p>
-                    <p className="text-xs text-teal-700/80 dark:text-teal-400/80">
-                      Calendar date: {todayScheduledMatch.dueDate}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 dark:border-amber-800 dark:bg-amber-950/30">
-                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                      No scheduled visit falls on today&apos;s date
-                    </p>
-                    <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
-                      This will be recorded as an unscheduled visit.
-                    </p>
-                  </div>
-                )}
-                <div className="flex flex-wrap justify-center gap-3">
-                  {todayScheduledMatch ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAssessmentContext({ type: "scheduled", scheduledWeek: todayScheduledMatch.dueByWeek })
-                      }
-                      className="rounded-xl bg-[#0f766e] px-5 py-3 text-sm font-medium text-white shadow-sm hover:bg-teal-800"
-                    >
-                      Start Scheduled Visit — Week {todayScheduledMatch.dueByWeek}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setAssessmentContext({ type: "unscheduled" })}
-                      className="rounded-xl bg-[#0f766e] px-5 py-3 text-sm font-medium text-white shadow-sm hover:bg-teal-800"
-                    >
-                      Log Unscheduled Visit
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => { setActiveTab("Visit"); }}
-                    className="rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                  >
-                    Choose a different week →
-                  </button>
-                </div>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Start a new assessment from the Visit tab.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("Visit"); }}
+                  className="rounded-xl bg-[#0f766e] px-5 py-3 text-sm font-medium text-white shadow-sm hover:bg-teal-800"
+                >
+                  Go to Visit →
+                </button>
               </div>
             ) : (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
