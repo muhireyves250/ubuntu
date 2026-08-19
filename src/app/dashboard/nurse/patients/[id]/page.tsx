@@ -44,10 +44,10 @@ import { IconChevronDown, IconEdit, IconAlert } from "@/components/dashboard/ico
 const TABS = [
   "Patient Details",
   "Pregnancy",
+  "Visit",
   "Signs & Symptoms",
   "Medical History",
   "Vaccination",
-  "Visit",
   "CHW Reports",
   "New Assessment",
   "AI Prediction",
