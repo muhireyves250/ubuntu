@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState } from "react";
-import { notFound, useSearchParams } from "next/navigation";
+import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { RoleGuard } from "@/components/role-guard";
 import { PatientDetailsTab } from "@/components/patients/patient-details-tab";
 import { SignsSymptomsTab } from "@/components/patients/signs-symptoms-tab";
@@ -9,7 +9,6 @@ import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
 import { AssessmentWizard } from "@/components/patients/assessment-wizard";
 import { PregnancyTab } from "@/components/patients/pregnancy-tab";
 import { ObstetricHistoryTable } from "@/components/patients/pregnancy/obstetric-history-table";
-import { PastPregnancyDetail } from "@/components/patients/pregnancy/past-pregnancy-detail";
 import { VaccinationCard } from "@/components/patients/pregnancy/vaccination-card";
 import { ActivityTimeline } from "@/components/patients/activity-timeline";
 import { AiPredictionTab } from "@/components/patients/ai-prediction-panel";
@@ -65,6 +64,7 @@ type AssessmentContext = {
 type EmergencyResult = { pregnancy: Pregnancy; visit: Visit; referral: Referral };
 
 function PatientDetailContent({ patientId }: { patientId: string }) {
+  const router = useRouter();
   const patient = usePatient(patientId);
   const patientLoading = usePatientIsLoading(patientId);
   const pregnancies = usePregnanciesForPatient(patientId);
@@ -84,7 +84,6 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const [showAssignChwModal, setShowAssignChwModal] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [assessmentContext, setAssessmentContext] = useState<AssessmentContext | null>(null);
-  const [selectedPastPregnancyId, setSelectedPastPregnancyId] = useState<string | null>(null);
   const [emergencyResult, setEmergencyResult] = useState<EmergencyResult | null>(null);
   const activeReferral = useActiveEmergencyReferral(patientId);
   const lock = usePatientLock(patientId);
@@ -429,18 +428,10 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         {activeTab === "Medical History" && (
           <div className="flex flex-col gap-5">
             {pregnancies.length > 0 ? (
-              <>
-                <ObstetricHistoryTable
-                  pregnancies={pregnancies}
-                  selectedId={selectedPastPregnancyId}
-                  onSelect={(p) => setSelectedPastPregnancyId(selectedPastPregnancyId === p.id ? null : p.id)}
-                />
-                {selectedPastPregnancyId &&
-                  (() => {
-                    const selectedPregnancy = pregnancies.find((p) => p.id === selectedPastPregnancyId);
-                    return selectedPregnancy ? <PastPregnancyDetail pregnancy={selectedPregnancy} /> : null;
-                  })()}
-              </>
+              <ObstetricHistoryTable
+                pregnancies={pregnancies}
+                onSelect={(p) => router.push(`/dashboard/nurse/patients/${patientId}/pregnancies/${p.id}`)}
+              />
             ) : (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 No pregnancy history recorded.
