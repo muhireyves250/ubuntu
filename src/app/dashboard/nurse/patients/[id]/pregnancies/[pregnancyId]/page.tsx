@@ -39,9 +39,7 @@ function PregnancyRecordContent({ patientId, pregnancyId }: { patientId: string;
           {fullName(patient)}
         </Link>
         <IconChevronRight className="h-3.5 w-3.5" />
-        <span className="font-medium text-zinc-900 dark:text-zinc-50">
-          Pregnancy #{pregnancy.pregnancyNumber}
-        </span>
+        <span>Medical History</span>
       </div>
 
       <PastPregnancyDetail pregnancy={pregnancy} />
