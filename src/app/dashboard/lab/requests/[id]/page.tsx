@@ -55,6 +55,31 @@ const RESULT_HINTS: Record<string, string> = {
   "Tuberculosis (TB) Screening": "e.g. Negative, Positive",
 };
 
+// Standard result options for qualitative tests — shown as a dropdown so
+// the lab nurse picks from the recognized clinical values instead of
+// free-typing (and risking inconsistent wording). Quantitative tests
+// (Hemoglobin, Blood Glucose, LFT, KFT, TSH, ...) have no fixed set of
+// values and keep the free-text input with a format hint instead.
+const RESULT_OPTIONS: Record<string, string[]> = {
+  "Blood Group": ["A", "B", "AB", "O"],
+  "Rh Factor": ["Positive", "Negative"],
+  "Rhesus Antibody Screen (Coombs Test)": ["Negative", "Positive"],
+  "HIV Test": ["Negative", "Positive"],
+  "Syphilis (VDRL/RPR)": ["Non-reactive", "Reactive"],
+  "Hepatitis B (HBsAg)": ["Negative", "Positive"],
+  "Hepatitis C (Anti-HCV)": ["Negative", "Positive"],
+  "Malaria (Blood Smear)": ["Negative", "Positive"],
+  "Sickle Cell Test": ["Negative", "Positive"],
+  "Rubella IgG/IgM": ["Immune", "Non-immune", "Indeterminate"],
+  "Toxoplasmosis (IgG/IgM)": ["Negative", "Positive", "Indeterminate"],
+  "Urine Protein (Dipstick)": ["Negative", "Trace", "1+", "2+", "3+", "4+"],
+  "Urine Glucose": ["Negative", "Trace", "1+", "2+", "3+"],
+  "Urine Culture & Sensitivity": ["No growth", "Growth <10⁵ CFU/mL", "Growth >10⁵ CFU/mL"],
+  "Cardiotocography (CTG)": ["Reactive", "Non-reactive", "Suspicious"],
+  "COVID-19 Test": ["Negative", "Positive"],
+  "Tuberculosis (TB) Screening": ["Negative", "Positive"],
+};
+
 const TEST_TO_CATEGORY = new Map<string, string>(
   LAB_TEST_CATEGORIES.flatMap((group) => group.tests.map((test) => [test, group.category])),
 );
@@ -346,15 +371,30 @@ function RequestDetailContent({
                               {testName}
                             </td>
                             <td className="px-4 py-2.5">
-                              <input
-                                type="text"
-                                required
-                                disabled={request.status === "Completed"}
-                                value={resultsForm[testName]?.result || ""}
-                                onChange={(e) => handleResultChange(testName, "result", e.target.value)}
-                                className="w-full min-w-[160px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
-                                placeholder={RESULT_HINTS[testName] ?? "e.g. 11.5, Positive"}
-                              />
+                              {RESULT_OPTIONS[testName] ? (
+                                <select
+                                  required
+                                  disabled={request.status === "Completed"}
+                                  value={resultsForm[testName]?.result || ""}
+                                  onChange={(e) => handleResultChange(testName, "result", e.target.value)}
+                                  className="w-full min-w-[160px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
+                                >
+                                  <option value="" disabled>Select result…</option>
+                                  {RESULT_OPTIONS[testName].map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type="text"
+                                  required
+                                  disabled={request.status === "Completed"}
+                                  value={resultsForm[testName]?.result || ""}
+                                  onChange={(e) => handleResultChange(testName, "result", e.target.value)}
+                                  className="w-full min-w-[160px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
+                                  placeholder={RESULT_HINTS[testName] ?? "e.g. 11.5, Positive"}
+                                />
+                              )}
                             </td>
                             <td className="px-4 py-2.5">
                               <input
