@@ -47,6 +47,7 @@ export function SummaryStep({
   symptoms,
   labsOrdered,
   requestedTests,
+  labNotes,
   patientId,
   pregnancyId,
   type,
@@ -58,6 +59,7 @@ export function SummaryStep({
   symptoms: string[];
   labsOrdered: boolean;
   requestedTests?: string[];
+  labNotes?: string;
   patientId: string;
   pregnancyId: string;
   type: "scheduled" | "unscheduled";
@@ -101,6 +103,7 @@ export function SummaryStep({
         labs: hasVisitLabs ? visitLabs : undefined,
         labStatus: labsOrdered ? "pending" : undefined,
         requestedTests: labsOrdered ? requestedTests : undefined,
+        labNotes: labsOrdered ? labNotes : undefined,
       });
       onRecorded(visit);
     } catch (err) {

@@ -10,6 +10,8 @@ export function LabsStep({
   onTestsChange,
   otherTests,
   onOtherTestsChange,
+  labNotes,
+  onLabNotesChange,
 }: {
   labsOrdered: boolean;
   onChange: (ordered: boolean) => void;
@@ -17,6 +19,8 @@ export function LabsStep({
   onTestsChange: (tests: string[]) => void;
   otherTests: string;
   onOtherTestsChange: (value: string) => void;
+  labNotes: string;
+  onLabNotesChange: (value: string) => void;
 }) {
   function toggleTest(test: string) {
     onTestsChange(
@@ -128,6 +132,17 @@ export function LabsStep({
               value={otherTests}
               onChange={(e) => onOtherTestsChange(e.target.value)}
               placeholder="e.g. Stool analysis, Ultrasound — separate multiple with commas"
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Notes for laboratory
+            <textarea
+              rows={2}
+              value={labNotes}
+              onChange={(e) => onLabNotesChange(e.target.value)}
+              placeholder="Clinical context for the lab technician — e.g. suspected anemia, urgent turnaround needed…"
               className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
           </label>
