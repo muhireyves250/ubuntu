@@ -428,7 +428,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "Medical History" && (
           <div className="flex flex-col gap-5">
-            {pregnancies.some((p) => p.status === "closed" && p.delivery) ? (
+            {pregnancies.length > 0 ? (
               <>
                 <ObstetricHistoryTable
                   pregnancies={pregnancies}
@@ -443,7 +443,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               </>
             ) : (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                No past pregnancy history recorded.
+                No pregnancy history recorded.
               </p>
             )}
           </div>
