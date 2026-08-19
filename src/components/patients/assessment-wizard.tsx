@@ -48,6 +48,8 @@ export function AssessmentWizard({
   const [vitals, setVitals] = useState<VitalSigns>(emptyVitalSigns());
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [labsOrdered, setLabsOrdered] = useState(false);
+  const [selectedTests, setSelectedTests] = useState<string[]>([]);
+  const [otherTests, setOtherTests] = useState("");
   const [savedVisit, setSavedVisit] = useState<Visit | null>(null);
 
   const canAdvance = currentStep === 1 ? isVitalSignsComplete(vitals) : true;
@@ -128,13 +130,24 @@ export function AssessmentWizard({
         <ConsultationStep patientId={patientId} onSaved={goNext} />
       )}
       {currentStep === 4 && (
-        <LabsStep labsOrdered={labsOrdered} onChange={setLabsOrdered} />
+        <LabsStep
+          labsOrdered={labsOrdered}
+          onChange={setLabsOrdered}
+          selectedTests={selectedTests}
+          onTestsChange={setSelectedTests}
+          otherTests={otherTests}
+          onOtherTestsChange={setOtherTests}
+        />
       )}
       {currentStep === 5 && (
         <SummaryStep
           vitals={vitals}
           symptoms={symptoms}
           labsOrdered={labsOrdered}
+          requestedTests={[
+            ...selectedTests,
+            ...otherTests.split(",").map((t) => t.trim()).filter(Boolean),
+          ]}
           patientId={patientId}
           pregnancyId={pregnancyId}
           type={type}

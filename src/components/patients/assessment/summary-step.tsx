@@ -46,6 +46,7 @@ export function SummaryStep({
   vitals,
   symptoms,
   labsOrdered,
+  requestedTests,
   patientId,
   pregnancyId,
   type,
@@ -56,6 +57,7 @@ export function SummaryStep({
   vitals: VitalSigns;
   symptoms: string[];
   labsOrdered: boolean;
+  requestedTests?: string[];
   patientId: string;
   pregnancyId: string;
   type: "scheduled" | "unscheduled";
@@ -98,6 +100,7 @@ export function SummaryStep({
         notes,
         labs: hasVisitLabs ? visitLabs : undefined,
         labStatus: labsOrdered ? "pending" : undefined,
+        requestedTests: labsOrdered ? requestedTests : undefined,
       });
       onRecorded(visit);
     } catch (err) {
@@ -234,6 +237,21 @@ export function SummaryStep({
             ? "Sent to the laboratory nurse — results will appear once completed."
             : "No lab tests ordered for this visit."}
         </p>
+        {labsOrdered && requestedTests && requestedTests.length > 0 && (
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {requestedTests.map((test) => (
+              <li
+                key={test}
+                className="rounded-full border border-amber-300 bg-white px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-zinc-900 dark:text-amber-400"
+              >
+                {test}
+              </li>
+            ))}
+          </ul>
+        )}
+        {labsOrdered && (!requestedTests || requestedTests.length === 0) && (
+          <p className="mt-1 text-xs opacity-80">Standard ANC panel will be requested.</p>
+        )}
       </section>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
