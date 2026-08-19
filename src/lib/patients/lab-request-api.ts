@@ -174,11 +174,16 @@ export async function createLabRequestApi(
   visitId: string,
   priority: LabPriority,
   notes?: string,
+  requestedTests?: string[],
 ): Promise<LabRequest> {
   const token = getStoredAccessToken();
   const r = await apiFetch<BackendLabRequest>(`/lab-requests/visits/${visitId}`, {
     method: "POST",
-    body: { priority: PRIORITY_TO_BACKEND[priority], notes },
+    body: {
+      priority: PRIORITY_TO_BACKEND[priority],
+      notes,
+      requestedTests: requestedTests && requestedTests.length > 0 ? requestedTests : undefined,
+    },
     token: token ?? undefined,
   });
   return toFrontendLabRequest(r);

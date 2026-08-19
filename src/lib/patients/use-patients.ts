@@ -973,6 +973,7 @@ export async function recordVisit(data: {
   notes: string;
   labs?: VisitLabs;
   labStatus?: "pending";
+  requestedTests?: string[];
   emergencySummary?: string;
   treatment?: string;
   followUpPlan?: string;
@@ -1004,7 +1005,12 @@ export async function recordVisit(data: {
   await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", data.pregnancyId] });
 
   if (data.labStatus === "pending") {
-    await createLabRequestApi(visit.id, data.type === "emergency" ? "Emergency" : "Normal", data.notes);
+    await createLabRequestApi(
+      visit.id,
+      data.type === "emergency" ? "Emergency" : "Normal",
+      data.notes,
+      data.requestedTests,
+    );
   }
 
   if (riskLevel === "red") {
