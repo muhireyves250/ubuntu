@@ -15,6 +15,7 @@ import {
   IconAlertTriangle,
   IconClipboard,
   IconChevronRight,
+  IconCalendar,
 } from "@/components/dashboard/icons";
 
 function readSessionUser() {
@@ -96,21 +97,28 @@ export default function LabNurseDashboard() {
   return (
     <RoleGuard roles={["lab_nurse"]}>
       <div className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-5 py-4 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-900 text-white shadow-sm">
-              <IconClipboard className="h-5 w-5" />
-            </span>
-            <div>
-              <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                Welcome, {userName}
-              </h1>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {facility} Laboratory Dashboard
-              </p>
+        <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-teal-900 via-teal-800 to-teal-700 px-6 py-5 shadow-lg shadow-teal-900/20">
+          <div className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full bg-teal-500/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white shadow-sm ring-1 ring-white/20 backdrop-blur-sm">
+                <IconClipboard className="h-6 w-6" />
+              </span>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-white">
+                  Welcome, {userName}
+                </h1>
+                <p className="text-sm text-teal-100/90">
+                  {facility} · Laboratory Dashboard
+                </p>
+              </div>
             </div>
+            <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-teal-50 ring-1 ring-white/20 backdrop-blur-sm">
+              <IconCalendar className="h-3.5 w-3.5" />
+              {today}
+            </span>
           </div>
-          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{today}</p>
         </div>
 
         {/* Stats Section */}
