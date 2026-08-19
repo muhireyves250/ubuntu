@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { MedicalHistoryCard } from "@/components/patients/pregnancy/medical-history-card";
 import { VisitDetailTabs } from "@/components/patients/visit-detail-tabs";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { useVisitsForPregnancy } from "@/lib/patients/use-patients";
@@ -20,8 +19,6 @@ export function PastPregnancyDetail({ pregnancy }: { pregnancy: Pregnancy }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <MedicalHistoryCard pregnancy={pregnancy} />
-
       <div className="flex flex-col gap-2 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Visits during Pregnancy #{pregnancy.pregnancyNumber}
