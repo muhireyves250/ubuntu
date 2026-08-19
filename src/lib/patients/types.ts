@@ -6,9 +6,11 @@ export interface Patient {
   firstName: string;
   lastName: string;
   dateOfBirth: string; // ISO date "YYYY-MM-DD"
+  gender?: string;
   phone: string;
   altPhone?: string;
   maritalStatus?: string;
+  religion?: string;
   address: {
     province: string;
     district: string;
@@ -26,6 +28,8 @@ export interface Patient {
   rhFactor?: "positive" | "negative";
   allergies?: string;
   chronicConditions?: string[];
+  insuranceType?: string;
+  insuranceNumber?: string;
   registeredAt: string; // ISO date
   registeredBy: string;
   registrationFacility: string;
@@ -73,6 +77,7 @@ export interface LabRequest {
   visitId: string;
   patientId: string;
   patientName: string;
+  patientPhone: string;
   patientAge: number;
   pregnancyNumber: number;
   visitNumber: number;
@@ -252,12 +257,49 @@ export interface CommunityVisit {
   createdAt: string;
 }
 
-export interface Pregnancy {
+export type ScreeningResult = "negative" | "positive" | "unknown";
+
+export interface PregnancyMedicalHistory {
+  historySurgicalOrCervicalTrauma?: boolean;
+  historyGynecologicalProblem?: boolean;
+  currentlyOnMedication?: boolean;
+  currentMedicationDetails?: string;
+  historyDiabetes?: boolean;
+  historyLungDisease?: boolean;
+  historyHypertension?: boolean;
+  alcoholUse?: boolean;
+  mentalIllnessNotes?: string;
+  historyKidneyProblems?: boolean;
+  tobaccoUse?: boolean;
+  hivTestResult?: ScreeningResult;
+  historyHeartDisease?: boolean;
+  torchScreeningNotes?: string;
+  stiScreeningResult?: ScreeningResult;
+  historyPretermDelivery?: boolean;
+  historyMacrosomia?: boolean;
+  historyCongenitalMalformation?: boolean;
+  historyMultiplePregnancy?: boolean;
+  historyAntepartumBleeding?: boolean;
+  recurrentPregnancyLoss?: boolean;
+  familyPlanningBeforePregnancy?: boolean;
+  familyPlanningMethod?: string;
+  familyPlanningDurationMonths?: number;
+  historyLowBirthWeightDelivery?: boolean;
+  disabilitiesNotes?: string;
+}
+
+export interface Pregnancy extends PregnancyMedicalHistory {
   id: string;
   patientId: string;
   pregnancyNumber: number;
   gravidity: number;
   parity: number;
+  termDeliveries?: number;
+  prematureDeliveriesCount?: number;
+  numberOfAbortions?: number;
+  aliveChildren?: number;
+  ageOfLastBornYears?: number;
+  monthsOfLastBorn?: number;
   previousCS: number;
   previousPPH: boolean;
   previousEclampsia: boolean;
@@ -267,6 +309,9 @@ export interface Pregnancy {
   startDate: string;
   status: "open" | "closed";
   createdAt: string; // ISO datetime
+  numberOfBabies: number;
+  hadHypertensionDisorder: boolean;
+  partnerAccompanied?: boolean;
   delivery?: {
     outcome: "live-birth" | "stillbirth" | "maternal-death";
     date: string;
@@ -275,5 +320,7 @@ export interface Pregnancy {
     birthWeightKg: number;
     motherCondition: string;
     summary: string;
+    numberOfBabies?: number;
+    hadHypertensionDisorder?: boolean;
   };
 }

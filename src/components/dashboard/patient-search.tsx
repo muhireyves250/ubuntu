@@ -31,8 +31,8 @@ export function PatientSearch() {
     return patients
       .filter(
         (patient) =>
-          fullName(patient).toLowerCase().includes(q) ||
-          shortId(patient.id).toLowerCase().includes(q),
+          shortId(patient.id).toLowerCase().includes(q) ||
+          (patient.phone ?? "").toLowerCase().includes(q),
       )
       .slice(0, MAX_RESULTS)
       .map((patient) => {
@@ -90,7 +90,7 @@ export function PatientSearch() {
           }}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search patients, cases…"
+          placeholder="Search by ID or phone…"
           className="w-full bg-transparent outline-none placeholder:text-zinc-400"
         />
       </div>
