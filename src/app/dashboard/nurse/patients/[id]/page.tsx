@@ -45,11 +45,11 @@ const TABS = [
   "Patient Details",
   "Pregnancy",
   "Visit",
+  "New Assessment",
   "Signs & Symptoms",
   "Medical History",
   "Vaccination",
   "CHW Reports",
-  "New Assessment",
   "AI Prediction",
   "Specialist Notes",
 ] as const;
