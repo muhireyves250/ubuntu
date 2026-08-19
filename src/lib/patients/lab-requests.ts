@@ -47,8 +47,8 @@ export async function acceptLabRequest(id: string): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: ["lab-requests", id] });
 }
 
-export async function submitLabResults(id: string, results: LabTestResult[]): Promise<void> {
-  await submitLabResultsApi(id, results);
+export async function submitLabResults(id: string, results: LabTestResult[], labNotes?: string): Promise<void> {
+  await submitLabResultsApi(id, results, labNotes);
   await queryClient.invalidateQueries({ queryKey: ["lab-requests"] });
   await queryClient.invalidateQueries({ queryKey: ["lab-requests", id] });
 }
