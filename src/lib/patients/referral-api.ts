@@ -8,6 +8,9 @@ export interface BackendFacility {
   type: string;
   district: string;
   capacity: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  distanceKm?: number | null;
 }
 
 interface BackendReferral {
@@ -101,9 +104,13 @@ export async function fetchReferrals(): Promise<Referral[]> {
   return result.data.map(toFrontendReferral);
 }
 
-export async function fetchFacilities(): Promise<BackendFacility[]> {
+export async function fetchFacilities(opts: { excludePrimary?: boolean; nearFacilityId?: string } = {}): Promise<BackendFacility[]> {
   const token = getStoredAccessToken();
-  return apiFetch<BackendFacility[]>("/facilities", { token: token ?? undefined });
+  const params = new URLSearchParams();
+  if (opts.excludePrimary) params.set("excludePrimary", "true");
+  if (opts.nearFacilityId) params.set("nearFacilityId", opts.nearFacilityId);
+  const qs = params.toString();
+  return apiFetch<BackendFacility[]>(`/facilities${qs ? `?${qs}` : ""}`, { token: token ?? undefined });
 }
 
 export async function updateFacilityCapacityApi(capacity: number): Promise<BackendFacility> {
@@ -117,21 +124,16 @@ export async function updateFacilityCapacityApi(capacity: number): Promise<Backe
 
 export async function createReferralApi(
   pregnancyId: string,
-  toFacilityName: string,
+  toFacilityId: string,
   reason: string,
   urgency: Referral["urgency"],
 ): Promise<Referral> {
   const token = getStoredAccessToken();
-  const facilities = await fetchFacilities();
-  const toFacility = facilities.find((f) => f.name === toFacilityName);
-  if (!toFacility) {
-    throw new Error(`Unknown receiving facility: ${toFacilityName}`);
-  }
   const r = await apiFetch<BackendReferral>("/referrals", {
     method: "POST",
     body: {
       pregnancyId,
-      toFacilityId: toFacility.id,
+      toFacilityId,
       reason,
       urgency: URGENCY_TO_BACKEND[urgency],
     },
