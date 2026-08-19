@@ -16,7 +16,7 @@ export const SEED_PATIENTS: Patient[] = [
     chronicConditions: [],
     registeredAt: "2026-04-12",
     registeredBy: "Nurse Uwase",
-    registrationFacility: "Nyamata Health Center",
+    registrationFacility: "Kabusunzu Health Centre",
   },
   {
     id: "patient-mukeshimana",
@@ -30,7 +30,7 @@ export const SEED_PATIENTS: Patient[] = [
     chronicConditions: ["Hypertension"],
     registeredAt: "2026-05-02",
     registeredBy: "Nurse Uwase",
-    registrationFacility: "Nyamata Health Center",
+    registrationFacility: "Kabusunzu Health Centre",
   },
   {
     id: "patient-ingabire",
@@ -46,7 +46,7 @@ export const SEED_PATIENTS: Patient[] = [
     chronicConditions: [],
     registeredAt: "2026-05-20",
     registeredBy: "Nurse Uwase",
-    registrationFacility: "Nyamata Health Center",
+    registrationFacility: "Kabusunzu Health Centre",
   },
   {
     id: "patient-nyiraneza",
@@ -61,7 +61,7 @@ export const SEED_PATIENTS: Patient[] = [
     chronicConditions: [],
     registeredAt: "2026-05-28",
     registeredBy: "Nurse Uwase",
-    registrationFacility: "Nyamata Health Center",
+    registrationFacility: "Kabusunzu Health Centre",
   },
 ];
 
@@ -81,6 +81,8 @@ export const SEED_PREGNANCIES: Pregnancy[] = [
     startDate: "2025-11-10",
     status: "open",
     createdAt: "2026-04-12T09:00:00.000Z",
+    numberOfBabies: 1,
+    hadHypertensionDisorder: false,
   },
   {
     id: "pregnancy-mukeshimana-1",
@@ -97,6 +99,8 @@ export const SEED_PREGNANCIES: Pregnancy[] = [
     startDate: "2025-12-15",
     status: "open",
     createdAt: "2026-05-02T09:00:00.000Z",
+    numberOfBabies: 1,
+    hadHypertensionDisorder: false,
   },
   {
     id: "pregnancy-ingabire-1",
@@ -113,6 +117,8 @@ export const SEED_PREGNANCIES: Pregnancy[] = [
     startDate: "2026-01-05",
     status: "open",
     createdAt: "2026-05-20T09:00:00.000Z",
+    numberOfBabies: 1,
+    hadHypertensionDisorder: false,
   },
   {
     id: "pregnancy-nyiraneza-1",
@@ -129,6 +135,8 @@ export const SEED_PREGNANCIES: Pregnancy[] = [
     startDate: "2025-10-20",
     status: "open",
     createdAt: "2026-05-28T09:00:00.000Z",
+    numberOfBabies: 1,
+    hadHypertensionDisorder: false,
   },
 ];
 
@@ -146,7 +154,7 @@ function buildVisit(
     date,
     type: "scheduled",
     scheduledWeek,
-    hospital: "Nyamata Health Center",
+    hospital: "Kabusunzu Health Centre",
     attendingNurse: "Nurse Uwase",
     symptomIds,
     riskLevel: classifyRiskLevel(symptomIds),

@@ -634,7 +634,7 @@ export function useActiveEmergencyReferral(patientId: string): Referral | null {
 }
 
 const REFERRAL_ROUTING: Record<string, string> = {
-  "Nyamata Health Center": "Bugesera District Hospital",
+  "Kabusunzu Health Centre": "Bugesera District Hospital",
 };
 const DEFAULT_RECEIVING_FACILITY = "Bugesera District Hospital";
 

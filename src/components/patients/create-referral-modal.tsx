@@ -10,7 +10,7 @@ import type { Patient, RiskLevel } from "@/lib/patients/types";
 
 export const RECEIVING_FACILITIES = [
   "Nyanza District Hospital",
-  "Kigali University Teaching Hospital",
+  "CHB",
   "King Faisal Hospital",
   "Rwanda Military Hospital",
   "Butaro District Hospital",
@@ -156,7 +156,7 @@ export function CreateReferralModal({
 
           {clinicalSummary && (
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Clinical summary (pre-filled)
               </p>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{clinicalSummary}</p>
