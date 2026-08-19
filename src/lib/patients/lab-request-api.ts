@@ -53,6 +53,7 @@ interface BackendLabRequest {
         lastName: string;
         nationalId: string;
         dateOfBirth: string;
+        phone: string;
       };
     };
   };
@@ -169,6 +170,7 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
     visitId: r.visit.id,
     patientId: patient.nationalId || patient.id,
     patientName: `${patient.firstName} ${patient.lastName}`,
+    patientPhone: patient.phone,
     patientAge: computeAge(patient.dateOfBirth),
     pregnancyNumber: r.visit.pregnancy.pregnancyNumber,
     visitNumber: r.visit.ancNumber ?? 0,

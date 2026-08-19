@@ -73,9 +73,7 @@ function PatientsPageContent() {
 
   const rows = useMemo(() => {
     return allRows
-      .filter((row) =>
-        fullName(row.patient).toLowerCase().includes(nameFilter.toLowerCase()),
-      )
+      .filter((row) => (row.patient.phone ?? "").toLowerCase().includes(nameFilter.toLowerCase()))
       .filter((row) =>
         (row.patient.nationalId ?? "").toLowerCase().includes(idFilter.toLowerCase()),
       )
@@ -131,7 +129,7 @@ function PatientsPageContent() {
             type="text"
             value={nameFilter}
             onChange={(event) => setNameFilter(event.target.value)}
-            placeholder="Patient name"
+            placeholder="Phone number"
             className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-50"
           />
         </div>

@@ -14,8 +14,8 @@ export default function LabRequestsPage() {
 
 
   const filteredRequests = requests.filter((r) =>
-    r.patientName.toLowerCase().includes(filter.toLowerCase()) || 
     r.patientId.toLowerCase().includes(filter.toLowerCase()) ||
+    r.patientPhone.toLowerCase().includes(filter.toLowerCase()) ||
     r.id.toLowerCase().includes(filter.toLowerCase())
   ).sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
 
@@ -40,7 +40,7 @@ export default function LabRequestsPage() {
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="Search by ID or Patient Name"
+              placeholder="Search by ID or Phone"
               className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-50"
             />
           </div>

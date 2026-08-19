@@ -15,8 +15,8 @@ export default function LabHistoryPage() {
   const filteredRequests = requests
     .filter(
       (r) =>
-        r.patientName.toLowerCase().includes(filter.toLowerCase()) ||
         r.patientId.toLowerCase().includes(filter.toLowerCase()) ||
+        r.patientPhone.toLowerCase().includes(filter.toLowerCase()) ||
         r.id.toLowerCase().includes(filter.toLowerCase()) ||
         (r.pregnancyNumber && r.pregnancyNumber.toString().includes(filter)),
     )
@@ -51,7 +51,7 @@ export default function LabHistoryPage() {
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="Search by ID, National ID, Phone, Name or Pregnancy Number..."
+              placeholder="Search by ID, National ID, Phone, or Pregnancy Number..."
               className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-50"
             />
           </div>
