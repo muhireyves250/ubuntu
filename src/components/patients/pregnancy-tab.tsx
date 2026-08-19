@@ -42,7 +42,17 @@ function StatChip({
   );
 }
 
-function PregnancySummaryCard({ pregnancy }: { pregnancy: Pregnancy }) {
+function PregnancySummaryCard({
+  pregnancy,
+  onContinueToVisit,
+  onClosePregnancy,
+  readOnly = false,
+}: {
+  pregnancy: Pregnancy;
+  onContinueToVisit?: () => void;
+  onClosePregnancy?: () => void;
+  readOnly?: boolean;
+}) {
   const weeks = gestationalAgeWeeks(effectiveLmpDate(pregnancy));
   const progressPct = Math.min(100, Math.round((weeks / FULL_TERM_WEEKS) * 100));
   const riskFlags = [
@@ -125,6 +135,27 @@ function PregnancySummaryCard({ pregnancy }: { pregnancy: Pregnancy }) {
           </div>
         )}
 
+        {pregnancy.status === "open" && onContinueToVisit && (
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={onContinueToVisit}
+              className="w-fit rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+            >
+              Continue to Visit
+            </button>
+            {!readOnly && onClosePregnancy && (
+              <button
+                type="button"
+                onClick={onClosePregnancy}
+                className="w-fit rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                Close Pregnancy
+              </button>
+            )}
+          </div>
+        )}
+
         {pregnancy.status === "closed" && pregnancy.delivery && (
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
@@ -175,13 +206,28 @@ function PregnancySummaryCard({ pregnancy }: { pregnancy: Pregnancy }) {
   );
 }
 
-function PregnancySection({ pregnancy }: { pregnancy: Pregnancy }) {
+function PregnancySection({
+  pregnancy,
+  onContinueToVisit,
+  onClosePregnancy,
+  readOnly = false,
+}: {
+  pregnancy: Pregnancy;
+  onContinueToVisit?: () => void;
+  onClosePregnancy?: () => void;
+  readOnly?: boolean;
+}) {
   const visits = useVisitsForPregnancy(pregnancy.id);
   const referrals = useReferrals().filter((r) => r.patientId === pregnancy.patientId);
 
   return (
     <div className="flex flex-col gap-5">
-      <PregnancySummaryCard pregnancy={pregnancy} />
+      <PregnancySummaryCard
+        pregnancy={pregnancy}
+        onContinueToVisit={onContinueToVisit}
+        onClosePregnancy={onClosePregnancy}
+        readOnly={readOnly}
+      />
       {pregnancy.status === "closed" && (
         <VisitHistoryTab pregnancy={pregnancy} visits={visits} readOnly />
       )}
@@ -389,26 +435,12 @@ export function PregnancyTab({
 
       {openPregnancy && (
         <>
-          <div className="flex gap-2.5">
-            <button
-              type="button"
-              onClick={onGoToVisitHistory}
-              className="w-fit rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
-            >
-              Continue to Visit
-            </button>
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={() => setShowClosePregnancy(true)}
-                className="w-fit rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                Close Pregnancy
-              </button>
-            )}
-          </div>
-
-          <PregnancySection pregnancy={openPregnancy} />
+          <PregnancySection
+            pregnancy={openPregnancy}
+            onContinueToVisit={onGoToVisitHistory}
+            onClosePregnancy={() => setShowClosePregnancy(true)}
+            readOnly={readOnly}
+          />
 
           {showClosePregnancy && (
             <ClosePregnancyModal
