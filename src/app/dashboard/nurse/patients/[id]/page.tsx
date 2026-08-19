@@ -8,7 +8,6 @@ import { SignsSymptomsTab } from "@/components/patients/signs-symptoms-tab";
 import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
 import { AssessmentWizard } from "@/components/patients/assessment-wizard";
 import { PregnancyTab } from "@/components/patients/pregnancy-tab";
-import { MedicalHistoryCard } from "@/components/patients/pregnancy/medical-history-card";
 import { ObstetricHistoryTable } from "@/components/patients/pregnancy/obstetric-history-table";
 import { PastPregnancyDetail } from "@/components/patients/pregnancy/past-pregnancy-detail";
 import { VaccinationCard } from "@/components/patients/pregnancy/vaccination-card";
@@ -429,21 +428,22 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "Medical History" && (
           <div className="flex flex-col gap-5">
-            <ObstetricHistoryTable
-              pregnancies={pregnancies}
-              selectedId={selectedPastPregnancyId}
-              onSelect={(p) => setSelectedPastPregnancyId(selectedPastPregnancyId === p.id ? null : p.id)}
-            />
-            {selectedPastPregnancyId &&
-              (() => {
-                const selectedPregnancy = pregnancies.find((p) => p.id === selectedPastPregnancyId);
-                return selectedPregnancy ? <PastPregnancyDetail pregnancy={selectedPregnancy} /> : null;
-              })()}
-            {openPregnancy ? (
-              <MedicalHistoryCard pregnancy={openPregnancy} />
+            {pregnancies.some((p) => p.status === "closed" && p.delivery) ? (
+              <>
+                <ObstetricHistoryTable
+                  pregnancies={pregnancies}
+                  selectedId={selectedPastPregnancyId}
+                  onSelect={(p) => setSelectedPastPregnancyId(selectedPastPregnancyId === p.id ? null : p.id)}
+                />
+                {selectedPastPregnancyId &&
+                  (() => {
+                    const selectedPregnancy = pregnancies.find((p) => p.id === selectedPastPregnancyId);
+                    return selectedPregnancy ? <PastPregnancyDetail pregnancy={selectedPregnancy} /> : null;
+                  })()}
+              </>
             ) : (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                This patient has no active pregnancy on record.
+                No past pregnancy history recorded.
               </p>
             )}
           </div>
