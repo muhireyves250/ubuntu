@@ -974,6 +974,7 @@ export async function recordVisit(data: {
   labs?: VisitLabs;
   labStatus?: "pending";
   requestedTests?: string[];
+  labNotes?: string;
   emergencySummary?: string;
   treatment?: string;
   followUpPlan?: string;
@@ -1008,7 +1009,7 @@ export async function recordVisit(data: {
     await createLabRequestApi(
       visit.id,
       data.type === "emergency" ? "Emergency" : "Normal",
-      data.notes,
+      data.labNotes || data.notes,
       data.requestedTests,
     );
   }
