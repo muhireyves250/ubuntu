@@ -3,11 +3,16 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createReferral } from "@/lib/patients/use-patients";
+import { fetchFacilities, type BackendFacility } from "@/lib/patients/referral-api";
+import { useAuth } from "@/lib/auth/auth-context";
 import { IconClose } from "@/components/dashboard/icons";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { fullName } from "@/lib/format";
 import type { Patient, RiskLevel } from "@/lib/patients/types";
 
+// Kept for close-referral-modal.tsx's separate onward-referral dropdown —
+// this file's own dropdown below uses live, distance-sorted facilities
+// instead.
 export const RECEIVING_FACILITIES = [
   "Nyanza District Hospital",
   "CHB",
@@ -39,7 +44,10 @@ export function CreateReferralModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [receivingFacility, setReceivingFacility] = useState("");
+  const { user } = useAuth();
+  const [facilities, setFacilities] = useState<BackendFacility[]>([]);
+  const [facilitiesError, setFacilitiesError] = useState<string | null>(null);
+  const [receivingFacilityId, setReceivingFacilityId] = useState("");
   const [reason, setReason] = useState("");
   const [urgency, setUrgency] = useState<"routine" | "urgent" | "emergency">("urgent");
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +61,20 @@ export function CreateReferralModal({
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchFacilities({ excludePrimary: true, nearFacilityId: user?.facilityId })
+      .then((result) => {
+        if (!cancelled) setFacilities(result);
+      })
+      .catch(() => {
+        if (!cancelled) setFacilitiesError("Could not load facilities. Please try again.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.facilityId]);
+
   async function handleSubmit() {
     if (isSubmitting) return;
     setError(null);
@@ -60,7 +82,7 @@ export function CreateReferralModal({
     try {
       await createReferral({
         patientId: patient.id,
-        receivingFacility,
+        receivingFacilityId,
         reason: reason.trim(),
         urgency,
       });
@@ -107,15 +129,21 @@ export function CreateReferralModal({
             Receiving facility
             <select
               required
-              value={receivingFacility}
-              onChange={(e) => setReceivingFacility(e.target.value)}
+              value={receivingFacilityId}
+              onChange={(e) => setReceivingFacilityId(e.target.value)}
               className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             >
               <option value="">Select facility…</option>
-              {RECEIVING_FACILITIES.map((f) => (
-                <option key={f} value={f}>{f}</option>
+              {facilities.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                  {f.distanceKm != null ? ` — ${f.distanceKm.toFixed(0)} km` : " — distance unknown"}
+                </option>
               ))}
             </select>
+            {facilitiesError && (
+              <span className="text-xs text-red-600 dark:text-red-400">{facilitiesError}</span>
+            )}
           </label>
 
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -180,7 +208,7 @@ export function CreateReferralModal({
             </button>
             <button
               type="button"
-              disabled={!receivingFacility || !reason.trim() || isSubmitting}
+              disabled={!receivingFacilityId || !reason.trim() || isSubmitting}
               onClick={handleSubmit}
               className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
             >

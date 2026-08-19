@@ -19,6 +19,7 @@ export interface AuthenticatedUser {
   name: string;
   title: string;
   facility: string;
+  facilityId: string;
   facilityLevel: FacilityLevel;
   role: Role;
 }
@@ -120,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: `${response.user.firstName} ${response.user.lastName}`,
         title: titleForRole(role),
         facility: response.user.facility?.name ?? "",
+        facilityId: response.user.facility?.id ?? "",
         facilityLevel: mapBackendFacilityLevel(response.user.facility?.type ?? "PRIMARY"),
         role,
       };

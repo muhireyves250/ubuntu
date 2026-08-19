@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { closeReferral, createReferral } from "@/lib/patients/use-patients";
+import { fetchFacilities } from "@/lib/patients/referral-api";
 import { IconClose, IconAlert } from "./icons";
 import { RECEIVING_FACILITIES } from "@/components/patients/create-referral-modal";
 import type { Referral, ReferralOutcome, RiskLevel } from "@/lib/patients/types";
@@ -60,9 +61,13 @@ export function CloseReferralModal({
     try {
       await closeReferral(referral.id, { outcome, outcomeStatement, riskLevel });
       if (isReferringOnward && nextFacility) {
+        const facility = (await fetchFacilities()).find((f) => f.name === nextFacility);
+        if (!facility) {
+          throw new Error(`Unknown receiving facility: ${nextFacility}`);
+        }
         await createReferral({
           patientId: referral.patientId,
-          receivingFacility: nextFacility,
+          receivingFacilityId: facility.id,
           reason: outcomeStatement.trim() || "Condition did not improve — escalating to a higher-level facility.",
           urgency: "emergency",
         });

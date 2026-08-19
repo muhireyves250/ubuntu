@@ -665,7 +665,7 @@ function getFacilityCapacitySnapshot(
 }
 
 function useFacilities(): BackendFacility[] {
-  const { data } = useQuery({ queryKey: ["facilities"], queryFn: fetchFacilities });
+  const { data } = useQuery({ queryKey: ["facilities"], queryFn: () => fetchFacilities() });
   return data ?? [];
 }
 
@@ -714,8 +714,12 @@ async function getOrCreateEmergencyReferral(patientId: string, reason: string): 
   // creating facility).
   const canHandleLocally = facilityLevel !== "hc";
   const toFacilityName = canHandleLocally ? facility : (REFERRAL_ROUTING[facility] ?? DEFAULT_RECEIVING_FACILITY);
+  const toFacility = (await fetchFacilities()).find((f) => f.name === toFacilityName);
+  if (!toFacility) {
+    throw new Error(`Unknown receiving facility: ${toFacilityName}`);
+  }
 
-  let referral = await createReferralApi(openPregnancy.id, toFacilityName, reason, "emergency");
+  let referral = await createReferralApi(openPregnancy.id, toFacility.id, reason, "emergency");
   if (canHandleLocally) {
     referral = await acceptReferralApi(referral.id);
   }
@@ -760,7 +764,7 @@ export async function closeReferral(
 
 export async function createReferral(data: {
   patientId: string;
-  receivingFacility: string;
+  receivingFacilityId: string;
   reason: string;
   urgency: "routine" | "urgent" | "emergency";
 }): Promise<Referral> {
@@ -778,7 +782,7 @@ export async function createReferral(data: {
   if (!openPregnancy) {
     throw new Error("Cannot create a referral: patient has no open pregnancy");
   }
-  const referral = await createReferralApi(openPregnancy.id, data.receivingFacility, data.reason, data.urgency);
+  const referral = await createReferralApi(openPregnancy.id, data.receivingFacilityId, data.reason, data.urgency);
   await queryClient.invalidateQueries({ queryKey: ["referrals"] });
   return referral;
 }
