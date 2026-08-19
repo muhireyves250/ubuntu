@@ -6,6 +6,7 @@ import { VisitDiagnosisSection } from "@/components/patients/visit-diagnosis-sec
 import { VisitPharmacySection } from "@/components/patients/visit-pharmacy-section";
 import { VisitInvoiceSection } from "@/components/patients/visit-invoice-section";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useRiskPredictionForVisit } from "@/lib/patients/use-patients";
 import type { Visit } from "@/lib/patients/types";
 
 const SYMPTOM_MAP = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s]));
@@ -26,7 +27,7 @@ const INTERPRETATION_COLORS: Record<string, string> = {
   Critical: "text-red-700 dark:text-red-400",
 };
 
-const TABS = ["Vitals", "Symptoms", "Labs", "Diagnosis & Treatment"] as const;
+const TABS = ["Vitals", "Symptoms", "Labs", "AI Review", "Diagnosis & Treatment"] as const;
 type Tab = (typeof TABS)[number];
 
 function VitalRow({ label, value }: { label: string; value: string | number | undefined }) {
@@ -39,8 +40,39 @@ function VitalRow({ label, value }: { label: string; value: string | number | un
   );
 }
 
+const RISK_BANNER_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
+  red: { bg: "bg-red-50 border-red-300 dark:bg-red-950/20 dark:border-red-900/60", text: "text-red-800 dark:text-red-300", label: "Red case — obstetric emergency" },
+  orange: { bg: "bg-orange-50 border-orange-300 dark:bg-orange-950/20 dark:border-orange-900/60", text: "text-orange-800 dark:text-orange-300", label: "Orange case — high complication risk" },
+  yellow: { bg: "bg-yellow-50 border-yellow-300 dark:bg-yellow-950/20 dark:border-yellow-900/60", text: "text-yellow-800 dark:text-yellow-300", label: "Yellow case — elevated risk" },
+  green: { bg: "bg-teal-50 border-teal-300 dark:bg-teal-950/20 dark:border-teal-900/60", text: "text-teal-800 dark:text-teal-300", label: "Green case — low clinical risk" },
+};
+
+function RiskMeter({ pct, label }: { pct: number; label: string }) {
+  const isRed = pct >= 75;
+  const isAmber = pct >= 40 && pct < 75;
+  const barColor = isRed ? "bg-red-600" : isAmber ? "bg-amber-500" : "bg-teal-600";
+  const textColor = isRed
+    ? "text-red-700 dark:text-red-400"
+    : isAmber
+      ? "text-amber-700 dark:text-amber-400"
+      : "text-teal-700 dark:text-teal-400";
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center justify-between text-xs font-semibold">
+        <span className="text-zinc-500 dark:text-zinc-400">{label}</span>
+        <span className={`font-mono font-bold ${textColor}`}>{pct}%</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export function VisitDetailTabs({ visit }: { visit: Visit }) {
   const [tab, setTab] = useState<Tab>("Vitals");
+  const prediction = useRiskPredictionForVisit(visit.id);
+  const riskConfig = prediction ? RISK_BANNER_CONFIG[prediction.predictedRiskLevel] : null;
   const labs = visit.labs;
   const hasVitals =
     labs &&
@@ -135,6 +167,35 @@ export function VisitDetailTabs({ visit }: { visit: Visit }) {
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+      )}
+
+      {tab === "AI Review" && (
+        <div className="flex flex-col gap-3">
+          {!prediction ? (
+            <p className="text-sm text-zinc-400">AI review was not run for this visit.</p>
+          ) : (
+            <>
+              {riskConfig && (
+                <div className={`flex items-center justify-between rounded-xl border p-3 text-sm ${riskConfig.bg} ${riskConfig.text}`}>
+                  <span className="font-semibold uppercase tracking-wide">{riskConfig.label}</span>
+                  <RiskBadge level={prediction.predictedRiskLevel} size="sm" />
+                </div>
+              )}
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <RiskMeter pct={Math.round(prediction.eclampsiaProb * 100)} label="Eclampsia" />
+                <RiskMeter pct={Math.round(prediction.hemorrhageProb * 100)} label="Hemorrhage" />
+                <RiskMeter pct={Math.round(prediction.maternalDeathProb * 100)} label="Maternal Death" />
+                <RiskMeter pct={Math.round(prediction.emergencyReferralProb * 100)} label="Emergency Referral" />
+              </div>
+              <div className="rounded-lg border border-teal-200 bg-teal-50/40 p-3 dark:border-teal-900/25 dark:bg-teal-950/25">
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400">
+                  AI Recommendation
+                </span>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">{prediction.recommendation}</p>
+              </div>
+            </>
           )}
         </div>
       )}
