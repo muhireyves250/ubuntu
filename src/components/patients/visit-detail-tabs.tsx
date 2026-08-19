@@ -54,16 +54,16 @@ export function VisitDetailTabs({ visit }: { visit: Visit }) {
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex flex-wrap gap-1.5">
+      <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
         {TABS.map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               tab === t
-                ? "bg-teal-700 text-white"
-                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                ? "bg-[#0f766e] text-white shadow-sm shadow-teal-700/20"
+                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             }`}
           >
             {t}
