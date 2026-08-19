@@ -10,6 +10,7 @@ import { AssessmentWizard } from "@/components/patients/assessment-wizard";
 import { PregnancyTab } from "@/components/patients/pregnancy-tab";
 import { MedicalHistoryCard } from "@/components/patients/pregnancy/medical-history-card";
 import { ObstetricHistoryTable } from "@/components/patients/pregnancy/obstetric-history-table";
+import { PastPregnancyDetail } from "@/components/patients/pregnancy/past-pregnancy-detail";
 import { VaccinationCard } from "@/components/patients/pregnancy/vaccination-card";
 import { ActivityTimeline } from "@/components/patients/activity-timeline";
 import { AiPredictionTab } from "@/components/patients/ai-prediction-panel";
@@ -84,6 +85,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const [showAssignChwModal, setShowAssignChwModal] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [assessmentContext, setAssessmentContext] = useState<AssessmentContext | null>(null);
+  const [selectedPastPregnancyId, setSelectedPastPregnancyId] = useState<string | null>(null);
   const [emergencyResult, setEmergencyResult] = useState<EmergencyResult | null>(null);
   const activeReferral = useActiveEmergencyReferral(patientId);
   const lock = usePatientLock(patientId);
@@ -427,7 +429,16 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "Medical History" && (
           <div className="flex flex-col gap-5">
-            <ObstetricHistoryTable pregnancies={pregnancies} />
+            <ObstetricHistoryTable
+              pregnancies={pregnancies}
+              selectedId={selectedPastPregnancyId}
+              onSelect={(p) => setSelectedPastPregnancyId(selectedPastPregnancyId === p.id ? null : p.id)}
+            />
+            {selectedPastPregnancyId &&
+              (() => {
+                const selectedPregnancy = pregnancies.find((p) => p.id === selectedPastPregnancyId);
+                return selectedPregnancy ? <PastPregnancyDetail pregnancy={selectedPregnancy} /> : null;
+              })()}
             {openPregnancy ? (
               <MedicalHistoryCard pregnancy={openPregnancy} />
             ) : (
