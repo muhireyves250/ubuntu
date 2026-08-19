@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { RoleGuard } from "@/components/role-guard";
 import { useLabRequests } from "@/lib/patients/lab-requests";
 import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
+import { getInitials, relativeTime } from "@/lib/format";
 import Link from "next/link";
 
 import {
@@ -13,12 +14,25 @@ import {
   IconClock,
   IconAlertTriangle,
   IconClipboard,
+  IconChevronRight,
 } from "@/components/dashboard/icons";
 
 function readSessionUser() {
   if (typeof window === "undefined") return null;
   return getStoredAuthenticatedUser();
 }
+
+const PRIORITY_TINT: Record<string, string> = {
+  Emergency: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300",
+  Urgent: "bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300",
+  Normal: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+};
+
+const STATUS_TINT: Record<string, string> = {
+  Pending: "bg-amber-500",
+  "In Progress": "bg-sky-500",
+  Completed: "bg-teal-600",
+};
 
 function StatCard({
   icon,
@@ -70,6 +84,14 @@ export default function LabNurseDashboard() {
       ).length,
     };
   }, [requests]);
+
+  const recentRequests = useMemo(
+    () =>
+      [...requests]
+        .sort((a, b) => b.requestDate.localeCompare(a.requestDate))
+        .slice(0, 5),
+    [requests],
+  );
 
   return (
     <RoleGuard roles={["lab_nurse"]}>
@@ -139,6 +161,57 @@ export default function LabNurseDashboard() {
               number: "text-red-900 dark:text-red-300",
             }}
           />
+        </div>
+
+        {/* Recent Requests */}
+        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Recent Requests</h2>
+            <Link
+              href="/dashboard/lab/requests"
+              className="flex items-center gap-0.5 text-xs font-semibold text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300"
+            >
+              View all
+              <IconChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          {recentRequests.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
+              No laboratory requests yet — new requests from nurses will appear here.
+            </p>
+          ) : (
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {recentRequests.map((req) => (
+                <Link
+                  key={req.id}
+                  href={`/dashboard/lab/requests/${req.id}`}
+                  className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                >
+                  <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                    {getInitials(req.patientName)}
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-zinc-900 ${STATUS_TINT[req.status] ?? STATUS_TINT.Completed}`}
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {req.patientName}
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {relativeTime(req.requestDate)} · {req.status}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      PRIORITY_TINT[req.priority] ?? PRIORITY_TINT.Normal
+                    }`}
+                  >
+                    {req.priority}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Action Panel */}
