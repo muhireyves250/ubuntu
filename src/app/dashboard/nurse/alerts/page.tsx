@@ -140,16 +140,16 @@ function ActiveAlertsContent() {
         </p>
       )}
 
-      <div className="flex w-fit gap-1 rounded-full border border-zinc-300 bg-[#ffeedb] p-1 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+      <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setFilter(tab.key)}
-            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+            className={`shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               filter === tab.key
-                ? "bg-[#0f766e] text-white shadow-sm"
-                : "text-zinc-600 hover:bg-white/60 dark:text-zinc-300"
+                ? "bg-[#0f766e] text-white shadow-sm shadow-teal-700/20"
+                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             }`}
           >
             {tab.label}
