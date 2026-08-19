@@ -27,7 +27,7 @@ const INTERPRETATION_COLORS: Record<string, string> = {
   Critical: "text-red-700 dark:text-red-400",
 };
 
-const TABS = ["Vitals", "Symptoms", "Labs", "AI Review", "Diagnosis & Treatment"] as const;
+const TABS = ["Vitals", "Symptoms", "Labs", "AI Review", "Treatment", "Diagnosis", "Medications", "Billing"] as const;
 type Tab = (typeof TABS)[number];
 
 function VitalRow({ label, value }: { label: string; value: string | number | undefined }) {
@@ -200,7 +200,7 @@ export function VisitDetailTabs({ visit }: { visit: Visit }) {
         </div>
       )}
 
-      {tab === "Diagnosis & Treatment" && (
+      {tab === "Treatment" && (
         <div className="flex flex-col gap-3 text-sm">
           {visit.type === "emergency" && visit.emergencySummary && (
             <p>
@@ -232,8 +232,23 @@ export function VisitDetailTabs({ visit }: { visit: Visit }) {
           <div className="flex items-center gap-2 pt-1">
             <RiskBadge level={visit.riskLevel} size="sm" />
           </div>
+        </div>
+      )}
+
+      {tab === "Diagnosis" && (
+        <div className="text-sm">
           <VisitDiagnosisSection visitId={visit.id} readOnly />
+        </div>
+      )}
+
+      {tab === "Medications" && (
+        <div className="text-sm">
           <VisitPharmacySection visitId={visit.id} readOnly />
+        </div>
+      )}
+
+      {tab === "Billing" && (
+        <div className="text-sm">
           <VisitInvoiceSection visitId={visit.id} readOnly />
         </div>
       )}
