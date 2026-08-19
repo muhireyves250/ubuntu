@@ -24,27 +24,26 @@ function StatCard({
   icon,
   label,
   value,
-  accentBar,
-  chipClass,
+  tint,
 }: {
   icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
-  accentBar: string;
-  chipClass: string;
+  tint: { card: string; iconChip: string; number: string };
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <span className={`absolute inset-x-0 top-0 h-1 ${accentBar}`} />
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-          {label}
-        </span>
-        <span className={`flex h-8 w-8 items-center justify-center rounded-full ${chipClass}`}>
+    <div className={`rounded-xl border p-4 shadow-sm ${tint.card}`}>
+      <div className="flex items-center gap-3">
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${tint.iconChip}`}>
           {icon}
         </span>
+        <span className={`text-4xl font-extrabold tracking-tight tabular-nums ${tint.number}`}>
+          {value}
+        </span>
       </div>
-      <span className="mt-2 block text-3xl font-bold text-zinc-900 dark:text-zinc-50">{value}</span>
+      <span className="mt-2.5 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        {label}
+      </span>
     </div>
   );
 }
@@ -95,38 +94,50 @@ export default function LabNurseDashboard() {
         {/* Stats Section */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            icon={<IconClock className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+            icon={<IconClock className="h-5 w-5 text-white" />}
             label="Pending"
             value={stats.pending}
-            accentBar="bg-amber-400"
-            chipClass="bg-amber-100 dark:bg-amber-950/40"
+            tint={{
+              card: "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20",
+              iconChip: "bg-amber-500",
+              number: "text-amber-900 dark:text-amber-300",
+            }}
           />
           <StatCard
-            icon={<IconActivity className="h-4 w-4 text-sky-600 dark:text-sky-400" />}
+            icon={<IconActivity className="h-5 w-5 text-white" />}
             label="In Progress"
             value={stats.inProgress}
-            accentBar="bg-sky-400"
-            chipClass="bg-sky-100 dark:bg-sky-950/40"
+            tint={{
+              card: "border-sky-200 bg-sky-50 dark:border-sky-900/50 dark:bg-sky-950/20",
+              iconChip: "bg-sky-500",
+              number: "text-sky-900 dark:text-sky-300",
+            }}
           />
           <StatCard
-            icon={<IconCheckCircle className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
+            icon={<IconCheckCircle className="h-5 w-5 text-white" />}
             label="Completed"
             value={stats.completed}
-            accentBar="bg-teal-500"
-            chipClass="bg-teal-100 dark:bg-teal-950/40"
+            tint={{
+              card: "border-teal-200 bg-teal-50 dark:border-teal-900/50 dark:bg-teal-950/20",
+              iconChip: "bg-teal-600",
+              number: "text-teal-900 dark:text-teal-300",
+            }}
           />
           <StatCard
-            icon={<IconAlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />}
+            icon={<IconAlertTriangle className="h-5 w-5 text-white" />}
             label="Emergencies / Critical"
             value={
               <span>
                 {stats.emergencies}
-                <span className="mx-1 text-lg font-normal text-zinc-300 dark:text-zinc-600">/</span>
+                <span className="mx-1 text-2xl font-normal text-red-300 dark:text-red-800">/</span>
                 {stats.critical}
               </span>
             }
-            accentBar="bg-red-500"
-            chipClass="bg-red-100 dark:bg-red-950/40"
+            tint={{
+              card: "border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20",
+              iconChip: "bg-red-600",
+              number: "text-red-900 dark:text-red-300",
+            }}
           />
         </div>
 
