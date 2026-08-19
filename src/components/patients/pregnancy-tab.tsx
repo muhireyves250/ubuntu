@@ -132,37 +132,37 @@ function PregnancySummaryCard({ pregnancy }: { pregnancy: Pregnancy }) {
             </p>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
-                <dt className="text-xs text-zinc-400">Outcome</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Outcome</dt>
                 <dd className="font-medium capitalize text-zinc-900 dark:text-zinc-50">
                   {pregnancy.delivery.outcome.replace("-", " ")}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-400">Method</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Method</dt>
                 <dd className="font-medium capitalize text-zinc-900 dark:text-zinc-50">
                   {pregnancy.delivery.method}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-400">Baby status</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Baby status</dt>
                 <dd className="font-medium capitalize text-zinc-900 dark:text-zinc-50">
                   {pregnancy.delivery.babyStatus}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-400">Birth weight</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Birth weight</dt>
                 <dd className="font-medium text-zinc-900 dark:text-zinc-50">
                   {pregnancy.delivery.birthWeightKg} kg
                 </dd>
               </div>
               <div className="col-span-2">
-                <dt className="text-xs text-zinc-400">Mother&apos;s condition</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Mother&apos;s condition</dt>
                 <dd className="font-medium text-zinc-900 dark:text-zinc-50">
                   {pregnancy.delivery.motherCondition}
                 </dd>
               </div>
               <div className="col-span-2">
-                <dt className="text-xs text-zinc-400">Summary</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Summary</dt>
                 <dd className="text-zinc-700 dark:text-zinc-300">
                   {pregnancy.delivery.summary}
                 </dd>
@@ -243,7 +243,7 @@ function PastPregnancyRow({
   );
 }
 
-const ARCHIVE_TABS = ["Summary", "Visit History", "Timeline"] as const;
+const ARCHIVE_TABS = ["Summary", "Visit", "Timeline"] as const;
 type ArchiveTab = (typeof ARCHIVE_TABS)[number];
 
 function ArchivedPregnancyRecord({
@@ -302,7 +302,7 @@ function ArchivedPregnancyRecord({
         </div>
 
         {tab === "Summary" && <PregnancySummaryCard pregnancy={pregnancy} />}
-        {tab === "Visit History" && (
+        {tab === "Visit" && (
           <VisitHistoryTab pregnancy={pregnancy} visits={visits} readOnly />
         )}
         {tab === "Timeline" && <PregnancyTimeline visits={visits} referrals={referrals} readOnly />}
@@ -336,7 +336,7 @@ export function PregnancyTab({
         <div className="flex flex-col gap-2.5 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center gap-2">
             <IconClipboard className="h-4 w-4 text-zinc-400" />
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Past Pregnancies ({closedPregnancies.length})
             </p>
           </div>
@@ -395,7 +395,7 @@ export function PregnancyTab({
               onClick={onGoToVisitHistory}
               className="w-fit rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
             >
-              Continue to Visit History
+              Continue to Visit
             </button>
             {!readOnly && (
               <button

@@ -47,7 +47,7 @@ const TABS = [
   "Signs & Symptoms",
   "Medical History",
   "Vaccination",
-  "Visit History",
+  "Visit",
   "CHW Reports",
   "New Assessment",
   "AI Prediction",
@@ -158,7 +158,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           currentRisk={currentRisk}
           clinicalSummary={allVisits[0]?.notes ?? ""}
           onClose={() => setShowReferralModal(false)}
-          onCreated={() => setActiveTab("Visit History")}
+          onCreated={() => setActiveTab("Visit")}
         />
       )}
       {showAssignChwModal && (
@@ -441,7 +441,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                   )}
                   <button
                     type="button"
-                    onClick={() => { setActiveTab("Visit History"); }}
+                    onClick={() => { setActiveTab("Visit"); }}
                     className="rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                   >
                     Choose a different week →
@@ -458,7 +458,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         {activeTab === "Pregnancy" && (
           <PregnancyTab
             patientId={patient.id}
-            onGoToVisitHistory={() => setActiveTab("Visit History")}
+            onGoToVisitHistory={() => setActiveTab("Visit")}
             readOnly={isReadOnlyAdmin}
           />
         )}
@@ -485,7 +485,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             )}
           </>
         )}
-        {activeTab === "Visit History" && (
+        {activeTab === "Visit" && (
           <>
             {openPregnancy ? (
               <VisitHistoryTab
