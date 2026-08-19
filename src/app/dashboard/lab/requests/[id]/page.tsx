@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { RoleGuard } from "@/components/role-guard";
 import {
@@ -14,7 +14,50 @@ import type { LabTestResult } from "@/lib/patients/types";
 import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
 import type { AuthenticatedUser } from "@/lib/auth/auth-context";
 import { CriticalAlertModal } from "@/components/dashboard/critical-alert-modal";
+import { LAB_TEST_CATEGORIES } from "@/lib/patients/lab-test-catalog";
 import Link from "next/link";
+
+// Typical result units/format for common tests, shown as an input
+// placeholder so the lab nurse knows what to enter without guessing.
+const RESULT_HINTS: Record<string, string> = {
+  "Hemoglobin (Hb)": "e.g. 11.5",
+  "Platelets": "e.g. 250",
+  "Complete Blood Count (CBC)": "e.g. WBC 6.2, RBC 4.1",
+  "Blood Glucose": "e.g. 5.4",
+  "Oral Glucose Tolerance Test (OGTT)": "e.g. Fasting 4.8 / 1h 8.2 / 2h 6.9",
+  "Blood Group": "e.g. A, B, AB, O",
+  "Rh Factor": "e.g. Positive, Negative",
+  "Rhesus Antibody Screen (Coombs Test)": "e.g. Negative",
+  "HIV Test": "e.g. Negative, Positive",
+  "Syphilis (VDRL/RPR)": "e.g. Non-reactive, Reactive",
+  "Hepatitis B (HBsAg)": "e.g. Negative, Positive",
+  "Hepatitis C (Anti-HCV)": "e.g. Negative, Positive",
+  "Malaria (Blood Smear)": "e.g. Negative, Positive",
+  "Sickle Cell Test": "e.g. Negative, Positive",
+  "Rubella IgG/IgM": "e.g. Immune, Non-immune",
+  "Toxoplasmosis (IgG/IgM)": "e.g. Negative, Positive",
+  "Liver Function Test (LFT)": "e.g. ALT 22, AST 19",
+  "Kidney Function Test (Creatinine/Urea)": "e.g. Creatinine 0.7",
+  "Thyroid Function Test (TSH)": "e.g. 2.1",
+  "Widal Test (Typhoid)": "e.g. titre 1:160",
+  "Urine Analysis": "e.g. Clear, no abnormality",
+  "Urine Protein (Dipstick)": "e.g. Negative, Trace, 1+",
+  "Urine Culture & Sensitivity": "e.g. No growth",
+  "Urine Microscopy": "e.g. No pus cells",
+  "Urine Glucose": "e.g. Negative",
+  "Obstetric Ultrasound": "e.g. Single live fetus, cephalic",
+  "Anomaly (Detailed) Ultrasound Scan": "e.g. No anomalies detected",
+  "Doppler Study": "e.g. Normal flow",
+  "Cardiotocography (CTG)": "e.g. Reactive",
+  "Pap Smear": "e.g. Normal, no abnormal cells",
+  "Stool Analysis (Ova & Parasites)": "e.g. No ova/parasites seen",
+  "COVID-19 Test": "e.g. Negative, Positive",
+  "Tuberculosis (TB) Screening": "e.g. Negative, Positive",
+};
+
+const TEST_TO_CATEGORY = new Map<string, string>(
+  LAB_TEST_CATEGORIES.flatMap((group) => group.tests.map((test) => [test, group.category])),
+);
 
 function readSessionUser(): AuthenticatedUser | null {
   if (typeof window === "undefined") return null;
@@ -47,6 +90,7 @@ function RequestDetailContent({
   const request = fetchedRequest && fetchedRequest.facility === user.facility ? fetchedRequest : null;
 
   const [resultsForm, setResultsForm] = useState<Record<string, ResultForm>>({});
+  const [labNotes, setLabNotes] = useState("");
   const [alertState, setAlertState] = useState<{ open: boolean; hasCritical: boolean }>({
     open: false,
     hasCritical: false,
@@ -82,6 +126,17 @@ function RequestDetailContent({
       </div>
     );
   }
+
+  const groupedTestNames = request
+    ? (() => {
+        const groups = new Map<string, string[]>();
+        for (const testName of request.requestedInvestigatonNames) {
+          const category = TEST_TO_CATEGORY.get(testName) ?? "Other / Custom";
+          groups.set(category, [...(groups.get(category) ?? []), testName]);
+        }
+        return Array.from(groups.entries());
+      })()
+    : [];
 
   async function handleAccept() {
     if (!request || request.status !== "Pending" || isAccepting) return;
@@ -127,7 +182,7 @@ function RequestDetailContent({
         };
       });
 
-      await submitLabResults(request.id, finalResults);
+      await submitLabResults(request.id, finalResults, labNotes.trim() || undefined);
 
       const hasCritical = finalResults.some((r) => r.interpretation === "Critical");
       setAlertState({ open: true, hasCritical });
@@ -272,71 +327,95 @@ function RequestDetailContent({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                    {request.requestedInvestigatonNames.map((testName) => (
-                      <tr
-                        key={testName}
-                        className="transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20"
-                      >
-                        <td className="px-4 py-2.5 font-medium text-zinc-900 dark:text-zinc-100">
-                          {testName}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            required
-                            disabled={request.status === "Completed"}
-                            value={resultsForm[testName]?.result || ""}
-                            onChange={(e) => handleResultChange(testName, "result", e.target.value)}
-                            className="w-full min-w-[120px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
-                            placeholder="e.g. 11.5, Positive"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            disabled={request.status === "Completed"}
-                            value={resultsForm[testName]?.unit || ""}
-                            onChange={(e) => handleResultChange(testName, "unit", e.target.value)}
-                            className="w-full min-w-[80px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
-                            placeholder="mg/dL"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="relative min-w-[110px]">
-                            <select
-                              disabled={request.status === "Completed"}
-                              value={resultsForm[testName]?.interp || "Normal"}
-                              onChange={(e) =>
-                                handleResultChange(
-                                  testName,
-                                  "interp",
-                                  e.target.value,
-                                )
-                              }
-                              className={`w-full appearance-none rounded-lg border border-zinc-300 px-3 py-2 pr-8 text-sm outline-none transition-all focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:text-white ${
-                                resultsForm[testName]?.interp === "Critical"
-                                  ? "border-red-300 bg-red-50 font-bold text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
-                                  : resultsForm[testName]?.interp === "Abnormal"
-                                    ? "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
-                                    : "bg-zinc-50/50 text-zinc-900 focus:bg-white dark:bg-zinc-950/50 dark:focus:bg-zinc-900"
-                              }`}
-                            >
-                              <option value="Normal">Normal</option>
-                              <option value="Abnormal">Abnormal</option>
-                              <option value="Critical">Critical</option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-400">
-                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
+                    {groupedTestNames.map(([category, testNames]) => (
+                      <Fragment key={category}>
+                        <tr className="bg-zinc-50 dark:bg-zinc-950/60">
+                          <td
+                            colSpan={4}
+                            className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400"
+                          >
+                            {category}
+                          </td>
+                        </tr>
+                        {testNames.map((testName) => (
+                          <tr
+                            key={testName}
+                            className="transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20"
+                          >
+                            <td className="px-4 py-2.5 font-medium text-zinc-900 dark:text-zinc-100">
+                              {testName}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <input
+                                type="text"
+                                required
+                                disabled={request.status === "Completed"}
+                                value={resultsForm[testName]?.result || ""}
+                                onChange={(e) => handleResultChange(testName, "result", e.target.value)}
+                                className="w-full min-w-[160px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
+                                placeholder={RESULT_HINTS[testName] ?? "e.g. 11.5, Positive"}
+                              />
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <input
+                                type="text"
+                                disabled={request.status === "Completed"}
+                                value={resultsForm[testName]?.unit || ""}
+                                onChange={(e) => handleResultChange(testName, "unit", e.target.value)}
+                                className="w-full min-w-[80px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
+                                placeholder="mg/dL"
+                              />
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <div className="relative min-w-[110px]">
+                                <select
+                                  disabled={request.status === "Completed"}
+                                  value={resultsForm[testName]?.interp || "Normal"}
+                                  onChange={(e) =>
+                                    handleResultChange(
+                                      testName,
+                                      "interp",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className={`w-full appearance-none rounded-lg border border-zinc-300 px-3 py-2 pr-8 text-sm outline-none transition-all focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:text-white ${
+                                    resultsForm[testName]?.interp === "Critical"
+                                      ? "border-red-300 bg-red-50 font-bold text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                                      : resultsForm[testName]?.interp === "Abnormal"
+                                        ? "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
+                                        : "bg-zinc-50/50 text-zinc-900 focus:bg-white dark:bg-zinc-950/50 dark:focus:bg-zinc-900"
+                                  }`}
+                                >
+                                  <option value="Normal">Normal</option>
+                                  <option value="Abnormal">Abnormal</option>
+                                  <option value="Critical">Critical</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-400">
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
+
+              <label className="mt-4 flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Note to requesting nurse
+                <textarea
+                  rows={2}
+                  disabled={request.status === "Completed"}
+                  value={labNotes}
+                  onChange={(e) => setLabNotes(e.target.value)}
+                  placeholder="Anything the requesting nurse should know — sample quality, delays, follow-up needed…"
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-500 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </label>
             </div>
 
             {error && (
