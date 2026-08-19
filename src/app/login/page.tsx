@@ -159,7 +159,7 @@ export default function LoginPage() {
         </div>
 
         {/* Role tab switcher */}
-        <div className="relative flex flex-wrap justify-center gap-1 rounded-full bg-white/15 p-1.5 backdrop-blur-sm">
+        <div className="scrollbar-hidden relative flex w-fit flex-wrap justify-center gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
           {ROLE_TABS.map(({ role, label }) => {
             const isActive = selectedRole === role;
             return (
@@ -168,10 +168,10 @@ export default function LoginPage() {
                 type="button"
                 id={`role-tab-${role}`}
                 onClick={() => chooseRole(role)}
-                className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                className={`shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-teal-600 text-white shadow"
-                    : "text-teal-100 hover:bg-white/10"
+                    ? "bg-[#0f766e] text-white shadow-sm shadow-teal-700/20"
+                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 }`}
               >
                 <RoleIcon role={role} />
