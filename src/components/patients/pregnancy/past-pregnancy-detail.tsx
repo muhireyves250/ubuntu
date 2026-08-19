@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { PregnancySummaryCard } from "@/components/patients/pregnancy-tab";
+import { VisitHistoryTab } from "@/components/patients/visit-history-tab";
+import { PregnancyTimeline } from "@/components/patients/pregnancy/pregnancy-timeline";
 import { VisitDetailTabs } from "@/components/patients/visit-detail-tabs";
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { useVisitsForPregnancy } from "@/lib/patients/use-patients";
+import { useVisitsForPregnancy, useReferrals } from "@/lib/patients/use-patients";
 import type { Pregnancy, VisitType } from "@/lib/patients/types";
 
 const TYPE_BADGE: Record<VisitType, string> = {
@@ -14,11 +17,16 @@ const TYPE_BADGE: Record<VisitType, string> = {
 
 export function PastPregnancyDetail({ pregnancy }: { pregnancy: Pregnancy }) {
   const visits = useVisitsForPregnancy(pregnancy.id);
+  const referrals = useReferrals().filter((r) => r.patientId === pregnancy.patientId);
   const [selectedVisitId, setSelectedVisitId] = useState<string | null>(null);
   const selectedVisit = visits.find((v) => v.id === selectedVisitId) ?? null;
 
   return (
     <div className="flex flex-col gap-4">
+      <PregnancySummaryCard pregnancy={pregnancy} />
+      <VisitHistoryTab pregnancy={pregnancy} visits={visits} readOnly />
+      <PregnancyTimeline visits={visits} referrals={referrals} readOnly />
+
       <div className="flex flex-col gap-2 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Visits during Pregnancy #{pregnancy.pregnancyNumber}

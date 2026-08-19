@@ -42,7 +42,7 @@ function StatChip({
   );
 }
 
-function PregnancySummaryCard({
+export function PregnancySummaryCard({
   pregnancy,
   onContinueToVisit,
   onClosePregnancy,
