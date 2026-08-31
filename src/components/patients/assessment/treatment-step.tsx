@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { usePrescriptionsForVisit, createPrescription, useInventory } from "@/lib/patients/use-patients";
+import { usePrescriptionsForVisit, createPrescription, useInventory, useRiskPredictionForVisit } from "@/lib/patients/use-patients";
+import { AiSuggestionCard } from "@/components/patients/assessment/ai-suggestion-card";
 
 export function TreatmentStep({ visitId, onContinue }: { visitId: string; onContinue: () => void }) {
   const prescriptions = usePrescriptionsForVisit(visitId);
+  const prediction = useRiskPredictionForVisit(visitId);
   const inventory = useInventory();
   const drugCatalog = inventory.filter((i) => i.category === "drug");
   const [inventoryItemId, setInventoryItemId] = useState("");
@@ -44,6 +46,26 @@ export function TreatmentStep({ visitId, onContinue }: { visitId: string; onCont
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Treatment — Prescriptions
       </p>
+
+      {prediction && prediction.suggestedTreatments.length > 0 && (
+        <AiSuggestionCard
+          title="AI suggests"
+          items={prediction.suggestedTreatments.map((name) => ({
+            key: name,
+            label: name,
+            onAccept: () => {
+              const match = drugCatalog.find((d) => d.name === name);
+              if (match) {
+                setInventoryItemId(match.id);
+                setDrugName("");
+              } else {
+                setInventoryItemId("");
+                setDrugName(name);
+              }
+            },
+          }))}
+        />
+      )}
 
       {prescriptions.length === 0 ? (
         <p className="text-sm text-zinc-400">No medications recorded yet.</p>
