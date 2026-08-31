@@ -2,10 +2,10 @@
 
 import { Fragment, useState } from "react";
 import { IconActivity, IconAlert } from "@/components/dashboard/icons";
-import type { Patient, Visit, LabTestResult, Referral } from "@/lib/patients/types";
+import type { Patient, Visit, LabTestResult } from "@/lib/patients/types";
 import type { RiskPrediction } from "@/lib/patients/risk-prediction-api";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import { runAiPrediction, useRiskPredictionForVisit, escalateVisitIfCritical } from "@/lib/patients/use-patients";
+import { runAiPrediction, useRiskPredictionForVisit } from "@/lib/patients/use-patients";
 import { queryClient } from "@/lib/query-client";
 import { LabResultCommentBox } from "@/components/patients/lab-result-comment-box";
 
@@ -84,7 +84,6 @@ export function AiReviewStep({
   const shownPrediction = prediction ?? existingPrediction;
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [escalation, setEscalation] = useState<Referral | null>(null);
 
   async function handleSendToAi() {
     setError(null);
@@ -92,10 +91,10 @@ export function AiReviewStep({
     try {
       const result = await runAiPrediction(visit.id);
       setPrediction(result);
-      if (result.predictedRiskLevel === "red") {
-        const referral = await escalateVisitIfCritical(visit, "red");
-        setEscalation(referral);
-      }
+      // Red cases are transferred (if this facility can't manage them)
+      // only after the finalize pipeline's treatment/stabilization steps
+      // complete — see FinalizeAssessmentBlocker's Vaccination step — not
+      // immediately here, so the patient is stabilized before transport.
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reach AI prediction service. You may still proceed manually.");
     } finally {
@@ -136,13 +135,14 @@ export function AiReviewStep({
         </div>
       )}
 
-      {escalation && (
+      {shownPrediction?.predictedRiskLevel === "red" && (
         <div className="flex items-start gap-2.5 rounded-xl border border-red-300 bg-red-50 p-4 text-red-800 shadow-sm dark:border-red-700 dark:bg-red-950/30 dark:text-red-300">
           <IconAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="text-sm">
-            <p className="text-xs font-bold uppercase tracking-wide">Emergency referral created</p>
+            <p className="text-xs font-bold uppercase tracking-wide">Emergency transfer pending stabilization</p>
             <p className="mt-1 text-xs opacity-90">
-              An automatic referral to {escalation.receivingFacility} was created because the AI flagged this visit as red risk.
+              If this facility can&apos;t manage this case, the patient will be transferred automatically once
+              treatment is complete — after Final Diagnosis, Treatment, Consumables, and Follow-up &amp; Discharge.
             </p>
           </div>
         </div>
