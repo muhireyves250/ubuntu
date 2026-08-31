@@ -8,6 +8,7 @@ import { FinalDiagnosisStep } from "@/components/patients/assessment/final-diagn
 import { TreatmentStep } from "@/components/patients/assessment/treatment-step";
 import { ConsumablesStep } from "@/components/patients/assessment/consumables-step";
 import { VaccinationStep } from "@/components/patients/assessment/vaccination-step";
+import { escalateVisitIfCritical } from "@/lib/patients/use-patients";
 
 const STEPS = [
   "AI Review",
@@ -105,8 +106,29 @@ export function FinalizeAssessmentBlocker({
   const [step, setStep] = useState<Step>("AI Review");
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
   const [finalized, setFinalized] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   const stepIndex = STEPS.indexOf(step);
+
+  async function handleFinish() {
+    if (prediction?.predictedRiskLevel === "red") {
+      setIsTransferring(true);
+      setTransferError(null);
+      try {
+        // Only now — after Diagnosis, Treatment, Consumables, and
+        // Follow-up/Discharge are all done — does a red case actually get
+        // transferred, so the patient is stabilized before transport.
+        await escalateVisitIfCritical(visit, "red");
+      } catch (err) {
+        setTransferError(err instanceof Error ? err.message : "Could not create the emergency transfer.");
+        setIsTransferring(false);
+        return;
+      }
+      setIsTransferring(false);
+    }
+    onDone?.();
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -158,11 +180,18 @@ export function FinalizeAssessmentBlocker({
         />
       )}
       {step === "Vaccination" && (
-        <VaccinationStep
-          pregnancyId={visit.pregnancyId}
-          onContinue={() => onDone?.()}
-          continueLabel="Finish Assessment"
-        />
+        <div className="flex flex-col gap-3">
+          {transferError && (
+            <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+              {transferError}
+            </p>
+          )}
+          <VaccinationStep
+            pregnancyId={visit.pregnancyId}
+            onContinue={handleFinish}
+            continueLabel={isTransferring ? "Creating emergency transfer…" : "Finish Assessment"}
+          />
+        </div>
       )}
     </div>
   );
