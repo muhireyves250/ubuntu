@@ -5,7 +5,7 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
-import { fetchVisitsForPregnancy, fetchAllVisits, createVisitApi, finalizeVisitApi } from "./visit-api";
+import { fetchVisitsForPregnancy, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
 import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy, fetchMyCommunityVisits } from "./community-visit-api";
 import { fetchVaccinationsForPregnancy, recordVaccinationApi, type Vaccination } from "./vaccination-api";
@@ -690,6 +690,20 @@ export async function finalizeAssessment(
 ): Promise<void> {
   const visit = await finalizeVisitApi(visitId, treatment, followUpPlan);
   await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", visit.pregnancyId] });
+}
+
+// Sets the visit's actual risk classification to match an AI-confirmed
+// finding as soon as the nurse proceeds past it — independent of the
+// emergency transfer, which still only happens once treatment completes.
+// Invalidating ["visits"] (not just this pregnancy's key) so risk badges
+// on patient lists/dashboards refresh immediately too.
+export async function confirmAiRisk(
+  visitId: string,
+  riskLevel: RiskLevel,
+  reasons: string[],
+): Promise<void> {
+  await confirmAiRiskApi(visitId, riskLevel, reasons);
+  await queryClient.invalidateQueries({ queryKey: ["visits"] });
 }
 
 async function getOrCreateEmergencyReferral(patientId: string, reason: string): Promise<Referral> {

@@ -236,3 +236,24 @@ export async function finalizeVisitApi(
   });
   return toFrontendVisit(v);
 }
+
+const RISK_LEVEL_TO_BACKEND: Record<"green" | "yellow" | "orange" | "red", string> = {
+  green: "GREEN",
+  yellow: "YELLOW",
+  orange: "ORANGE",
+  red: "RED",
+};
+
+export async function confirmAiRiskApi(
+  visitId: string,
+  riskLevel: "green" | "yellow" | "orange" | "red",
+  reasons: string[],
+): Promise<Visit> {
+  const token = getStoredAccessToken();
+  const v = await apiFetch<BackendVisit>(`/visits/${visitId}/confirm-ai-risk`, {
+    method: "POST",
+    body: { riskLevel: RISK_LEVEL_TO_BACKEND[riskLevel], reasons },
+    token: token ?? undefined,
+  });
+  return toFrontendVisit(v);
+}
