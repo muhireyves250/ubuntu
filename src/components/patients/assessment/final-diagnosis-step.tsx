@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useDiagnosesForVisit, createDiagnosis } from "@/lib/patients/use-patients";
+import { DIAGNOSIS_CATEGORIES, ALL_DIAGNOSES } from "@/lib/patients/diagnosis-catalog";
 
 export function FinalDiagnosisStep({ visitId, onContinue }: { visitId: string; onContinue: () => void }) {
   const diagnoses = useDiagnosesForVisit(visitId);
@@ -10,6 +11,14 @@ export function FinalDiagnosisStep({ visitId, onContinue }: { visitId: string; o
   const [diagnosisType, setDiagnosisType] = useState("Principal");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handlePickFromCatalog(pickedCode: string) {
+    const match = ALL_DIAGNOSES.find((d) => d.code === pickedCode);
+    if (match) {
+      setCode(match.code);
+      setTitle(match.title);
+    }
+  }
 
   async function handleAdd() {
     setError(null);
@@ -43,6 +52,26 @@ export function FinalDiagnosisStep({ visitId, onContinue }: { visitId: string; o
           ))}
         </div>
       )}
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        Pick from catalog
+        <select
+          value=""
+          onChange={(e) => handlePickFromCatalog(e.target.value)}
+          className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        >
+          <option value="">Select a standard diagnosis…</option>
+          {DIAGNOSIS_CATEGORIES.map((group) => (
+            <optgroup key={group.category} label={group.category}>
+              {group.diagnoses.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.code} — {d.title}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
 
       <div className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
         {error && <p className="w-full text-xs text-red-600 dark:text-red-400">{error}</p>}
