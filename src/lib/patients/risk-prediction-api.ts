@@ -2,6 +2,11 @@ import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { RiskLevel } from "./types";
 
+export interface SuggestedDiagnosis {
+  code: string;
+  title: string;
+}
+
 export interface RiskPrediction {
   visitId: string;
   predictedRiskLevel: RiskLevel;
@@ -12,6 +17,8 @@ export interface RiskPrediction {
   withinHours: number;
   modelVersion: string;
   recommendation: string;
+  suggestedDiagnoses: SuggestedDiagnosis[];
+  suggestedTreatments: string[];
   createdAt: string;
 }
 
@@ -25,6 +32,8 @@ interface BackendRiskPrediction {
   withinHours: number;
   modelVersion: string;
   recommendation: string | null;
+  suggestedDiagnoses: SuggestedDiagnosis[] | null;
+  suggestedTreatments: string[] | null;
   createdAt: string;
 }
 
@@ -46,6 +55,8 @@ function toFrontendRiskPrediction(p: BackendRiskPrediction): RiskPrediction {
     withinHours: p.withinHours,
     modelVersion: p.modelVersion,
     recommendation: p.recommendation ?? "",
+    suggestedDiagnoses: p.suggestedDiagnoses ?? [],
+    suggestedTreatments: p.suggestedTreatments ?? [],
     createdAt: p.createdAt,
   };
 }

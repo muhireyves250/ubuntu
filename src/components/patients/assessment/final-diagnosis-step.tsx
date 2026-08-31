@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useDiagnosesForVisit, createDiagnosis } from "@/lib/patients/use-patients";
+import { useDiagnosesForVisit, createDiagnosis, useRiskPredictionForVisit } from "@/lib/patients/use-patients";
 import { DIAGNOSIS_CATEGORIES, ALL_DIAGNOSES } from "@/lib/patients/diagnosis-catalog";
+import { AiSuggestionCard } from "@/components/patients/assessment/ai-suggestion-card";
 
 export function FinalDiagnosisStep({ visitId, onContinue }: { visitId: string; onContinue: () => void }) {
   const diagnoses = useDiagnosesForVisit(visitId);
+  const prediction = useRiskPredictionForVisit(visitId);
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
   const [diagnosisType, setDiagnosisType] = useState("Principal");
@@ -39,6 +41,20 @@ export function FinalDiagnosisStep({ visitId, onContinue }: { visitId: string; o
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Final Diagnosis
       </p>
+
+      {prediction && prediction.suggestedDiagnoses.length > 0 && (
+        <AiSuggestionCard
+          title="AI suggests"
+          items={prediction.suggestedDiagnoses.map((d) => ({
+            key: d.code,
+            label: `${d.code} — ${d.title}`,
+            onAccept: () => {
+              setCode(d.code);
+              setTitle(d.title);
+            },
+          }))}
+        />
+      )}
 
       {diagnoses.length === 0 ? (
         <p className="text-sm text-zinc-400">No diagnosis recorded yet.</p>
