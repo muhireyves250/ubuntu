@@ -5,7 +5,7 @@ import { IconActivity, IconAlert } from "@/components/dashboard/icons";
 import type { Patient, Visit, LabTestResult } from "@/lib/patients/types";
 import type { RiskPrediction } from "@/lib/patients/risk-prediction-api";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
-import { runAiPrediction, useRiskPredictionForVisit } from "@/lib/patients/use-patients";
+import { runAiPrediction, useRiskPredictionForVisit, confirmAiRisk } from "@/lib/patients/use-patients";
 import { queryClient } from "@/lib/query-client";
 import { LabResultCommentBox } from "@/components/patients/lab-result-comment-box";
 
@@ -83,6 +83,7 @@ export function AiReviewStep({
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
   const shownPrediction = prediction ?? existingPrediction;
   const [isRunning, setIsRunning] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSendToAi() {
@@ -293,11 +294,33 @@ export function AiReviewStep({
 
       <button
         type="button"
-        disabled={!shownPrediction}
-        onClick={() => shownPrediction && onConfirm(shownPrediction)}
+        disabled={!shownPrediction || isConfirming}
+        onClick={async () => {
+          if (!shownPrediction) return;
+          setIsConfirming(true);
+          try {
+            // Reflects the AI's finding in the visit's actual risk status
+            // right away — separate from the emergency transfer, which
+            // still only happens once treatment is complete.
+            await confirmAiRisk(
+              visit.id,
+              shownPrediction.predictedRiskLevel,
+              [
+                `AI predicted ${shownPrediction.predictedRiskLevel} risk (${shownPrediction.modelVersion})`,
+                ...shownPrediction.suggestedDiagnoses.map((d) => d.title),
+              ],
+            );
+          } catch {
+            // Best-effort — don't block the nurse from proceeding with
+            // the assessment just because this status sync failed.
+          } finally {
+            setIsConfirming(false);
+          }
+          onConfirm(shownPrediction);
+        }}
         className="w-full rounded-xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Continue to Final Diagnosis →
+        {isConfirming ? "Updating risk status…" : "Continue to Final Diagnosis →"}
       </button>
     </div>
   );
