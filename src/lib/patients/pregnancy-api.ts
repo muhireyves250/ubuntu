@@ -177,6 +177,17 @@ export async function fetchPregnanciesForPatient(patientId: string): Promise<Pre
   return pregnancies.map(toFrontendPregnancy);
 }
 
+// Single-pregnancy lookup — for call sites that already know the
+// pregnancyId and just need its patientId/details, instead of fetching
+// every pregnancy in the system (fetchAllPregnancies) to find one by id.
+export async function fetchPregnancyById(pregnancyId: string): Promise<Pregnancy> {
+  const token = getStoredAccessToken();
+  const pregnancy = await apiFetch<BackendPregnancy>(`/pregnancies/${pregnancyId}`, {
+    token: token ?? undefined,
+  });
+  return toFrontendPregnancy(pregnancy);
+}
+
 // Large page size — no pagination UI exists yet, this approximates "fetch
 // all" for the current small seed dataset, matching fetchPatients()'s exact
 // convention. Revisit if the pregnancy count grows past this limit.
