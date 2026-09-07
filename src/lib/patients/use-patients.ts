@@ -4,7 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
-import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
+import { fetchPregnanciesForPatient, fetchAllPregnancies, fetchPregnancyById, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
 import { fetchVisitsForPregnancy, fetchVisitsForPatient, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
 import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy, fetchMyCommunityVisits } from "./community-visit-api";
@@ -740,17 +740,26 @@ export async function confirmAiRisk(
   await queryClient.invalidateQueries({ queryKey: ["visits"] });
 }
 
-async function getOrCreateEmergencyReferral(patientId: string, reason: string): Promise<Referral> {
-  const existingReferrals = await fetchReferrals();
+// Takes pregnancyId directly (every caller already knows it — the visit's
+// own pregnancyId, or the pregnancy just created/resolved) instead of
+// re-deriving "the patient's currently open pregnancy" via its own fresh
+// fetch. Also reads referrals/facilities through the query cache
+// (queryClient.fetchQuery) instead of always hitting the network — a
+// same-request warm cache (e.g. the topbar's already-loaded facility
+// list) resolves instantly instead of adding another round trip.
+async function getOrCreateEmergencyReferral(
+  patientId: string,
+  pregnancyId: string,
+  reason: string,
+): Promise<Referral> {
+  const existingReferrals = await queryClient.fetchQuery({
+    queryKey: ["referrals"],
+    queryFn: fetchReferrals,
+  });
   const existing = existingReferrals.find(
     (r) => r.patientId === patientId && (r.status === "pending" || r.status === "accepted"),
   );
   if (existing) return existing;
-
-  const openPregnancy = (await fetchPregnanciesForPatient(patientId)).find((p) => p.status === "open");
-  if (!openPregnancy) {
-    throw new Error("Cannot create an emergency referral: patient has no open pregnancy");
-  }
 
   const { facility, facilityLevel } = getCurrentUserSnapshot();
   // A health center always escalates up. Anything already at district-hospital
@@ -762,12 +771,17 @@ async function getOrCreateEmergencyReferral(patientId: string, reason: string): 
   // creating facility).
   const canHandleLocally = facilityLevel !== "hc";
   const toFacilityName = canHandleLocally ? facility : (REFERRAL_ROUTING[facility] ?? DEFAULT_RECEIVING_FACILITY);
-  const toFacility = (await fetchFacilities()).find((f) => f.name === toFacilityName);
+  const facilities = await queryClient.fetchQuery({
+    queryKey: ["facilities"],
+    queryFn: () => fetchFacilities(),
+    staleTime: 120_000,
+  });
+  const toFacility = facilities.find((f) => f.name === toFacilityName);
   if (!toFacility) {
     throw new Error(`Unknown receiving facility: ${toFacilityName}`);
   }
 
-  let referral = await createReferralApi(openPregnancy.id, toFacility.id, reason, "emergency");
+  let referral = await createReferralApi(pregnancyId, toFacility.id, reason, "emergency");
   if (canHandleLocally) {
     referral = await acceptReferralApi(referral.id);
   }
@@ -778,12 +792,14 @@ async function getOrCreateEmergencyReferral(patientId: string, reason: string): 
 export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Promise<Referral | null> {
   if (riskLevel !== "red") return null;
 
-  const pregnancy = (await fetchAllPregnancies()).find((p) => p.id === visit.pregnancyId);
+  // Single-pregnancy lookup, not fetchAllPregnancies() (every pregnancy in
+  // the system) just to find this one visit's own pregnancy by id.
+  const pregnancy = await fetchPregnancyById(visit.pregnancyId);
   if (!pregnancy) return null;
 
   const reason =
     visit.emergencySummary ?? "AI-confirmed critical case following laboratory review";
-  return getOrCreateEmergencyReferral(pregnancy.patientId, reason);
+  return getOrCreateEmergencyReferral(pregnancy.patientId, visit.pregnancyId, reason);
 }
 
 export async function acceptReferral(referralId: string): Promise<Referral> {
@@ -1034,6 +1050,10 @@ export async function recordVisit(data: {
   emergencySummary?: string;
   treatment?: string;
   followUpPlan?: string;
+  // createEmergencyVisit already calls getOrCreateEmergencyReferral itself
+  // right after this — set true there so this function's own auto-escalate
+  // branch (below) doesn't redundantly repeat the same round trip.
+  skipEmergencyEscalation?: boolean;
 }): Promise<Visit> {
   // Local classification, unchanged — used below to decide whether to
   // attempt the (see KNOWN GAP comment below) referral escalation, and by
@@ -1072,14 +1092,18 @@ export async function recordVisit(data: {
     );
   }
 
-  if (riskLevel === "red") {
-    const pregnancy = (await fetchAllPregnancies()).find((p) => p.id === data.pregnancyId);
+  if (riskLevel === "red" && !data.skipEmergencyEscalation) {
+    // Single-pregnancy lookup, not fetchAllPregnancies() (every pregnancy
+    // in the system) just to find this one visit's own pregnancy by id —
+    // this is the hot path for flagging an emergency, so every extra
+    // round trip here is directly felt.
+    const pregnancy = await fetchPregnancyById(data.pregnancyId);
     if (pregnancy) {
       const reason =
         data.type === "emergency"
           ? (data.emergencySummary ?? data.notes)
           : `Classified RED during ${data.type} visit`;
-      await getOrCreateEmergencyReferral(pregnancy.patientId, reason);
+      await getOrCreateEmergencyReferral(pregnancy.patientId, data.pregnancyId, reason);
     }
   }
 
@@ -1156,9 +1180,13 @@ export async function createEmergencyVisit(
     symptomIds: dangerSignIds,
     notes: summary,
     emergencySummary: summary,
+    // This call makes its own explicit getOrCreateEmergencyReferral call
+    // right below — skip recordVisit's internal auto-escalate branch so
+    // the referral check/create round trip doesn't happen twice.
+    skipEmergencyEscalation: true,
   });
 
-  const referral = await getOrCreateEmergencyReferral(patientId, summary);
+  const referral = await getOrCreateEmergencyReferral(patientId, pregnancy.id, summary);
 
   return { pregnancy, visit, referral };
 }
