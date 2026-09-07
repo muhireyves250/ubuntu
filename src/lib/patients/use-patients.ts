@@ -113,7 +113,11 @@ export function usePatientsForChw(): Patient[] {
 }
 
 export function useVisits(): Visit[] {
-  const { data } = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits });
+  // Unbounded "all visits" fetch backing patient-list risk badges — real
+  // freshness after any mutation already comes from each mutation's own
+  // explicit invalidateQueries(["visits"]) call, not from a short
+  // staleTime, so this can safely sit longer than the 30s global default.
+  const { data } = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits, staleTime: 60_000 });
   return data ?? [];
 }
 
