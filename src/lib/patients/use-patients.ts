@@ -581,6 +581,7 @@ export function useAllRecommendations(): Recommendation[] {
   const { data } = useQuery({
     queryKey: ["recommendations", "all"],
     queryFn: () => fetchRecommendations(),
+    staleTime: 60_000,
   });
   return data ?? [];
 }
@@ -688,7 +689,10 @@ function getFacilityCapacitySnapshot(
 }
 
 function useFacilities(): BackendFacility[] {
-  const { data } = useQuery({ queryKey: ["facilities"], queryFn: () => fetchFacilities() });
+  // Facility roster barely ever changes — this is pulled unconditionally by
+  // useNotificationAlerts (mounted in the topbar on every dashboard route),
+  // so a longer staleTime meaningfully cuts refetches across the whole app.
+  const { data } = useQuery({ queryKey: ["facilities"], queryFn: () => fetchFacilities(), staleTime: 120_000 });
   return data ?? [];
 }
 
