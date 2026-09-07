@@ -255,9 +255,19 @@ export function useLatestRiskLevel(patientId: string): RiskLevel {
   const visits = useAllVisitsForPatient(patientId);
   const activeEmergency = useActiveEmergencyReferral(patientId);
   const patient = usePatient(patientId);
-  if (activeEmergency) return "red";
+  const latestVisit = visits[0];
+  // A referral being open no longer pins the badge to red forever — once
+  // the managing facility has logged a newer visit (treating the patient
+  // during the emergency), that visit's own outcome takes over, so the
+  // badge reflects how treatment is actually going instead of staying
+  // stuck on red until someone formally closes the case.
+  const hasNewerTreatmentVisit =
+    !!activeEmergency &&
+    !!latestVisit &&
+    (latestVisit.createdAt ?? latestVisit.date) > activeEmergency.createdAt;
+  if (activeEmergency && !hasNewerTreatmentVisit) return "red";
   if (patient?.riskOverrideLevel) return patient.riskOverrideLevel;
-  return visits[0]?.riskLevel ?? "green";
+  return latestVisit?.riskLevel ?? "green";
 }
 
 // Referrals are visible system-wide, same as patients and visits — a
@@ -533,14 +543,19 @@ export function useActiveReferrals(): Referral[] {
 // must display as red everywhere in the app, no matter what a raw "latest
 // visit" lookup would otherwise show — the case only stops being red once
 // the managing facility closes it and records a new color.
-export function useActiveEmergencyPatientIds(): Set<string> {
+// Maps patientId -> the active emergency referral's createdAt, not just a
+// Set, so callers can tell whether a newer visit has since been logged
+// (the managing facility treating the patient) and should override the
+// "pin to red" default — Map.has() stays a drop-in replacement for the
+// old Set.has() callers that only care whether one exists at all.
+export function useActiveEmergencyPatientIds(): Map<string, string> {
   const referrals = useReferrals();
   return useMemo(
     () =>
-      new Set(
+      new Map(
         referrals
           .filter((r) => r.urgency === "emergency" && (r.status === "pending" || r.status === "accepted"))
-          .map((r) => r.patientId),
+          .map((r) => [r.patientId, r.createdAt] as const),
       ),
     [referrals],
   );
@@ -841,9 +856,11 @@ export function useFollowUpPatients(): FollowUpPatient[] {
 
     for (const patient of scopedPatients) {
       const latestVisit = latestVisitFor(patient.id, pregnancies, visits);
-      const latestRiskLevel: RiskLevel = activeEmergencyPatientIds.has(patient.id)
-        ? "red"
-        : (latestVisit?.riskLevel ?? "green");
+      const emergencySince = activeEmergencyPatientIds.get(patient.id);
+      const hasNewerTreatmentVisit =
+        !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
+      const latestRiskLevel: RiskLevel =
+        emergencySince && !hasNewerTreatmentVisit ? "red" : (latestVisit?.riskLevel ?? "green");
 
       if (latestRiskLevel === "yellow" || latestRiskLevel === "orange") {
         results.push({ patient, latestRiskLevel, reason: "high-risk" });
@@ -958,9 +975,11 @@ export function useRiskSummary(days?: number): RiskSummary {
 
     for (const patient of scopedPatients) {
       const latestVisit = latestVisitFor(patient.id, pregnancies, scopedVisits);
-      const level: RiskLevel = activeEmergencyPatientIds.has(patient.id)
-        ? "red"
-        : (latestVisit?.riskLevel ?? "green");
+      const emergencySince = activeEmergencyPatientIds.get(patient.id);
+      const hasNewerTreatmentVisit =
+        !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
+      const level: RiskLevel =
+        emergencySince && !hasNewerTreatmentVisit ? "red" : (latestVisit?.riskLevel ?? "green");
       counts[level] += 1;
     }
 

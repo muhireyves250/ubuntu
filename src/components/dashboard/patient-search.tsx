@@ -43,9 +43,11 @@ export function PatientSearch() {
             if (dateCompare !== 0) return dateCompare;
             return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
           })[0];
-        const latestRisk = activeEmergencyPatientIds.has(patient.id)
-          ? "red"
-          : (latestVisit?.riskLevel ?? "green");
+        const emergencySince = activeEmergencyPatientIds.get(patient.id);
+        const hasNewerTreatmentVisit =
+          !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
+        const latestRisk =
+          emergencySince && !hasNewerTreatmentVisit ? "red" : (latestVisit?.riskLevel ?? "green");
         return { patient, latestRisk };
       });
   }, [patients, visits, patientIdByPregnancyId, query, activeEmergencyPatientIds]);
