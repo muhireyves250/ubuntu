@@ -124,12 +124,17 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
       })()
     : null;
 
-  const currentRisk = activeReferral
-    ? "red"
-    : patient.riskOverrideLevel
-      ? patient.riskOverrideLevel
-      : (allVisits[0]?.riskLevel ?? "green");
   const latestVisit = allVisits[0];
+  const hasNewerTreatmentVisit =
+    !!activeReferral &&
+    !!latestVisit &&
+    (latestVisit.createdAt ?? latestVisit.date) > activeReferral.createdAt;
+  const currentRisk =
+    activeReferral && !hasNewerTreatmentVisit
+      ? "red"
+      : patient.riskOverrideLevel
+        ? patient.riskOverrideLevel
+        : (latestVisit?.riskLevel ?? "green");
   const isWaitingForLabs = latestVisit?.labStatus === "pending" || latestVisit?.labStatus === "in_progress";
   const needsFinalization = latestVisit?.labStatus === "completed" && latestVisit?.assessmentFinalized === false;
 
