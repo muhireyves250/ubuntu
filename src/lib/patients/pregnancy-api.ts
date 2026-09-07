@@ -3,7 +3,7 @@ import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import { computeEdd } from "./pregnancy";
 import type { Pregnancy, ScreeningResult, PregnancyMedicalHistory } from "./types";
 
-interface BackendPregnancy {
+export interface BackendPregnancy {
   id: string;
   patientId: string;
   gravidity: number;

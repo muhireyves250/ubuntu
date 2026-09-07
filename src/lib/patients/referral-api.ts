@@ -13,7 +13,7 @@ export interface BackendFacility {
   distanceKm?: number | null;
 }
 
-interface BackendReferral {
+export interface BackendReferral {
   id: string;
   pregnancyId: string;
   reason: string;
@@ -73,7 +73,7 @@ const OUTCOME_TO_FRONTEND: Record<string, ReferralOutcome> = {
   FETAL_DEATH: "fetal_death",
 };
 
-function toFrontendReferral(r: BackendReferral): Referral {
+export function toFrontendReferral(r: BackendReferral): Referral {
   return {
     id: r.id,
     patientId: r.pregnancy.patient.id,

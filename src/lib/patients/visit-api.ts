@@ -1,6 +1,8 @@
 import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
-import type { Visit, VisitLabs, VisitType } from "./types";
+import type { Visit, VisitLabs, VisitType, Pregnancy, Referral } from "./types";
+import { toFrontendPregnancy, type BackendPregnancy } from "./pregnancy-api";
+import { toFrontendReferral, type BackendReferral } from "./referral-api";
 
 interface BackendVitalSigns {
   systolic: number | null;
@@ -253,6 +255,34 @@ const RISK_LEVEL_TO_BACKEND: Record<"green" | "yellow" | "orange" | "red", strin
   orange: "ORANGE",
   red: "RED",
 };
+
+// Single backend call that finds-or-creates the open pregnancy, creates the
+// visit (forced RED), and finds-or-creates+accepts the emergency referral —
+// replaces what used to be up to 4 sequential client-side round trips.
+export async function createEmergencyVisitApi(
+  patientId: string,
+  dangerSignIds: string[],
+  summary: string,
+): Promise<{ pregnancy: Pregnancy; visit: Visit; referral: Referral }> {
+  const token = getStoredAccessToken();
+  const result = await apiFetch<{
+    pregnancy: BackendPregnancy;
+    visit: BackendVisit;
+    referral: BackendReferral;
+  }>(`/patients/${patientId}/emergency-visit`, {
+    method: "POST",
+    body: {
+      symptoms: symptomIdsToBackend(dangerSignIds, true),
+      summary,
+    },
+    token: token ?? undefined,
+  });
+  return {
+    pregnancy: toFrontendPregnancy(result.pregnancy),
+    visit: toFrontendVisit(result.visit),
+    referral: toFrontendReferral(result.referral),
+  };
+}
 
 export async function confirmAiRiskApi(
   visitId: string,
