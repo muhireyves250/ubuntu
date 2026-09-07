@@ -8,7 +8,8 @@ interface BackendPatient {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
-  phone: string;
+  gender: string;
+  phone: string | null;
   altPhone: string | null;
   province: string;
   district: string;
@@ -17,6 +18,7 @@ interface BackendPatient {
   village: string;
   isibo: string;
   maritalStatus: string | null;
+  religion: string | null;
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactPhone: string;
@@ -24,6 +26,8 @@ interface BackendPatient {
   rhFactor: string | null;
   allergies: string | null;
   chronicConditions: string[];
+  insuranceType: string | null;
+  insuranceNumber: string | null;
   createdAt: string;
   registeredBy: { id: string; firstName: string; lastName: string } | null;
   facility: { id: string; name: string } | null;
@@ -47,9 +51,11 @@ function toFrontendPatient(p: BackendPatient): Patient {
     firstName: p.firstName,
     lastName: p.lastName,
     dateOfBirth: p.dateOfBirth.slice(0, 10),
-    phone: p.phone,
+    gender: p.gender,
+    phone: p.phone ?? undefined,
     altPhone: p.altPhone ?? undefined,
     maritalStatus: p.maritalStatus ?? undefined,
+    religion: p.religion ?? undefined,
     address: { province: p.province, district: p.district, sector: p.sector, cell: p.cell, village: p.village, isibo: p.isibo },
     emergencyContact: {
       name: p.emergencyContactName,
@@ -60,6 +66,8 @@ function toFrontendPatient(p: BackendPatient): Patient {
     rhFactor: p.rhFactor === "positive" || p.rhFactor === "negative" ? p.rhFactor : undefined,
     allergies: p.allergies ?? undefined,
     chronicConditions: p.chronicConditions.length > 0 ? p.chronicConditions : undefined,
+    insuranceType: p.insuranceType ?? undefined,
+    insuranceNumber: p.insuranceNumber ?? undefined,
     registeredAt: p.createdAt.slice(0, 10),
     registeredBy: p.registeredBy ? `${p.registeredBy.firstName} ${p.registeredBy.lastName}` : "",
     registrationFacility: p.facility?.name ?? "",
@@ -76,6 +84,7 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
     firstName: data.firstName,
     lastName: data.lastName,
     dateOfBirth: data.dateOfBirth,
+    gender: data.gender,
     phone: data.phone,
     altPhone: data.altPhone,
     province: data.address.province,
@@ -85,6 +94,7 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
     village: data.address.village,
     isibo: data.address.isibo,
     maritalStatus: data.maritalStatus,
+    religion: data.religion,
     emergencyContactName: data.emergencyContact.name,
     emergencyContactRelationship: data.emergencyContact.relationship,
     emergencyContactPhone: data.emergencyContact.phone,
@@ -92,6 +102,8 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
     rhFactor: data.rhFactor,
     allergies: data.allergies,
     chronicConditions: data.chronicConditions,
+    insuranceType: data.insuranceType,
+    insuranceNumber: data.insuranceNumber,
   };
 }
 

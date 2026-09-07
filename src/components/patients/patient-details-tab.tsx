@@ -1,18 +1,20 @@
-import { fullName, computeAge, getInitials } from "@/lib/format";
+"use client";
+
 import {
   IconUsers,
   IconAlert,
   IconClipboard,
   IconReport,
   IconGrid,
-  IconEdit,
 } from "@/components/dashboard/icons";
+import { usePregnanciesForPatient } from "@/lib/patients/use-patients";
+import { effectiveLmpDate, gestationalAgeWeeksAndDays } from "@/lib/patients/pregnancy";
 import type { Patient } from "@/lib/patients/types";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-zinc-50">
@@ -50,70 +52,67 @@ function Section({
   );
 }
 
+// Consolidates the obstetric-summary block the reference system shows
+// alongside patient details (Gravida/Term/Premature/Abortions/Alive
+// children/LMP/Parity/EDD/Pregnancy week) — only rendered when there's an
+// open pregnancy to summarize. Editing happens through the top "Update
+// details" modal, same as every other section here.
+function PregnancySummarySection({ patientId }: { patientId: string }) {
+  const pregnancies = usePregnanciesForPatient(patientId);
+  const openPregnancy = pregnancies.find((p) => p.status === "open");
+  if (!openPregnancy) return null;
+
+  const { weeks, days } = gestationalAgeWeeksAndDays(effectiveLmpDate(openPregnancy));
+
+  return (
+    <Section icon={<IconReport className="h-4 w-4" />} title="Pregnancy Summary" className="lg:col-span-2">
+      <Field label="Gravida" value={openPregnancy.gravidity} />
+      <Field label="Parity with alive births" value={openPregnancy.parity} />
+      <Field label="Term deliveries" value={openPregnancy.termDeliveries ?? "—"} />
+      <Field label="Premature deliveries" value={openPregnancy.prematureDeliveriesCount ?? "—"} />
+      <Field label="Number of abortions" value={openPregnancy.numberOfAbortions ?? "—"} />
+      <Field label="Alive children" value={openPregnancy.aliveChildren ?? "—"} />
+      <Field
+        label="Age of last born"
+        value={
+          openPregnancy.ageOfLastBornYears != null || openPregnancy.monthsOfLastBorn != null
+            ? `${openPregnancy.ageOfLastBornYears ?? 0}y ${openPregnancy.monthsOfLastBorn ?? 0}m`
+            : "—"
+        }
+      />
+      <Field label="LMP" value={openPregnancy.lmpDate || "—"} />
+      <Field label="EDD" value={openPregnancy.eddDate || "—"} />
+      <Field label="Pregnancy Week(s)" value={`${weeks} weeks and ${days} day${days === 1 ? "" : "s"}`} />
+    </Section>
+  );
+}
+
 export function PatientDetailsTab({
   patient,
-  onEdit,
 }: {
   patient: Patient;
-  onEdit?: () => void;
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xl font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-          {getInitials(fullName(patient))}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-            {fullName(patient)}
-          </h2>
-          <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-            {patient.nationalId}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            {computeAge(patient.dateOfBirth)} years
-          </span>
-          <span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            {patient.phone}
-          </span>
-          {patient.maritalStatus && (
-            <span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium capitalize text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-              {patient.maritalStatus}
-            </span>
-          )}
-          {onEdit && (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="flex items-center gap-1.5 rounded-lg bg-teal-900 px-3.5 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-teal-800"
-            >
-              <IconEdit className="h-3.5 w-3.5" />
-              Update details
-            </button>
-          )}
-        </div>
-      </div>
-
       <div className="grid gap-4 lg:grid-cols-2">
         <Section icon={<IconUsers className="h-4 w-4" />} title="Personal Information">
           <Field label="National ID" value={patient.nationalId} />
+          <Field label="Gender" value={patient.gender || "—"} />
           <Field label="Date of birth" value={patient.dateOfBirth} />
           <Field label="Phone" value={patient.phone} />
           <Field label="Alternative phone" value={patient.altPhone || "—"} />
-          <div className="sm:col-span-2">
-            <Field label="Marital status" value={patient.maritalStatus || "—"} />
-          </div>
+          <Field label="Marital status" value={patient.maritalStatus || "—"} />
+          <Field label="Religion" value={patient.religion || "—"} />
         </Section>
 
-        <Section icon={<IconGrid className="h-4 w-4" />} title="Address">
+        <Section icon={<IconGrid className="h-4 w-4" />} title="Patient Residence">
           <div className="sm:col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Location
             </dt>
             <dd className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-50">
               {[
+                patient.address.province,
                 patient.address.district,
                 patient.address.sector,
                 patient.address.cell,
@@ -134,6 +133,7 @@ export function PatientDetailsTab({
             </dd>
           </div>
           <div className="grid grid-cols-3 gap-x-4 gap-y-3 sm:col-span-2">
+            <Field label="Province" value={patient.address.province || "—"} />
             <Field label="District" value={patient.address.district || "—"} />
             <Field label="Sector" value={patient.address.sector || "—"} />
             <Field label="Cell" value={patient.address.cell || "—"} />
@@ -159,6 +159,13 @@ export function PatientDetailsTab({
             value={patient.chronicConditions?.join(", ") || "—"}
           />
         </Section>
+
+        <Section icon={<IconClipboard className="h-4 w-4" />} title="Insurance">
+          <Field label="Insurance type" value={patient.insuranceType || "—"} />
+          <Field label="Insurance number" value={patient.insuranceNumber || "—"} />
+        </Section>
+
+        <PregnancySummarySection patientId={patient.id} />
 
         <Section
           icon={<IconClipboard className="h-4 w-4" />}

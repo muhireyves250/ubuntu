@@ -15,6 +15,13 @@ export function gestationalAgeWeeks(lmpDate: string, asOf?: string): number {
   return Math.max(0, Math.floor(diffDays / 7));
 }
 
+export function gestationalAgeWeeksAndDays(lmpDate: string, asOf?: string): { weeks: number; days: number } {
+  const lmp = new Date(`${lmpDate}T00:00:00`);
+  const reference = asOf ? new Date(`${asOf}T00:00:00`) : new Date();
+  const diffDays = Math.max(0, Math.floor((reference.getTime() - lmp.getTime()) / MS_PER_DAY));
+  return { weeks: Math.floor(diffDays / 7), days: diffDays % 7 };
+}
+
 // pregnancy.lmpDate is "" whenever the backend's nullable lmp field is
 // null — a common, legitimate data state (LMP unknown, EDD estimated by
 // ultrasound instead). EDD is always required, so it's the reliable

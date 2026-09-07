@@ -87,7 +87,7 @@ export function SignsSymptomsTab({
 
         <div className="flex flex-col gap-5 bg-white p-5 dark:bg-zinc-900">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Quick vitals
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -133,7 +133,7 @@ export function SignsSymptomsTab({
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Danger signs
               </p>
               {activeDangerSignIds.length > 0 && (

@@ -59,6 +59,12 @@ const NAV_ITEMS: NavItem[] = [
     enabledRoles: ["nurse"],
   },
   {
+    label: "Pharmacy Inventory",
+    icon: IconClipboard,
+    href: "/dashboard/nurse/inventory",
+    enabledRoles: ["nurse", "hospital_admin"],
+  },
+  {
     label: "Referral Log",
     icon: IconReport,
     href: "/dashboard/nurse/referrals",

@@ -21,6 +21,8 @@ export function ClosePregnancyModal({
   const [birthWeightKg, setBirthWeightKg] = useState("");
   const [motherCondition, setMotherCondition] = useState("");
   const [summary, setSummary] = useState("");
+  const [numberOfBabies, setNumberOfBabies] = useState("1");
+  const [hadHypertensionDisorder, setHadHypertensionDisorder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,6 +47,8 @@ export function ClosePregnancyModal({
         birthWeightKg: Number(birthWeightKg),
         motherCondition,
         summary,
+        numberOfBabies: Number(numberOfBabies),
+        hadHypertensionDisorder,
       });
       onClosed();
     } catch (err) {
@@ -102,6 +106,14 @@ export function ClosePregnancyModal({
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Birth weight (kg)
             <input type="number" required min={0} step="0.1" value={birthWeightKg} onChange={(e) => setBirthWeightKg(e.target.value)} className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Number of babies
+            <input type="number" required min={1} value={numberOfBabies} onChange={(e) => setNumberOfBabies(e.target.value)} className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+            <input type="checkbox" checked={hadHypertensionDisorder} onChange={(e) => setHadHypertensionDisorder(e.target.checked)} className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600" />
+            This pregnancy had a hypertensive disorder
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Mother&apos;s condition

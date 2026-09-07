@@ -28,7 +28,7 @@ export function ActivityTimeline({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Activity
       </p>
       <ol className="flex flex-col gap-3 border-l border-zinc-200 pl-4 dark:border-zinc-800">

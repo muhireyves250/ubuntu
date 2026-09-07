@@ -2,33 +2,38 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { updatePatient } from "@/lib/patients/use-patients";
+import { updatePatient, updatePregnancy } from "@/lib/patients/use-patients";
 import { IconClose } from "@/components/dashboard/icons";
-import type { Patient } from "@/lib/patients/types";
-
-const CHRONIC_CONDITION_OPTIONS = [
-  "Hypertension",
-  "Diabetes",
-  "Heart Disease",
-  "HIV",
-  "Asthma",
-  "Epilepsy",
-  "Kidney Disease",
-] as const;
+import type { Patient, Pregnancy } from "@/lib/patients/types";
+import {
+  GENDER_OPTIONS,
+  MARITAL_STATUS_OPTIONS,
+  RELATIONSHIP_OPTIONS,
+  BLOOD_GROUP_OPTIONS,
+  RELIGION_OPTIONS,
+  INSURANCE_TYPE_OPTIONS,
+  CHRONIC_CONDITION_OPTIONS,
+} from "@/lib/patients/form-options";
 
 export function EditPatientModal({
   patient,
+  pregnancy,
   onClose,
 }: {
   patient: Patient;
+  pregnancy?: Pregnancy | null;
   onClose: () => void;
 }) {
   const [firstName, setFirstName] = useState(patient.firstName);
   const [lastName, setLastName] = useState(patient.lastName);
   const [dateOfBirth, setDateOfBirth] = useState(patient.dateOfBirth);
-  const [phone, setPhone] = useState(patient.phone);
+  const [gender, setGender] = useState(patient.gender ?? "Female");
+  const [phone, setPhone] = useState(patient.phone ?? "");
   const [altPhone, setAltPhone] = useState(patient.altPhone ?? "");
   const [maritalStatus, setMaritalStatus] = useState(patient.maritalStatus ?? "");
+  const [religion, setReligion] = useState(patient.religion ?? "");
+  const [insuranceType, setInsuranceType] = useState(patient.insuranceType ?? "");
+  const [insuranceNumber, setInsuranceNumber] = useState(patient.insuranceNumber ?? "");
 
   const [province, setProvince] = useState(patient.address.province);
   const [district, setDistrict] = useState(patient.address.district);
@@ -92,6 +97,13 @@ export function EditPatientModal({
     setVillage("");
   }
 
+  // Patients registered before a field became a dropdown may hold a value
+  // outside the known option list — surface it as an extra option instead
+  // of silently hiding/discarding it.
+  function withCurrent(current: string, options: readonly string[]): string[] {
+    return !current || options.includes(current) ? [...options] : [current, ...options];
+  }
+
   const [contactName, setContactName] = useState(patient.emergencyContact.name);
   const [relationship, setRelationship] = useState(patient.emergencyContact.relationship);
   const [contactPhone, setContactPhone] = useState(patient.emergencyContact.phone);
@@ -109,6 +121,23 @@ export function EditPatientModal({
   );
   const [hasOtherCondition, setHasOtherCondition] = useState(!!otherExisting);
   const [otherCondition, setOtherCondition] = useState(otherExisting ?? "");
+
+  const [gravidity, setGravidity] = useState(pregnancy ? String(pregnancy.gravidity) : "");
+  const [parity, setParity] = useState(pregnancy ? String(pregnancy.parity) : "");
+  const [termDeliveries, setTermDeliveries] = useState(pregnancy?.termDeliveries != null ? String(pregnancy.termDeliveries) : "");
+  const [prematureDeliveriesCount, setPrematureDeliveriesCount] = useState(
+    pregnancy?.prematureDeliveriesCount != null ? String(pregnancy.prematureDeliveriesCount) : "",
+  );
+  const [numberOfAbortions, setNumberOfAbortions] = useState(
+    pregnancy?.numberOfAbortions != null ? String(pregnancy.numberOfAbortions) : "",
+  );
+  const [aliveChildren, setAliveChildren] = useState(pregnancy?.aliveChildren != null ? String(pregnancy.aliveChildren) : "");
+  const [ageOfLastBornYears, setAgeOfLastBornYears] = useState(
+    pregnancy?.ageOfLastBornYears != null ? String(pregnancy.ageOfLastBornYears) : "",
+  );
+  const [monthsOfLastBorn, setMonthsOfLastBorn] = useState(
+    pregnancy?.monthsOfLastBorn != null ? String(pregnancy.monthsOfLastBorn) : "",
+  );
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,9 +174,13 @@ export function EditPatientModal({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         dateOfBirth,
+        gender,
         phone: phone.trim(),
         altPhone: altPhone.trim() || undefined,
         maritalStatus: maritalStatus.trim() || undefined,
+        religion: religion.trim() || undefined,
+        insuranceType: insuranceType.trim() || undefined,
+        insuranceNumber: insuranceNumber.trim() || undefined,
         address: {
           province,
           district,
@@ -166,6 +199,18 @@ export function EditPatientModal({
         allergies: allergies.trim() || undefined,
         chronicConditions: conditions.length > 0 ? conditions : undefined,
       });
+      if (pregnancy) {
+        await updatePregnancy(pregnancy.id, {
+          gravidity: gravidity ? Number(gravidity) : undefined,
+          parity: parity ? Number(parity) : undefined,
+          termDeliveries: termDeliveries ? Number(termDeliveries) : undefined,
+          prematureDeliveriesCount: prematureDeliveriesCount ? Number(prematureDeliveriesCount) : undefined,
+          numberOfAbortions: numberOfAbortions ? Number(numberOfAbortions) : undefined,
+          aliveChildren: aliveChildren ? Number(aliveChildren) : undefined,
+          ageOfLastBornYears: ageOfLastBornYears ? Number(ageOfLastBornYears) : undefined,
+          monthsOfLastBorn: monthsOfLastBorn ? Number(monthsOfLastBorn) : undefined,
+        });
+      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update patient");
@@ -213,10 +258,10 @@ export function EditPatientModal({
               )}
 
               <fieldset className="flex flex-col gap-3">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Personal Information
                 </legend>
-                <p className="text-xs text-zinc-400">National ID: {patient.nationalId} (not editable)</p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-300">National ID: {patient.nationalId} (not editable)</p>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     First Name
@@ -231,6 +276,14 @@ export function EditPatientModal({
                     <input type="date" required value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputCls} />
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Gender
+                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputCls}>
+                      {GENDER_OPTIONS.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Phone Number
                     <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
                   </label>
@@ -240,13 +293,90 @@ export function EditPatientModal({
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Marital Status
-                    <input type="text" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={inputCls} />
+                    <select value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={inputCls}>
+                      <option value="">Not recorded</option>
+                      {withCurrent(maritalStatus, MARITAL_STATUS_OPTIONS).map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Religion
+                    <select value={religion} onChange={(e) => setReligion(e.target.value)} className={inputCls}>
+                      <option value="">Not recorded</option>
+                      {withCurrent(religion, RELIGION_OPTIONS).map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
                   </label>
                 </div>
               </fieldset>
 
               <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Insurance
+                </legend>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Insurance Type
+                    <select value={insuranceType} onChange={(e) => setInsuranceType(e.target.value)} className={inputCls}>
+                      <option value="">Not recorded</option>
+                      {INSURANCE_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Insurance Number
+                    <input type="text" value={insuranceNumber} onChange={(e) => setInsuranceNumber(e.target.value)} className={inputCls} />
+                  </label>
+                </div>
+              </fieldset>
+
+              {pregnancy && (
+                <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+                  <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    Pregnancy Summary
+                  </legend>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Gravida
+                      <input type="number" min={1} value={gravidity} onChange={(e) => setGravidity(e.target.value)} className={inputCls} />
+                    </label>
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Parity
+                      <input type="number" min={0} value={parity} onChange={(e) => setParity(e.target.value)} className={inputCls} />
+                    </label>
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Term deliveries
+                      <input type="number" min={0} value={termDeliveries} onChange={(e) => setTermDeliveries(e.target.value)} className={inputCls} />
+                    </label>
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Premature deliveries
+                      <input type="number" min={0} value={prematureDeliveriesCount} onChange={(e) => setPrematureDeliveriesCount(e.target.value)} className={inputCls} />
+                    </label>
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Number of abortions
+                      <input type="number" min={0} value={numberOfAbortions} onChange={(e) => setNumberOfAbortions(e.target.value)} className={inputCls} />
+                    </label>
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Alive children
+                      <input type="number" min={0} value={aliveChildren} onChange={(e) => setAliveChildren(e.target.value)} className={inputCls} />
+                    </label>
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Age of last born (years)
+                      <input type="number" min={0} value={ageOfLastBornYears} onChange={(e) => setAgeOfLastBornYears(e.target.value)} className={inputCls} />
+                    </label>
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Age of last born (months)
+                      <input type="number" min={0} value={monthsOfLastBorn} onChange={(e) => setMonthsOfLastBorn(e.target.value)} className={inputCls} />
+                    </label>
+                  </div>
+                </fieldset>
+              )}
+
+              <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Address
                 </legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -338,7 +468,7 @@ export function EditPatientModal({
               </fieldset>
 
               <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Emergency Contact
                 </legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -348,7 +478,12 @@ export function EditPatientModal({
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Relationship
-                    <input type="text" required value={relationship} onChange={(e) => setRelationship(e.target.value)} className={inputCls} />
+                    <select required value={relationship} onChange={(e) => setRelationship(e.target.value)} className={inputCls}>
+                      <option value="" disabled>Select relationship</option>
+                      {withCurrent(relationship, RELATIONSHIP_OPTIONS).map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Phone Number
@@ -358,13 +493,18 @@ export function EditPatientModal({
               </fieldset>
 
               <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Basic Medical Information
                 </legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Blood Group
-                    <input type="text" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={inputCls} />
+                    <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={inputCls}>
+                      <option value="">Unknown</option>
+                      {withCurrent(bloodGroup, BLOOD_GROUP_OPTIONS).map((bg) => (
+                        <option key={bg} value={bg}>{bg}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Rh Factor

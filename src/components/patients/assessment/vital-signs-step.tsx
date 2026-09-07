@@ -123,7 +123,7 @@ export function VitalSignsStep({
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Vital Signs
       </p>
 
