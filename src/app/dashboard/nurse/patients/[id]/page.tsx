@@ -259,7 +259,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
       {isWaitingForLabs ? (
         <AwaitingLabsBlocker patient={patient} visit={latestVisit!} />
       ) : needsFinalization ? (
-        <FinalizeAssessmentBlocker patient={patient} visit={latestVisit!} onFinalized={finalizeAssessment} />
+        <FinalizeAssessmentBlocker patient={patient} visit={latestVisit!} onFinalized={finalizeAssessment} activeReferral={activeReferral} />
       ) : (
         <>
           {activeReferral && <ActiveReferralBanner patient={patient} referral={activeReferral} />}
@@ -377,6 +377,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                 scheduledWeek={assessmentContext.scheduledWeek}
                 ancNumber={assessmentContext.ancNumber}
                 onSubmitted={() => setAssessmentContext(null)}
+                activeReferral={activeReferral}
               />
             ) : openPregnancy && !assessmentContext ? (
               <div className="flex flex-col items-center gap-4 py-6 text-center">
