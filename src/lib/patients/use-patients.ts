@@ -5,7 +5,7 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, fetchAllPregnancies, fetchPregnancyById, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
-import { fetchVisitsForPregnancy, fetchVisitsForPatient, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi } from "./visit-api";
+import { fetchVisitsForPregnancy, fetchVisitsForPatient, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi, createEmergencyVisitApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
 import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy, fetchMyCommunityVisits } from "./community-visit-api";
 import { fetchVaccinationsForPregnancy, recordVaccinationApi, type Vaccination } from "./vaccination-api";
@@ -59,7 +59,7 @@ import {
 } from "./read-notifications-storage";
 import { fetchAcknowledgments, acknowledgePatientApi } from "./patient-acknowledgment-api";
 import { classifyRiskLevel } from "./symptom-checklist";
-import { computeEdd, matchScheduledVisit, chwVisitSchedule } from "./pregnancy";
+import { matchScheduledVisit, chwVisitSchedule } from "./pregnancy";
 import { getStoredAuthenticatedUser } from "../auth/auth-context";
 import { FOLLOW_UP_REASON_LABELS } from "./types";
 import type {
@@ -1143,52 +1143,18 @@ export async function createEmergencyVisit(
   dangerSignIds: string[],
   summary: string,
 ): Promise<{ pregnancy: Pregnancy; visit: Visit; referral: Referral }> {
-  // Was a KNOWN PRE-EXISTING BUG (documented during Slice C's verification):
-  // this used to read getPregnanciesSnapshot(), the old local-storage system,
-  // which never held real (API-created) pregnancies since Slice B — so
-  // `existingOpen` was always undefined for a patient with a real active
-  // pregnancy, and this always fell through to creating a duplicate
-  // pregnancy, which the backend correctly 409s on. Fixed here (Slice E) by
-  // reading the real pregnancy data instead, since fixing this is required
-  // for this slice's own goal (the Emergency Danger-Sign panel no longer
-  // 409ing) to actually work end-to-end.
-  const existingOpen = (await fetchPregnanciesForPatient(patientId)).find(
-    (p) => p.status === "open",
-  );
+  // Single backend call — see createEmergencyVisitApi. Collapses what used
+  // to be up to 4 sequential round trips (find/create pregnancy, create
+  // visit, force-RED classify, find/create+accept referral) into one.
+  const result = await createEmergencyVisitApi(patientId, dangerSignIds, summary);
 
-  let pregnancy: Pregnancy;
-  if (existingOpen) {
-    pregnancy = existingOpen;
-  } else {
-    const today = new Date().toISOString().slice(0, 10);
-    pregnancy = await createPregnancy({
-      patientId,
-      gravidity: 1,
-      parity: 0,
-      previousCS: 0,
-      previousPPH: false,
-      previousEclampsia: false,
-      previousStillbirth: false,
-      lmpDate: today,
-      startDate: today,
-    });
-  }
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["visits"] }),
+    queryClient.invalidateQueries({ queryKey: ["referrals"] }),
+    queryClient.invalidateQueries({ queryKey: ["pregnancies", patientId] }),
+  ]);
 
-  const visit = await recordVisit({
-    pregnancyId: pregnancy.id,
-    type: "emergency",
-    symptomIds: dangerSignIds,
-    notes: summary,
-    emergencySummary: summary,
-    // This call makes its own explicit getOrCreateEmergencyReferral call
-    // right below — skip recordVisit's internal auto-escalate branch so
-    // the referral check/create round trip doesn't happen twice.
-    skipEmergencyEscalation: true,
-  });
-
-  const referral = await getOrCreateEmergencyReferral(patientId, pregnancy.id, summary);
-
-  return { pregnancy, visit, referral };
+  return result;
 }
 
 export async function updatePatient(
