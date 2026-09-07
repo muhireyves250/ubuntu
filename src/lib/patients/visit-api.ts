@@ -172,6 +172,16 @@ export async function fetchVisitsForPregnancy(pregnancyId: string): Promise<Visi
   return visits.map(toFrontendVisit);
 }
 
+// One request across every pregnancy the patient has, instead of firing
+// fetchVisitsForPregnancy once per pregnancy in parallel.
+export async function fetchVisitsForPatient(patientId: string): Promise<Visit[]> {
+  const token = getStoredAccessToken();
+  const visits = await apiFetch<BackendVisit[]>(`/patients/${patientId}/visits`, {
+    token: token ?? undefined,
+  });
+  return visits.map(toFrontendVisit);
+}
+
 // Large page size — no pagination UI exists yet, this approximates "fetch
 // all" for the current small seed dataset, matching fetchPatients()'s exact
 // convention. Revisit if the visit count grows past this limit.

@@ -5,7 +5,7 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
-import { fetchVisitsForPregnancy, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi } from "./visit-api";
+import { fetchVisitsForPregnancy, fetchVisitsForPatient, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi } from "./visit-api";
 import { createLabRequestApi } from "./lab-request-api";
 import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy, fetchMyCommunityVisits } from "./community-visit-api";
 import { fetchVaccinationsForPregnancy, recordVaccinationApi, type Vaccination } from "./vaccination-api";
@@ -94,7 +94,11 @@ function getCurrentUserSnapshot(): { id: string; name: string; facility: string;
 // The system holds one shared patient record — every facility can see every
 // patient and their full history, not just the ones they registered.
 export function usePatients(): Patient[] {
-  const { data } = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients() });
+  // Patient roster changes far less often than visits/referrals — a longer
+  // staleTime here cuts the refetch-storm this list causes by being pulled
+  // from many widgets (dashboard cards, topbar search, patient lists) that
+  // all mount/remount on ordinary navigation.
+  const { data } = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients(), staleTime: 120_000 });
   return data ?? [];
 }
 
@@ -138,7 +142,11 @@ export function usePatientIsLoading(patientId: string): boolean {
 }
 
 export function usePregnancies(): Pregnancy[] {
-  const { data } = useQuery({ queryKey: ["pregnancies", "all"], queryFn: fetchAllPregnancies });
+  const { data } = useQuery({
+    queryKey: ["pregnancies", "all"],
+    queryFn: fetchAllPregnancies,
+    staleTime: 120_000,
+  });
   return data ?? [];
 }
 
@@ -161,22 +169,22 @@ export function useVisitsForPregnancy(pregnancyId: string): Visit[] {
 }
 
 export function useAllVisitsForPatient(patientId: string): Visit[] {
-  const pregnancies = usePregnanciesForPatient(patientId);
-  const results = useQueries({
-    queries: pregnancies.map((p) => ({
-      queryKey: ["visits", "pregnancy", p.id],
-      queryFn: () => fetchVisitsForPregnancy(p.id),
-      enabled: !!p.id,
-    })),
+  // Single request across every pregnancy the patient has, instead of one
+  // parallel request per pregnancy (was a real N+1 — a patient with 4
+  // pregnancies fired 4 separate HTTP requests just to render this list).
+  const { data } = useQuery({
+    queryKey: ["visits", "patient", patientId],
+    queryFn: () => fetchVisitsForPatient(patientId),
+    enabled: !!patientId,
   });
   return useMemo(() => {
-    const allVisits = results.flatMap((r) => r.data ?? []);
-    return allVisits.sort((a, b) => {
+    const allVisits = data ?? [];
+    return [...allVisits].sort((a, b) => {
       const dateCompare = b.date.localeCompare(a.date);
       if (dateCompare !== 0) return dateCompare;
       return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
     });
-  }, [results]);
+  }, [data]);
 }
 
 // All CHW home-visit reports for a patient, across every pregnancy they've
@@ -342,7 +350,7 @@ export async function runAiPrediction(visitId: string): Promise<RiskPrediction> 
 }
 
 export function useInventory(): InventoryItem[] {
-  const { data } = useQuery({ queryKey: ["inventory"], queryFn: fetchInventory });
+  const { data } = useQuery({ queryKey: ["inventory"], queryFn: fetchInventory, staleTime: 120_000 });
   return data ?? [];
 }
 
@@ -703,8 +711,11 @@ export async function finalizeAssessment(
   treatment: string,
   followUpPlan: string,
 ): Promise<void> {
-  const visit = await finalizeVisitApi(visitId, treatment, followUpPlan);
-  await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", visit.pregnancyId] });
+  await finalizeVisitApi(visitId, treatment, followUpPlan);
+  // Broad ["visits"] prefix, not just this pregnancy's key — also covers
+  // the single-request-per-patient cache (["visits","patient",id]) used by
+  // useAllVisitsForPatient.
+  await queryClient.invalidateQueries({ queryKey: ["visits"] });
 }
 
 // Sets the visit's actual risk classification to match an AI-confirmed
@@ -1040,7 +1051,9 @@ export async function recordVisit(data: {
     visit = await finalizeVisitApi(visit.id, data.treatment ?? "", data.followUpPlan ?? "");
   }
 
-  await queryClient.invalidateQueries({ queryKey: ["visits", "pregnancy", data.pregnancyId] });
+  // Broad ["visits"] prefix — also covers the single-request-per-patient
+  // cache (["visits","patient",id]) used by useAllVisitsForPatient.
+  await queryClient.invalidateQueries({ queryKey: ["visits"] });
 
   if (data.labStatus === "pending") {
     await createLabRequestApi(
