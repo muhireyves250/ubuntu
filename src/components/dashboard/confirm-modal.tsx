@@ -7,6 +7,8 @@ export function ConfirmModal({
   title,
   description,
   confirmLabel,
+  loadingLabel,
+  isLoading = false,
   onConfirm,
   onCancel,
   tone = "default",
@@ -14,25 +16,28 @@ export function ConfirmModal({
   title: string;
   description: string;
   confirmLabel: string;
+  loadingLabel?: string;
+  isLoading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   tone?: "default" | "danger";
 }) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape" && !isLoading) onCancel();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel]);
+  }, [onCancel, isLoading]);
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         type="button"
         aria-label="Cancel"
-        onClick={onCancel}
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={isLoading ? undefined : onCancel}
+        disabled={isLoading}
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm disabled:cursor-not-allowed"
       />
 
       <div
@@ -63,20 +68,25 @@ export function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            disabled={isLoading}
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors ${
+            disabled={isLoading}
+            className={`flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
               tone === "danger"
                 ? "bg-red-600 hover:bg-red-700"
                 : "bg-[#0f766e] hover:bg-teal-800"
             }`}
           >
-            {confirmLabel}
+            {isLoading && (
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            {isLoading ? (loadingLabel ?? "Please wait…") : confirmLabel}
           </button>
         </div>
       </div>

@@ -115,6 +115,7 @@ export function RedCaseAlertPanel() {
   const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
   const [viewInfoReferralId, setViewInfoReferralId] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [isAccepting, setIsAccepting] = useState(false);
   const capacity = useFacilityCapacity(user?.facility ?? "");
 
   const patientById = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
@@ -220,15 +221,20 @@ export function RedCaseAlertPanel() {
           title="Accept this emergency referral?"
           description={`${fullName(pendingAccept.patient)} will be assigned to you and marked as an accepted referral.`}
           confirmLabel="Accept"
+          loadingLabel="Accepting…"
+          isLoading={isAccepting}
           tone="danger"
           onConfirm={async () => {
+            setIsAccepting(true);
             try {
               await acceptReferral(pendingAccept.referral.id);
               setPendingAcceptId(null);
               router.push(`/dashboard/nurse/patients/${pendingAccept.patient.id}`);
             } catch (err) {
-              setPendingAcceptId(null);
               setAcceptError(err instanceof Error ? err.message : "Could not accept this referral.");
+            } finally {
+              setIsAccepting(false);
+              setPendingAcceptId(null);
             }
           }}
           onCancel={() => setPendingAcceptId(null)}
