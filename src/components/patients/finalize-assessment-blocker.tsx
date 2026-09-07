@@ -8,7 +8,7 @@ import { FinalDiagnosisStep } from "@/components/patients/assessment/final-diagn
 import { TreatmentStep } from "@/components/patients/assessment/treatment-step";
 import { ConsumablesStep } from "@/components/patients/assessment/consumables-step";
 import { VaccinationStep } from "@/components/patients/assessment/vaccination-step";
-import { escalateVisitIfCritical } from "@/lib/patients/use-patients";
+import { escalateVisitIfCritical, confirmAiRisk } from "@/lib/patients/use-patients";
 
 const STEPS = [
   "AI Review",
@@ -105,6 +105,7 @@ export function FinalizeAssessmentBlocker({
 }) {
   const [step, setStep] = useState<Step>("AI Review");
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
+  const [predictionConfirmed, setPredictionConfirmed] = useState(false);
   const [finalized, setFinalized] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
@@ -112,16 +113,26 @@ export function FinalizeAssessmentBlocker({
   const stepIndex = STEPS.indexOf(step);
 
   async function handleFinish() {
-    if (prediction?.predictedRiskLevel === "red") {
+    // Nothing about the patient's status changes just because the nurse
+    // submitted to AI or even confirmed/rejected its finding on that
+    // screen — it's only applied here, once the entire assessment
+    // (Diagnosis, Treatment, Consumables, Follow-up/Discharge) is done,
+    // and only if the nurse actually confirmed the AI's assessment.
+    if (prediction && predictionConfirmed) {
       setIsTransferring(true);
       setTransferError(null);
       try {
-        // Only now — after Diagnosis, Treatment, Consumables, and
-        // Follow-up/Discharge are all done — does a red case actually get
-        // transferred, so the patient is stabilized before transport.
-        await escalateVisitIfCritical(visit, "red");
+        await confirmAiRisk(visit.id, prediction.predictedRiskLevel, [
+          `AI predicted ${prediction.predictedRiskLevel} risk (${prediction.modelVersion})`,
+          ...prediction.suggestedDiagnoses.map((d) => d.title),
+        ]);
+        if (prediction.predictedRiskLevel === "red") {
+          // Transfers to a capable facility only now that the patient has
+          // been stabilized through the whole pipeline — not at AI Review.
+          await escalateVisitIfCritical(visit, "red");
+        }
       } catch (err) {
-        setTransferError(err instanceof Error ? err.message : "Could not create the emergency transfer.");
+        setTransferError(err instanceof Error ? err.message : "Could not update the patient's status.");
         setIsTransferring(false);
         return;
       }
@@ -153,8 +164,9 @@ export function FinalizeAssessmentBlocker({
         <AiReviewStep
           patient={patient}
           visit={visit}
-          onConfirm={(pred) => {
+          onConfirm={(pred, confirmed) => {
             setPrediction(pred);
+            setPredictionConfirmed(confirmed);
             setStep("Final Diagnosis");
           }}
         />
@@ -189,7 +201,7 @@ export function FinalizeAssessmentBlocker({
           <VaccinationStep
             pregnancyId={visit.pregnancyId}
             onContinue={handleFinish}
-            continueLabel={isTransferring ? "Creating emergency transfer…" : "Finish Assessment"}
+            continueLabel={isTransferring ? "Updating patient status…" : "Finish Assessment"}
           />
         </div>
       )}
