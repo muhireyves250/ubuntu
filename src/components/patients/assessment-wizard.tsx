@@ -14,7 +14,7 @@ import { SummaryStep } from "@/components/patients/assessment/summary-step";
 import { FinalizeAssessmentBlocker } from "@/components/patients/finalize-assessment-blocker";
 import { AwaitingLabsBlocker } from "@/components/patients/awaiting-labs-blocker";
 import { finalizeAssessment } from "@/lib/patients/use-patients";
-import type { Patient, Visit } from "@/lib/patients/types";
+import type { Patient, Visit, Referral } from "@/lib/patients/types";
 
 const STEPS = [
   { number: 1, label: "Vitals" },
@@ -34,6 +34,7 @@ export function AssessmentWizard({
   scheduledWeek,
   ancNumber,
   onSubmitted,
+  activeReferral,
 }: {
   patient: Patient;
   patientId: string;
@@ -42,6 +43,7 @@ export function AssessmentWizard({
   scheduledWeek?: number;
   ancNumber?: number;
   onSubmitted?: () => void;
+  activeReferral?: Referral | null;
 }) {
   const [currentStep, setCurrentStep] = useState<StepNumber>(1);
   const [maxReachedStep, setMaxReachedStep] = useState<StepNumber>(1);
@@ -88,6 +90,7 @@ export function AssessmentWizard({
         visit={savedVisit}
         onFinalized={finalizeAssessment}
         onDone={onSubmitted}
+        activeReferral={activeReferral}
       />
     );
   }

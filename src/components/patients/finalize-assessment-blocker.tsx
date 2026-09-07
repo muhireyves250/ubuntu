@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Patient, Visit } from "@/lib/patients/types";
+import type { Patient, Visit, Referral } from "@/lib/patients/types";
 import type { RiskPrediction } from "@/lib/patients/risk-prediction-api";
 import { AiReviewStep } from "@/components/patients/assessment/ai-review-step";
 import { FinalDiagnosisStep } from "@/components/patients/assessment/final-diagnosis-step";
@@ -9,6 +9,7 @@ import { TreatmentStep } from "@/components/patients/assessment/treatment-step";
 import { ConsumablesStep } from "@/components/patients/assessment/consumables-step";
 import { VaccinationStep } from "@/components/patients/assessment/vaccination-step";
 import { escalateVisitIfCritical, confirmAiRisk } from "@/lib/patients/use-patients";
+import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 
 const STEPS = [
   "AI Review",
@@ -97,11 +98,13 @@ export function FinalizeAssessmentBlocker({
   visit,
   onFinalized,
   onDone,
+  activeReferral,
 }: {
   patient: Patient;
   visit: Visit;
   onFinalized: (visitId: string, treatment: string, followUpPlan: string) => Promise<void>;
   onDone?: () => void;
+  activeReferral?: Referral | null;
 }) {
   const [step, setStep] = useState<Step>("AI Review");
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
@@ -109,8 +112,32 @@ export function FinalizeAssessmentBlocker({
   const [finalized, setFinalized] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
+  const [showStatusConfirm, setShowStatusConfirm] = useState(false);
 
   const stepIndex = STEPS.indexOf(step);
+
+  async function applyStatusUpdate() {
+    if (!prediction) return;
+    setIsTransferring(true);
+    setTransferError(null);
+    try {
+      await confirmAiRisk(visit.id, prediction.predictedRiskLevel, [
+        `AI predicted ${prediction.predictedRiskLevel} risk (${prediction.modelVersion})`,
+        ...prediction.suggestedDiagnoses.map((d) => d.title),
+      ]);
+      if (prediction.predictedRiskLevel === "red") {
+        // Transfers to a capable facility only now that the patient has
+        // been stabilized through the whole pipeline — not at AI Review.
+        await escalateVisitIfCritical(visit, "red");
+      }
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : "Could not update the patient's status.");
+      setIsTransferring(false);
+      return;
+    }
+    setIsTransferring(false);
+    onDone?.();
+  }
 
   async function handleFinish() {
     // Nothing about the patient's status changes just because the nurse
@@ -119,24 +146,14 @@ export function FinalizeAssessmentBlocker({
     // (Diagnosis, Treatment, Consumables, Follow-up/Discharge) is done,
     // and only if the nurse actually confirmed the AI's assessment.
     if (prediction && predictionConfirmed) {
-      setIsTransferring(true);
-      setTransferError(null);
-      try {
-        await confirmAiRisk(visit.id, prediction.predictedRiskLevel, [
-          `AI predicted ${prediction.predictedRiskLevel} risk (${prediction.modelVersion})`,
-          ...prediction.suggestedDiagnoses.map((d) => d.title),
-        ]);
-        if (prediction.predictedRiskLevel === "red") {
-          // Transfers to a capable facility only now that the patient has
-          // been stabilized through the whole pipeline — not at AI Review.
-          await escalateVisitIfCritical(visit, "red");
-        }
-      } catch (err) {
-        setTransferError(err instanceof Error ? err.message : "Could not update the patient's status.");
-        setIsTransferring(false);
+      if (activeReferral) {
+        // This patient already has an open red case — ask explicitly
+        // before changing its status, rather than silently overriding it.
+        setShowStatusConfirm(true);
         return;
       }
-      setIsTransferring(false);
+      await applyStatusUpdate();
+      return;
     }
     onDone?.();
   }
@@ -204,6 +221,27 @@ export function FinalizeAssessmentBlocker({
             continueLabel={isTransferring ? "Updating patient status…" : "Finish Assessment"}
           />
         </div>
+      )}
+
+      {showStatusConfirm && prediction && (
+        <ConfirmModal
+          title="Update this patient's status?"
+          description={`This patient has an active red case${
+            activeReferral?.acceptedByFacility
+              ? ` managed by ${activeReferral.acceptedByFacility}`
+              : ""
+          }. Based on this assessment, update her status to ${prediction.predictedRiskLevel.toUpperCase()}?`}
+          confirmLabel="Update Status"
+          tone={prediction.predictedRiskLevel === "red" ? "danger" : "default"}
+          onConfirm={() => {
+            setShowStatusConfirm(false);
+            applyStatusUpdate();
+          }}
+          onCancel={() => {
+            setShowStatusConfirm(false);
+            onDone?.();
+          }}
+        />
       )}
     </div>
   );
