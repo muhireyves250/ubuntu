@@ -353,7 +353,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                   visit.
                 </p>
               </div>
-            ) : activeReferral ? (
+            ) : activeReferral && !isManagingReferral ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center dark:border-red-900/50 dark:bg-red-950/30">
                 <p className="text-sm font-semibold text-red-800 dark:text-red-300">
                   Close the active emergency case first
@@ -457,7 +457,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                 pregnancy={openPregnancy}
                 visits={pregnancyVisits}
                 onLogScheduledVisit={
-                  activeReferral || isReadOnlyAdmin
+                  (activeReferral && !isManagingReferral) || isReadOnlyAdmin
                     ? undefined
                     : (week) => {
                         setAssessmentContext({ type: "scheduled", scheduledWeek: week });
@@ -465,7 +465,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                       }
                 }
                 onLogUnscheduledVisit={
-                  activeReferral || isReadOnlyAdmin
+                  (activeReferral && !isManagingReferral) || isReadOnlyAdmin
                     ? undefined
                     : () => {
                         setAssessmentContext({ type: "unscheduled" });
