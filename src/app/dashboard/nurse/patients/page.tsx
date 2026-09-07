@@ -57,13 +57,17 @@ function PatientsPageContent() {
       const openPregnancy = pregnancies.find(
         (p) => p.patientId === patient.id && p.status === "open",
       );
+      const emergencySince = activeEmergencyPatientIds.get(patient.id);
+      const hasNewerTreatmentVisit =
+        !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
       return {
         patient,
-        latestRisk: activeEmergencyPatientIds.has(patient.id)
-          ? ("red" as RiskLevel)
-          : patient.riskOverrideLevel
-            ? patient.riskOverrideLevel
-            : (latestVisit?.riskLevel ?? ("green" as RiskLevel)),
+        latestRisk:
+          emergencySince && !hasNewerTreatmentVisit
+            ? ("red" as RiskLevel)
+            : patient.riskOverrideLevel
+              ? patient.riskOverrideLevel
+              : (latestVisit?.riskLevel ?? ("green" as RiskLevel)),
         lastVisitDate: latestVisit?.date,
         hospital: latestVisit?.hospital,
         gaWeeks: openPregnancy ? gestationalAgeWeeks(effectiveLmpDate(openPregnancy)) : null,
