@@ -244,7 +244,7 @@ export function AncScheduleCalendar({
 
       {selectedDate && selectedDayVisits.length > 0 && (
         <div className="mt-3 flex flex-col gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-500">
             Visit{selectedDayVisits.length > 1 ? "s" : ""} on {selectedDate}
           </p>
           {selectedDayVisits.map((v) => (

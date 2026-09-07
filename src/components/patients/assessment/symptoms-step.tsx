@@ -32,7 +32,7 @@ export function SymptomsStep({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Signs &amp; Symptoms
       </p>
 
@@ -42,7 +42,7 @@ export function SymptomsStep({
           if (items.length === 0) return null;
           return (
             <fieldset key={severity}>
-              <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 {SEVERITY_LABEL[severity]}
               </legend>
               <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">

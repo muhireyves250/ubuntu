@@ -7,7 +7,7 @@ export interface Patient {
   lastName: string;
   dateOfBirth: string; // ISO date "YYYY-MM-DD"
   gender?: string;
-  phone: string;
+  phone?: string;
   altPhone?: string;
   maritalStatus?: string;
   religion?: string;

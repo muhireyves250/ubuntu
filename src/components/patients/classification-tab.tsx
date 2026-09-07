@@ -38,7 +38,7 @@ export function ClassificationTab({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Current classification
         </p>
         <RiskBadge level={currentRisk} size="lg" />
@@ -51,7 +51,7 @@ export function ClassificationTab({
 
       {triggeredSymptoms.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Triggered rules
           </p>
           <ul className="flex flex-wrap gap-2">
@@ -83,7 +83,7 @@ export function ClassificationTab({
 
       {visits.length > 0 && (
         <div className="flex flex-col gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Risk history
           </p>
           <ol className="flex flex-col gap-2">

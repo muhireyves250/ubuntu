@@ -73,7 +73,7 @@ export function SpecialistNotesTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Specialist Notes
         </p>
         {user?.role === "gynecologist" && !showAddForm && (
@@ -152,7 +152,7 @@ export function SpecialistNotesTab({
 
               {rec.status === "responded" ? (
                 <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/50">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                     Response from {rec.respondedByNurse}
                   </p>
                   <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{rec.nurseResponse}</p>

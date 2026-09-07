@@ -290,7 +290,7 @@ export function AiPredictionTab({ visits }: { visits: Visit[] }) {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Probability bars */}
         <div className="flex flex-col gap-5 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Risk probabilities</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Risk probabilities</p>
           <ProbabilityBar
             label="Eclampsia risk"
             value={latest.eclampsiaRisk}
@@ -315,14 +315,14 @@ export function AiPredictionTab({ visits }: { visits: Visit[] }) {
 
         {/* Radar chart */}
         <div className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Risk overview</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Risk overview</p>
           <RadarChart prediction={latest} />
         </div>
       </div>
 
       {/* Top contributing factors */}
       <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Top contributing factors</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Top contributing factors</p>
         <ul className="mt-3 flex flex-col gap-2">
           {latest.topFactors.map((factor, i) => (
             <li key={i} className="flex items-center gap-3">
@@ -341,7 +341,7 @@ export function AiPredictionTab({ visits }: { visits: Visit[] }) {
       {/* Prediction history */}
       {history.length >= 2 && (
         <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Prediction history</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Prediction history</p>
           <div className="mt-4">
             <LineChart history={[...history].reverse()} />
           </div>

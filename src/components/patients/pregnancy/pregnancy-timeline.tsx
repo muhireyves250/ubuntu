@@ -88,7 +88,7 @@ export function PregnancyTimeline({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Pregnancy Timeline
       </p>
       <ol className="flex flex-col">

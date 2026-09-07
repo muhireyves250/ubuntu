@@ -4,7 +4,50 @@ import { useEffect, useState } from "react";
 import { createPregnancy } from "@/lib/patients/use-patients";
 import { computeEdd, gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import { IconClose } from "@/components/dashboard/icons";
-import type { Pregnancy } from "@/lib/patients/types";
+import type { Pregnancy, PregnancyMedicalHistory, ScreeningResult } from "@/lib/patients/types";
+
+const EMPTY_HISTORY: Required<Omit<PregnancyMedicalHistory, "currentMedicationDetails" | "mentalIllnessNotes" | "hivTestResult" | "torchScreeningNotes" | "stiScreeningResult" | "familyPlanningMethod" | "familyPlanningDurationMonths" | "disabilitiesNotes">> = {
+  historySurgicalOrCervicalTrauma: false,
+  historyGynecologicalProblem: false,
+  currentlyOnMedication: false,
+  historyDiabetes: false,
+  historyLungDisease: false,
+  historyHypertension: false,
+  alcoholUse: false,
+  historyKidneyProblems: false,
+  tobaccoUse: false,
+  historyHeartDisease: false,
+  historyPretermDelivery: false,
+  historyMacrosomia: false,
+  historyCongenitalMalformation: false,
+  historyMultiplePregnancy: false,
+  historyAntepartumBleeding: false,
+  recurrentPregnancyLoss: false,
+  familyPlanningBeforePregnancy: false,
+  historyLowBirthWeightDelivery: false,
+};
+
+function HistoryCheckbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-teal-600"
+      />
+      {label}
+    </label>
+  );
+}
 
 export function NewPregnancyModal({
   patientId,
@@ -17,6 +60,12 @@ export function NewPregnancyModal({
 }) {
   const [gravidity, setGravidity] = useState("");
   const [parity, setParity] = useState("");
+  const [termDeliveries, setTermDeliveries] = useState("0");
+  const [prematureDeliveriesCount, setPrematureDeliveriesCount] = useState("0");
+  const [numberOfAbortions, setNumberOfAbortions] = useState("0");
+  const [aliveChildren, setAliveChildren] = useState("0");
+  const [ageOfLastBornYears, setAgeOfLastBornYears] = useState("");
+  const [monthsOfLastBorn, setMonthsOfLastBorn] = useState("");
   const [previousCS, setPreviousCS] = useState("0");
   const [previousPPH, setPreviousPPH] = useState(false);
   const [previousEclampsia, setPreviousEclampsia] = useState(false);
@@ -25,6 +74,20 @@ export function NewPregnancyModal({
   const [startDate, setStartDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState(EMPTY_HISTORY);
+  const [currentMedicationDetails, setCurrentMedicationDetails] = useState("");
+  const [mentalIllnessNotes, setMentalIllnessNotes] = useState("");
+  const [hivTestResult, setHivTestResult] = useState<ScreeningResult | "">("");
+  const [torchScreeningNotes, setTorchScreeningNotes] = useState("");
+  const [stiScreeningResult, setStiScreeningResult] = useState<ScreeningResult | "">("");
+  const [familyPlanningMethod, setFamilyPlanningMethod] = useState("");
+  const [familyPlanningDurationMonths, setFamilyPlanningDurationMonths] = useState("");
+  const [disabilitiesNotes, setDisabilitiesNotes] = useState("");
+
+  function toggleHistory(key: keyof typeof EMPTY_HISTORY) {
+    setHistory((current) => ({ ...current, [key]: !current[key] }));
+  }
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -51,12 +114,27 @@ export function NewPregnancyModal({
         patientId,
         gravidity: Number(gravidity),
         parity: Number(parity),
+        termDeliveries: termDeliveries ? Number(termDeliveries) : undefined,
+        prematureDeliveriesCount: prematureDeliveriesCount ? Number(prematureDeliveriesCount) : undefined,
+        numberOfAbortions: numberOfAbortions ? Number(numberOfAbortions) : undefined,
+        aliveChildren: aliveChildren ? Number(aliveChildren) : undefined,
+        ageOfLastBornYears: ageOfLastBornYears ? Number(ageOfLastBornYears) : undefined,
+        monthsOfLastBorn: monthsOfLastBorn ? Number(monthsOfLastBorn) : undefined,
         previousCS: Number(previousCS),
         previousPPH,
         previousEclampsia,
         previousStillbirth,
         lmpDate,
         startDate,
+        ...history,
+        currentMedicationDetails: currentMedicationDetails || undefined,
+        mentalIllnessNotes: mentalIllnessNotes || undefined,
+        hivTestResult: hivTestResult || undefined,
+        torchScreeningNotes: torchScreeningNotes || undefined,
+        stiScreeningResult: stiScreeningResult || undefined,
+        familyPlanningMethod: familyPlanningMethod || undefined,
+        familyPlanningDurationMonths: familyPlanningDurationMonths ? Number(familyPlanningDurationMonths) : undefined,
+        disabilitiesNotes: disabilitiesNotes || undefined,
       });
       onCreated(pregnancy);
     } catch (err) {
@@ -139,7 +217,75 @@ export function NewPregnancyModal({
           </label>
 
           <fieldset>
-            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Obstetric counts
+            </legend>
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Term deliveries
+                <input
+                  type="number"
+                  min={0}
+                  value={termDeliveries}
+                  onChange={(event) => setTermDeliveries(event.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Premature deliveries
+                <input
+                  type="number"
+                  min={0}
+                  value={prematureDeliveriesCount}
+                  onChange={(event) => setPrematureDeliveriesCount(event.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Number of abortions
+                <input
+                  type="number"
+                  min={0}
+                  value={numberOfAbortions}
+                  onChange={(event) => setNumberOfAbortions(event.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Alive children
+                <input
+                  type="number"
+                  min={0}
+                  value={aliveChildren}
+                  onChange={(event) => setAliveChildren(event.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Age of last born (years)
+                <input
+                  type="number"
+                  min={0}
+                  value={ageOfLastBornYears}
+                  onChange={(event) => setAgeOfLastBornYears(event.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Age of last born (months)
+                <input
+                  type="number"
+                  min={0}
+                  value={monthsOfLastBorn}
+                  onChange={(event) => setMonthsOfLastBorn(event.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Risk history
             </legend>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -205,6 +351,130 @@ export function NewPregnancyModal({
               <span className="font-medium text-zinc-900 dark:text-zinc-50">
                 {edd} · {weeks}w now
               </span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            Medical &amp; obstetric history
+            <span className="text-xs text-zinc-400">{showHistory ? "Hide" : "Show"}</span>
+          </button>
+
+          {showHistory && (
+            <div className="flex flex-col gap-4">
+              <fieldset>
+                <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  General information
+                </legend>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <HistoryCheckbox label="Surgical history / cervical trauma or cerclage" checked={history.historySurgicalOrCervicalTrauma} onChange={() => toggleHistory("historySurgicalOrCervicalTrauma")} />
+                  <HistoryCheckbox label="History of gynecological problem" checked={history.historyGynecologicalProblem} onChange={() => toggleHistory("historyGynecologicalProblem")} />
+                  <HistoryCheckbox label="Currently taking medicines" checked={history.currentlyOnMedication} onChange={() => toggleHistory("currentlyOnMedication")} />
+                  <HistoryCheckbox label="History of diabetes" checked={history.historyDiabetes} onChange={() => toggleHistory("historyDiabetes")} />
+                  <HistoryCheckbox label="Lung disease history" checked={history.historyLungDisease} onChange={() => toggleHistory("historyLungDisease")} />
+                  <HistoryCheckbox label="History of hypertension" checked={history.historyHypertension} onChange={() => toggleHistory("historyHypertension")} />
+                  <HistoryCheckbox label="Alcohol use" checked={history.alcoholUse} onChange={() => toggleHistory("alcoholUse")} />
+                  <HistoryCheckbox label="History of kidney problems" checked={history.historyKidneyProblems} onChange={() => toggleHistory("historyKidneyProblems")} />
+                  <HistoryCheckbox label="Tobacco use" checked={history.tobaccoUse} onChange={() => toggleHistory("tobaccoUse")} />
+                  <HistoryCheckbox label="History of heart disease" checked={history.historyHeartDisease} onChange={() => toggleHistory("historyHeartDisease")} />
+                </div>
+                {history.currentlyOnMedication && (
+                  <input
+                    type="text"
+                    placeholder="Which medications?"
+                    value={currentMedicationDetails}
+                    onChange={(e) => setCurrentMedicationDetails(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  />
+                )}
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    placeholder="Mental illness notes (or 'none')"
+                    value={mentalIllnessNotes}
+                    onChange={(e) => setMentalIllnessNotes(e.target.value)}
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  />
+                  <input
+                    type="text"
+                    placeholder="TORCH screening notes"
+                    value={torchScreeningNotes}
+                    onChange={(e) => setTorchScreeningNotes(e.target.value)}
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  />
+                  <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    HIV test result
+                    <select
+                      value={hivTestResult}
+                      onChange={(e) => setHivTestResult(e.target.value as ScreeningResult | "")}
+                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                    >
+                      <option value="">Not recorded</option>
+                      <option value="negative">Negative</option>
+                      <option value="positive">Positive</option>
+                      <option value="unknown">Unknown</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    STI screening result
+                    <select
+                      value={stiScreeningResult}
+                      onChange={(e) => setStiScreeningResult(e.target.value as ScreeningResult | "")}
+                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                    >
+                      <option value="">Not recorded</option>
+                      <option value="negative">Negative</option>
+                      <option value="positive">Positive</option>
+                      <option value="unknown">Unknown</option>
+                    </select>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Previous pregnancy history
+                </legend>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <HistoryCheckbox label="History of preterm delivery" checked={history.historyPretermDelivery} onChange={() => toggleHistory("historyPretermDelivery")} />
+                  <HistoryCheckbox label="History of macrosomia (≥ 4kg)" checked={history.historyMacrosomia} onChange={() => toggleHistory("historyMacrosomia")} />
+                  <HistoryCheckbox label="History of congenital fetal malformation" checked={history.historyCongenitalMalformation} onChange={() => toggleHistory("historyCongenitalMalformation")} />
+                  <HistoryCheckbox label="History of multiple pregnancy" checked={history.historyMultiplePregnancy} onChange={() => toggleHistory("historyMultiplePregnancy")} />
+                  <HistoryCheckbox label="History of antepartum bleeding" checked={history.historyAntepartumBleeding} onChange={() => toggleHistory("historyAntepartumBleeding")} />
+                  <HistoryCheckbox label="Recurrent pregnancy loss (3+ times)" checked={history.recurrentPregnancyLoss} onChange={() => toggleHistory("recurrentPregnancyLoss")} />
+                  <HistoryCheckbox label="History of low birth weight delivery (< 2.5kg)" checked={history.historyLowBirthWeightDelivery} onChange={() => toggleHistory("historyLowBirthWeightDelivery")} />
+                  <HistoryCheckbox label="Used family planning before this pregnancy" checked={history.familyPlanningBeforePregnancy} onChange={() => toggleHistory("familyPlanningBeforePregnancy")} />
+                </div>
+                {history.familyPlanningBeforePregnancy && (
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      placeholder="Method used"
+                      value={familyPlanningMethod}
+                      onChange={(e) => setFamilyPlanningMethod(e.target.value)}
+                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Duration (months)"
+                      value={familyPlanningDurationMonths}
+                      onChange={(e) => setFamilyPlanningDurationMonths(e.target.value)}
+                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                    />
+                  </div>
+                )}
+                <input
+                  type="text"
+                  placeholder="Disabilities (or 'none')"
+                  value={disabilitiesNotes}
+                  onChange={(e) => setDisabilitiesNotes(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </fieldset>
             </div>
           )}
 

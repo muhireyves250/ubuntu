@@ -4,16 +4,15 @@ import { useEffect, useState } from "react";
 import { registerPatient } from "@/lib/patients/use-patients";
 import { IconClose } from "@/components/dashboard/icons";
 import type { Patient } from "@/lib/patients/types";
-
-const CHRONIC_CONDITION_OPTIONS = [
-  "Hypertension",
-  "Diabetes",
-  "Heart Disease",
-  "HIV",
-  "Asthma",
-  "Epilepsy",
-  "Kidney Disease",
-] as const;
+import {
+  GENDER_OPTIONS,
+  MARITAL_STATUS_OPTIONS,
+  RELATIONSHIP_OPTIONS,
+  BLOOD_GROUP_OPTIONS,
+  RELIGION_OPTIONS,
+  INSURANCE_TYPE_OPTIONS,
+  CHRONIC_CONDITION_OPTIONS,
+} from "@/lib/patients/form-options";
 
 const inputCls =
   "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50";
@@ -30,9 +29,13 @@ export function RegisterPatientModal({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState("Female");
   const [phone, setPhone] = useState("");
   const [altPhone, setAltPhone] = useState("");
   const [maritalStatus, setMaritalStatus] = useState("");
+  const [religion, setReligion] = useState("");
+  const [insuranceType, setInsuranceType] = useState("");
+  const [insuranceNumber, setInsuranceNumber] = useState("");
 
   // Address
   const [province, setProvince] = useState("");
@@ -128,9 +131,13 @@ export function RegisterPatientModal({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         dateOfBirth,
+        gender,
         phone: phone.trim(),
         altPhone: altPhone.trim() || undefined,
-        maritalStatus: maritalStatus.trim() || undefined,
+        maritalStatus: maritalStatus || undefined,
+        religion: religion || undefined,
+        insuranceType: insuranceType || undefined,
+        insuranceNumber: insuranceNumber.trim() || undefined,
         address: {
           province,
           district,
@@ -197,7 +204,7 @@ export function RegisterPatientModal({
               )}
 
               <fieldset className="flex flex-col gap-3">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Personal Information
                 </legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -218,6 +225,14 @@ export function RegisterPatientModal({
                     <input type="date" required value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputCls} />
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Gender *
+                    <select required value={gender} onChange={(e) => setGender(e.target.value)} className={inputCls}>
+                      {GENDER_OPTIONS.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Phone Number *
                     <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
                   </label>
@@ -227,13 +242,48 @@ export function RegisterPatientModal({
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Marital Status
-                    <input type="text" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={inputCls} />
+                    <select value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={inputCls}>
+                      <option value="">Not recorded</option>
+                      {MARITAL_STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Religion
+                    <select value={religion} onChange={(e) => setReligion(e.target.value)} className={inputCls}>
+                      <option value="">Not recorded</option>
+                      {RELIGION_OPTIONS.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
                   </label>
                 </div>
               </fieldset>
 
               <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Insurance
+                </legend>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Insurance Type
+                    <select value={insuranceType} onChange={(e) => setInsuranceType(e.target.value)} className={inputCls}>
+                      <option value="">Not recorded</option>
+                      {INSURANCE_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Insurance Number
+                    <input type="text" value={insuranceNumber} onChange={(e) => setInsuranceNumber(e.target.value)} className={inputCls} />
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Address
                 </legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -325,7 +375,7 @@ export function RegisterPatientModal({
               </fieldset>
 
               <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Emergency Contact
                 </legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -335,7 +385,12 @@ export function RegisterPatientModal({
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Relationship *
-                    <input type="text" required value={relationship} onChange={(e) => setRelationship(e.target.value)} className={inputCls} />
+                    <select required value={relationship} onChange={(e) => setRelationship(e.target.value)} className={inputCls}>
+                      <option value="" disabled>Select relationship</option>
+                      {RELATIONSHIP_OPTIONS.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Phone Number *
@@ -345,13 +400,18 @@ export function RegisterPatientModal({
               </fieldset>
 
               <fieldset className="flex flex-col gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Basic Medical Information
                 </legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Blood Group
-                    <input type="text" placeholder="e.g. O" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={inputCls} />
+                    <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={inputCls}>
+                      <option value="">Unknown</option>
+                      {BLOOD_GROUP_OPTIONS.map((bg) => (
+                        <option key={bg} value={bg}>{bg}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Rh Factor
