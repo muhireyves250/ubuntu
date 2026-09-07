@@ -8,7 +8,7 @@ import { FinalDiagnosisStep } from "@/components/patients/assessment/final-diagn
 import { TreatmentStep } from "@/components/patients/assessment/treatment-step";
 import { ConsumablesStep } from "@/components/patients/assessment/consumables-step";
 import { VaccinationStep } from "@/components/patients/assessment/vaccination-step";
-import { escalateVisitIfCritical, confirmAiRisk } from "@/lib/patients/use-patients";
+import { escalateVisitIfCritical, confirmAiRisk, closeReferral } from "@/lib/patients/use-patients";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 
 const STEPS = [
@@ -129,6 +129,19 @@ export function FinalizeAssessmentBlocker({
         // Transfers to a capable facility only now that the patient has
         // been stabilized through the whole pipeline — not at AI Review.
         await escalateVisitIfCritical(visit, "red");
+      } else if (
+        activeReferral &&
+        (prediction.predictedRiskLevel === "green" || prediction.predictedRiskLevel === "yellow")
+      ) {
+        // Improved enough that the case no longer needs to stay open —
+        // close it automatically instead of leaving the nurse to find and
+        // click "Close Case" separately with the same outcome she just
+        // confirmed here.
+        await closeReferral(activeReferral.id, {
+          outcome: prediction.predictedRiskLevel === "green" ? "stable" : "improved",
+          outcomeStatement: `Auto-closed — reassessment after treatment confirmed ${prediction.predictedRiskLevel.toUpperCase()} risk.`,
+          riskLevel: prediction.predictedRiskLevel,
+        });
       }
     } catch (err) {
       setTransferError(err instanceof Error ? err.message : "Could not update the patient's status.");
@@ -230,12 +243,18 @@ export function FinalizeAssessmentBlocker({
             activeReferral?.acceptedByFacility
               ? ` managed by ${activeReferral.acceptedByFacility}`
               : ""
-          }. Based on this assessment, update her status to ${prediction.predictedRiskLevel.toUpperCase()}?`}
+          }. Based on this assessment, update her status to ${prediction.predictedRiskLevel.toUpperCase()}?${
+            prediction.predictedRiskLevel === "green" || prediction.predictedRiskLevel === "yellow"
+              ? " This will also close the emergency case automatically."
+              : ""
+          }`}
           confirmLabel="Update Status"
+          loadingLabel="Updating…"
+          isLoading={isTransferring}
           tone={prediction.predictedRiskLevel === "red" ? "danger" : "default"}
-          onConfirm={() => {
+          onConfirm={async () => {
+            await applyStatusUpdate();
             setShowStatusConfirm(false);
-            applyStatusUpdate();
           }}
           onCancel={() => {
             setShowStatusConfirm(false);
