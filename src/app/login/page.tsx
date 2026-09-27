@@ -142,9 +142,20 @@ export default function LoginPage() {
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-teal-950/65" />
 
-        {/* Logo — transparent PNG, sits directly on the photo background */}
-        <div className="relative mb-8">
-          <Image src="/logo-full.png" alt="ubuntumed" width={220} height={190} className="h-auto w-28 object-contain drop-shadow-lg sm:w-32" priority />
+        {/* Logo — no card background, blends with photo */}
+        <div className="relative mb-8 flex flex-col items-center gap-3">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-label="ubuntumed logo" className="drop-shadow-lg">
+            {/* Heart shape */}
+            <path
+              d="M32 54C32 54 8 38 8 22a12 12 0 0 1 24 0 12 12 0 0 1 24 0c0 16-24 32-24 32Z"
+              fill="white"
+              fillOpacity="0.92"
+            />
+            {/* Medical cross inside heart */}
+            <rect x="27" y="18" width="10" height="20" rx="2" fill="#0f766e" />
+            <rect x="22" y="23" width="20" height="10" rx="2" fill="#0f766e" />
+          </svg>
+          <span className="text-lg font-bold tracking-wide text-white drop-shadow">ubuntumed</span>
         </div>
 
         {/* Role tab switcher */}
@@ -187,7 +198,16 @@ export default function LoginPage() {
         <div className="w-full max-w-sm rounded-4xl bg-white p-8 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
           {/* Card header */}
           <div className="flex flex-col items-center text-center">
-            <Image src="/logo-full.png" alt="ubuntumed logo" width={220} height={190} className="h-auto w-20 object-contain" />
+            <svg width="56" height="56" viewBox="0 0 64 64" fill="none" aria-label="ubuntumed logo">
+              {/* Heart shape */}
+              <path
+                d="M32 54C32 54 8 38 8 22a12 12 0 0 1 24 0 12 12 0 0 1 24 0c0 16-24 32-24 32Z"
+                fill="#0f766e"
+              />
+              {/* Medical cross */}
+              <rect x="27" y="18" width="10" height="20" rx="2" fill="white" />
+              <rect x="22" y="23" width="20" height="10" rx="2" fill="white" />
+            </svg>
 
             {/* Role badge */}
             <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800 ring-1 ring-teal-200">
@@ -195,6 +215,13 @@ export default function LoginPage() {
               {ROLE_TABS.find((t) => t.role === selectedRole)?.label}
             </span>
 
+            <h2 className="mt-4 text-2xl font-bold text-zinc-900">
+              ubuntumed
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Log in to access your facility&apos;s high-risk case tracking
+              and alerts.
+            </p>
           </div>
 
           {/* Form */}

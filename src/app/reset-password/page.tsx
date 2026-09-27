@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -148,7 +147,14 @@ export default function ResetPasswordPage() {
       {/* Left panel */}
       <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-teal-900 via-teal-800 to-teal-700 px-12 py-16 text-white lg:flex lg:w-1/2">
         <div className="relative z-10">
-          <Image src="/logo-full.png" alt="ubuntumed" width={220} height={190} className="h-auto w-24 object-contain" />
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-teal-200">
+            <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden>
+              <path d="M32 54C32 54 8 38 8 22a12 12 0 0 1 24 0 12 12 0 0 1 24 0c0 16-24 32-24 32Z" fill="currentColor" />
+              <rect x="27" y="18" width="10" height="20" rx="2" fill="white" opacity=".3" />
+              <rect x="22" y="23" width="20" height="10" rx="2" fill="white" opacity=".3" />
+            </svg>
+            ubuntumed
+          </span>
         </div>
 
         <div className="relative z-10">
@@ -168,7 +174,14 @@ export default function ResetPasswordPage() {
       <div className="flex flex-1 items-center justify-center bg-[#fff6ef] px-8 py-20 shadow-[inset_4px_0_24px_rgba(0,0,0,0.04)] sm:px-16">
         <div className="w-full max-w-sm rounded-4xl bg-white p-8 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
           <div className="flex flex-col items-center text-center">
-            <Image src="/logo-full.png" alt="ubuntumed logo" width={220} height={190} className="h-auto w-20 object-contain" />
+            <svg width="56" height="56" viewBox="0 0 64 64" fill="none" aria-label="ubuntumed logo">
+              <path
+                d="M32 54C32 54 8 38 8 22a12 12 0 0 1 24 0 12 12 0 0 1 24 0c0 16-24 32-24 32Z"
+                fill="#0f766e"
+              />
+              <rect x="27" y="18" width="10" height="20" rx="2" fill="white" />
+              <rect x="22" y="23" width="20" height="10" rx="2" fill="white" />
+            </svg>
 
             <h2 className="mt-4 text-2xl font-bold text-zinc-900">
               Reset password
