@@ -41,7 +41,7 @@ function subscribeToSession(onChange: () => void) {
 }
 
 function readStoredAuth(): StoredAuth | null {
-  const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+  const raw = window.sessionStorage.getItem(AUTH_STORAGE_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as StoredAuth;
@@ -51,7 +51,7 @@ function readStoredAuth(): StoredAuth | null {
 }
 
 function getSessionSnapshot(): string | null {
-  return window.localStorage.getItem(AUTH_STORAGE_KEY);
+  return window.sessionStorage.getItem(AUTH_STORAGE_KEY);
 }
 
 function getServerSessionSnapshot(): string | null {
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       const stored: StoredAuth = { accessToken: response.accessToken, user: authUser };
-      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(stored));
+      window.sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(stored));
       emitSessionChange();
       return "ok";
     } catch (err) {
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
     emitSessionChange();
   }, []);
 
