@@ -195,13 +195,6 @@ export default function LoginPage() {
               {ROLE_TABS.find((t) => t.role === selectedRole)?.label}
             </span>
 
-            <h2 className="mt-4 text-2xl font-bold text-zinc-900">
-              ubuntumed
-            </h2>
-            <p className="mt-2 text-sm text-zinc-500">
-              Log in to access your facility&apos;s high-risk case tracking
-              and alerts.
-            </p>
           </div>
 
           {/* Form */}
