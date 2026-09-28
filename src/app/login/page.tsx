@@ -142,9 +142,11 @@ export default function LoginPage() {
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-teal-950/65" />
 
-        {/* Logo — transparent PNG, sits directly on the photo background */}
-        <div className="relative mb-8">
-          <Image src="/logo-full.png" alt="ubuntumed" width={220} height={190} className="h-auto w-28 object-contain drop-shadow-lg sm:w-32" priority />
+        {/* Logo — the logo's own teal tones blend into the dark teal photo
+            overlay behind it, so it gets a light backdrop chip here for
+            contrast (the card version below sits on white and needs none). */}
+        <div className="relative mb-8 rounded-3xl bg-white/90 px-6 py-4 shadow-lg backdrop-blur-sm">
+          <Image src="/logo-full.png" alt="ubuntumed" width={220} height={190} className="h-auto w-28 object-contain sm:w-32" priority />
         </div>
 
         {/* Role tab switcher */}
