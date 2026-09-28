@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -107,8 +108,8 @@ export function Sidebar() {
     <aside className={`scrollbar-hidden hidden shrink-0 flex-col overflow-x-hidden overflow-y-auto px-4 pb-8 pt-4 transition-all duration-300 dark:bg-zinc-950 lg:flex ${isCollapsed ? "w-[88px]" : "w-64"}`}>
       <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"} px-2`}>
         <div className="flex items-center gap-3">
-          <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-teal-500 to-teal-700 text-base font-bold text-white shadow-md transition-transform hover:scale-105 active:scale-95">
-            UM
+          <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-md ring-1 ring-zinc-200 transition-transform hover:scale-105 active:scale-95 dark:bg-zinc-900 dark:ring-zinc-800">
+            <Image src="/logo-mark.png" alt="ubuntumed" width={40} height={40} className="h-full w-full object-contain" />
           </button>
           {!isCollapsed && (
             <div className="flex flex-col whitespace-nowrap">
