@@ -50,6 +50,13 @@ import {
   respondToRecommendationApi,
   acknowledgeRecommendationApi,
 } from "./recommendation-api";
+import {
+  fetchCommentsForPatient,
+  createCommentApi,
+  fetchRepliesToMe,
+  type PatientComment,
+  type CommentReply,
+} from "./patient-comment-api";
 import { type AcknowledgedAlert } from "./alerts-storage";
 import {
   subscribeToReadNotifications,
@@ -503,6 +510,7 @@ export function useVaccinationsForPregnancy(pregnancyId: string): Vaccination[] 
     queryKey: ["vaccinations", "pregnancy", pregnancyId],
     queryFn: () => fetchVaccinationsForPregnancy(pregnancyId),
     enabled: !!pregnancyId,
+    staleTime: 60_000,
   });
   return data ?? [];
 }
@@ -577,6 +585,7 @@ export function useRecommendationsForPatient(patientId: string): Recommendation[
   const { data } = useQuery({
     queryKey: ["recommendations", "patient", patientId],
     queryFn: () => fetchRecommendations(patientId),
+    staleTime: 60_000,
   });
   return data ?? [];
 }
@@ -612,6 +621,39 @@ export async function acknowledgeRecommendation(id: string): Promise<Recommendat
   return recommendation;
 }
 
+export function useCommentsForPatient(patientId: string): PatientComment[] {
+  const { data } = useQuery({
+    queryKey: ["comments", "patient", patientId],
+    queryFn: () => fetchCommentsForPatient(patientId),
+    staleTime: 30_000,
+  });
+  return data ?? [];
+}
+
+export async function createComment(
+  patientId: string,
+  body: string,
+  parentId?: string,
+): Promise<PatientComment> {
+  const comment = await createCommentApi(patientId, body, parentId);
+  await queryClient.invalidateQueries({ queryKey: ["comments", "patient", patientId] });
+  await queryClient.invalidateQueries({ queryKey: ["comments", "replies-to-me"] });
+  return comment;
+}
+
+// Mounted globally (useNotificationAlerts runs in the Topbar on every
+// dashboard route for every role), so this gets a longer staleTime like its
+// siblings there (useFacilities, useAllCommunityVisits) — replies to a
+// comment don't need sub-minute freshness across the whole app.
+export function useRepliesToMe(): CommentReply[] {
+  const { data } = useQuery({
+    queryKey: ["comments", "replies-to-me"],
+    queryFn: fetchRepliesToMe,
+    staleTime: 60_000,
+  });
+  return data ?? [];
+}
+
 export function useFollowUpAssignmentsForChw(): FollowUpAssignment[] {
   const { role } = getCurrentUserSnapshot();
   const { data } = useQuery({
@@ -645,6 +687,17 @@ export async function createFollowUpAssignment(data: {
 // A patient may have several red-case referrals across their history, but only
 // the most recent emergency can be "active" at once — this is what gates a new
 // visit from being started until it is closed.
+export function useReferralsForPatient(patientId: string): Referral[] {
+  const referrals = useReferrals();
+  return useMemo(
+    () =>
+      referrals
+        .filter((r) => r.patientId === patientId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [referrals, patientId],
+  );
+}
+
 export function useActiveEmergencyReferral(patientId: string): Referral | null {
   const referrals = useReferrals();
   return useMemo(
@@ -1215,7 +1268,8 @@ export interface NotificationAlert {
     | "lab_result_unacknowledged"
     | "red_risk_escalation"
     | "referral_activity"
-    | "community_visit_emergency";
+    | "community_visit_emergency"
+    | "comment_reply";
   patientId: string;
   patientName: string;
   title: string;
@@ -1240,6 +1294,7 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
   const followUpAssignments = useFollowUpAssignmentsForChw();
   const communityVisits = useAllCommunityVisits();
   const myCommunityVisits = useMyCommunityVisits();
+  const commentReplies = useRepliesToMe();
 
   return useMemo(() => {
     const alerts: NotificationAlert[] = [];
@@ -1906,13 +1961,26 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
       }
     }
 
+    for (const reply of commentReplies) {
+      alerts.push({
+        id: `comment-reply-${reply.id}`,
+        type: "comment_reply",
+        patientId: reply.patientId,
+        patientName: reply.patientName,
+        title: "Reply to Your Comment",
+        message: `${reply.authorName} replied: "${reply.body}"`,
+        date: reply.createdAt,
+        priority: "Normal",
+      });
+    }
+
     // Sort by priority (Emergency first) and then by date (descending)
     return alerts.sort((a, b) => {
       if (a.priority === "Emergency" && b.priority !== "Emergency") return -1;
       if (a.priority !== "Emergency" && b.priority === "Emergency") return 1;
       return b.date.localeCompare(a.date);
     });
-  }, [visits, patients, pregnancies, referrals, recommendations, facilities, labRequests, followUpAssignments, communityVisits, myCommunityVisits, role, currentUser.facility, currentUser.facilityLevel, currentUser.name, currentUser.id]);
+  }, [visits, patients, pregnancies, referrals, recommendations, facilities, labRequests, followUpAssignments, communityVisits, myCommunityVisits, commentReplies, role, currentUser.facility, currentUser.facilityLevel, currentUser.name, currentUser.id]);
 }
 
 // Read state is per-browser (localStorage), not per-server-record — these

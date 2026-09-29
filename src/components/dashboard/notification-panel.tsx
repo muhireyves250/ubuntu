@@ -101,6 +101,7 @@ const TYPE_CATEGORY: Record<NotificationAlert["type"], Category> = {
   red_risk_escalation: "urgent",
   referral_activity: "referral",
   community_visit_emergency: "urgent",
+  comment_reply: "referral",
 };
 
 export function NotificationPanel({
