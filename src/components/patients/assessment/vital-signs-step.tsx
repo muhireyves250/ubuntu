@@ -73,7 +73,7 @@ function VitalField({
   placeholder,
 }: VitalFieldProps) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+    <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
       <span className="flex items-center gap-1.5">
         {label}
         {abnormal && <IconAlert className="h-3.5 w-3.5 text-orange-500" />}
@@ -87,7 +87,7 @@ function VitalField({
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`rounded-lg border px-3 py-2 outline-none focus:border-teal-600 dark:bg-zinc-900 ${
+        className={`rounded-lg border px-2.5 py-1.5 text-sm outline-none focus:border-teal-600 dark:bg-zinc-900 ${
           abnormal
             ? "border-orange-400 text-orange-700 dark:border-orange-500 dark:text-orange-400"
             : "border-zinc-300 text-zinc-900 dark:border-zinc-700 dark:text-zinc-50"
@@ -122,12 +122,12 @@ export function VitalSignsStep({
     (Number(values.respiratoryRate) < 12 || Number(values.respiratoryRate) > 20);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Vital Signs
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <VitalField
           label="Systolic BP (mmHg)"
           value={values.bpSystolic}
@@ -182,7 +182,7 @@ export function VitalSignsStep({
       </div>
 
       <div
-        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium ${
+        className={`flex shrink-0 items-center justify-between rounded-lg border px-3 py-1.5 text-sm font-medium ${
           bmiAbnormal
             ? "border-orange-400 bg-orange-50 text-orange-700 dark:border-orange-500 dark:bg-orange-950/30 dark:text-orange-400"
             : "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"

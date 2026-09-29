@@ -10,7 +10,7 @@ import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy"
 import { NewPregnancyModal } from "@/components/patients/pregnancy/new-pregnancy-modal";
 import { ClosePregnancyModal } from "@/components/patients/pregnancy/close-pregnancy-modal";
 import { PregnancyTimeline } from "@/components/patients/pregnancy/pregnancy-timeline";
-import { IconAlert, IconCalendar, IconClipboard } from "@/components/dashboard/icons";
+import { IconAlert, IconCalendar, IconClipboard, IconUsers } from "@/components/dashboard/icons";
 import type { Pregnancy } from "@/lib/patients/types";
 
 const FULL_TERM_WEEKS = 40;
@@ -19,11 +19,14 @@ function StatChip({
   icon,
   label,
   value,
+  mono = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
+  mono?: boolean;
 }) {
+  const isEmpty = value === null || value === undefined || value === "";
   return (
     <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3.5 py-3 dark:border-zinc-800 dark:bg-zinc-900">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400">
@@ -33,8 +36,12 @@ function StatChip({
         <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
           {label}
         </p>
-        <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-          {value}
+        <p
+          className={`truncate ${mono && !isEmpty ? "font-mono tracking-tight" : "font-semibold"} ${
+            isEmpty ? "text-zinc-400 dark:text-zinc-600" : "text-zinc-900 dark:text-zinc-50"
+          }`}
+        >
+          {isEmpty ? "Not provided" : value}
         </p>
       </div>
     </div>
@@ -112,11 +119,13 @@ export function PregnancySummaryCard({
             icon={<IconCalendar className="h-4.5 w-4.5" />}
             label="LMP"
             value={pregnancy.lmpDate}
+            mono
           />
           <StatChip
             icon={<IconCalendar className="h-4.5 w-4.5" />}
             label={pregnancy.status === "open" ? "EDD" : "Delivery date"}
             value={pregnancy.status === "open" ? pregnancy.eddDate : pregnancy.delivery?.date}
+            mono
           />
         </div>
 
@@ -157,10 +166,10 @@ export function PregnancySummaryCard({
 
         {pregnancy.status === "closed" && pregnancy.delivery && (
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
               Delivery outcome
             </p>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
               <div>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Outcome</dt>
                 <dd className="font-medium capitalize text-zinc-900 dark:text-zinc-50">
@@ -181,7 +190,7 @@ export function PregnancySummaryCard({
               </div>
               <div>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Birth weight</dt>
-                <dd className="font-medium text-zinc-900 dark:text-zinc-50">
+                <dd className="font-mono tracking-tight text-zinc-900 dark:text-zinc-50">
                   {pregnancy.delivery.birthWeightKg} kg
                 </dd>
               </div>
@@ -193,7 +202,7 @@ export function PregnancySummaryCard({
               </div>
               <div className="col-span-2">
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Summary</dt>
-                <dd className="text-zinc-700 dark:text-zinc-300">
+                <dd className="leading-relaxed text-zinc-700 dark:text-zinc-300">
                   {pregnancy.delivery.summary}
                 </dd>
               </div>
@@ -250,15 +259,23 @@ export function PregnancyTab({
   return (
     <div className="flex flex-col gap-5">
       {!openPregnancy && (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            This patient has no active pregnancy on record.
-          </p>
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ffeedb] text-teal-700 dark:bg-orange-950/40 dark:text-teal-400">
+            <IconUsers className="h-5 w-5" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              No active pregnancy
+            </p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              This patient has no active pregnancy on record.
+            </p>
+          </div>
           {!readOnly && (
             <button
               type="button"
               onClick={() => setShowNewPregnancy(true)}
-              className="rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+              className="mt-1 rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
             >
               New Pregnancy
             </button>

@@ -80,9 +80,14 @@ export function PregnancyTimeline({
 
   if (items.length === 0) {
     return (
-      <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        No timeline activity yet.
-      </p>
+      <div className="flex flex-col gap-2.5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Pregnancy Timeline
+        </p>
+        <p className="rounded-xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          No timeline activity yet.
+        </p>
+      </div>
     );
   }
 
@@ -113,11 +118,11 @@ export function PregnancyTimeline({
                 )}
               </span>
 
-              <div className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white transition-colors hover:border-zinc-400 focus-within:border-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:focus-within:border-zinc-500">
                 <button
                   type="button"
                   onClick={() => setExpandedId(expanded ? null : item.id)}
-                  className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left"
+                  className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left focus:outline-none"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">

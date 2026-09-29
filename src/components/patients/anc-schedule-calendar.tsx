@@ -157,12 +157,12 @@ export function AncScheduleCalendar({
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-2 flex items-center justify-between">
         <button
           type="button"
           onClick={() => setViewDate(new Date(year, month - 1, 1))}
-          className="rounded-lg px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          className="rounded-lg px-2 py-0.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
         >
           ‹
         </button>
@@ -172,17 +172,17 @@ export function AncScheduleCalendar({
         <button
           type="button"
           onClick={() => setViewDate(new Date(year, month + 1, 1))}
-          className="rounded-lg px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          className="rounded-lg px-2 py-0.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
         >
           ›
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-zinc-400">
+      <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] text-zinc-400">
         {WEEKDAY_LABELS.map((d) => (
           <div key={d}>{d}</div>
         ))}
       </div>
-      <div className="mt-1 grid grid-cols-7 gap-1">
+      <div className="mt-0.5 grid grid-cols-7 gap-0.5">
         {cells.map((day, idx) => {
           if (day === null) return <div key={`blank-${idx}`} />;
           const ds = dateStr(day);
@@ -204,7 +204,7 @@ export function AncScheduleCalendar({
               type="button"
               disabled={!hasLoggedVisit}
               onClick={() => setSelectedDate(isSelected ? null : ds)}
-              className={`relative flex h-9 flex-col items-center justify-center rounded-lg text-xs ${
+              className={`relative flex h-7 flex-col items-center justify-center rounded-md text-[11px] ${
                 hasLoggedVisit ? "cursor-pointer" : "cursor-default"
               } ${
                 isNextDue
@@ -243,14 +243,15 @@ export function AncScheduleCalendar({
       </div>
 
       {selectedDate && selectedDayVisits.length > 0 && (
-        <div className="mt-3 flex flex-col gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 dark:text-zinc-500">
-            Visit{selectedDayVisits.length > 1 ? "s" : ""} on {selectedDate}
+        <div className="mt-2 flex flex-col gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
+            Visit{selectedDayVisits.length > 1 ? "s" : ""} on{" "}
+            <span className="font-mono tracking-tight normal-case">{selectedDate}</span>
           </p>
           {selectedDayVisits.map((v) => (
             <div
               key={v.id}
-              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-md border border-zinc-200 bg-white px-3 py-2 text-xs dark:border-zinc-800 dark:bg-zinc-900"
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs dark:border-zinc-800 dark:bg-zinc-900"
             >
               <span className="font-medium capitalize text-zinc-800 dark:text-zinc-200">{v.type}</span>
               <span className="text-zinc-600 dark:text-zinc-400">Hospital: {v.hospital}</span>
@@ -261,39 +262,39 @@ export function AncScheduleCalendar({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-teal-100 dark:bg-teal-950/40" /> Home visit
+      <div className="mt-2 flex flex-wrap gap-x-2.5 gap-y-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-teal-100 dark:bg-teal-950/40" /> Home visit
         </span>
         {!homeVisitsOnly && (
           <>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-100 dark:bg-amber-950/40" /> Hospital visit
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-amber-100 dark:bg-amber-950/40" /> Hospital visit
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-600" /> Hospital visit due now
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-amber-600" /> Hospital visit due now
             </span>
           </>
         )}
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40" /> Home visit done
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-emerald-100 dark:bg-emerald-950/40" /> Home visit done
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-100 dark:bg-red-950/40" /> Missed
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-red-100 dark:bg-red-950/40" /> Missed
         </span>
         {!homeVisitsOnly && (
-          <span className="flex items-center gap-1.5">
-            <span className="relative h-2.5 w-2.5 rounded-full bg-red-100 dark:bg-red-950/40">
+          <span className="flex items-center gap-1">
+            <span className="relative h-2 w-2 rounded-full bg-red-100 dark:bg-red-950/40">
               <span className="absolute inset-0 m-auto h-1 w-1 rounded-full bg-red-600 dark:bg-red-400" />
             </span>
             Unscheduled visit
           </span>
         )}
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-teal-600" /> Next due
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-teal-600" /> Next due
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full ring-2 ring-inset ring-zinc-900 dark:ring-white" /> Today
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full ring-2 ring-inset ring-zinc-900 dark:ring-white" /> Today
         </span>
       </div>
     </div>

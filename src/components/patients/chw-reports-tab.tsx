@@ -5,7 +5,7 @@ import { reviewCommunityVisitApi } from "@/lib/patients/community-visit-api";
 import { queryClient } from "@/lib/query-client";
 import { formatExactDateTime } from "@/lib/format";
 import { CHW_SYMPTOM_CHECKLIST } from "@/lib/patients/chw-symptom-checklist";
-import { IconChevronRight } from "@/components/dashboard/icons";
+import { IconChevronRight, IconUsers } from "@/components/dashboard/icons";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 import type { CommunityVisit } from "@/lib/patients/types";
 
@@ -84,45 +84,59 @@ export function ChwReportsTab({
       {communityVisits.map((v) => {
         const isExpanded = expandedId === v.id;
         const needsReview = !!v.proposedRiskLevel && !v.reviewedAt;
+        const flagged = v.nurseFlaggedEmergency || v.riskFlag;
         return (
           <div
             key={v.id}
-            className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            className="overflow-hidden rounded-xl border border-zinc-200 bg-white transition-colors hover:border-zinc-400 focus-within:border-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:focus-within:border-zinc-500"
           >
             <button
               type="button"
               onClick={() => setExpandedId(isExpanded ? null : v.id)}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+              className="flex w-full items-start gap-3 p-3 text-left focus:outline-none"
             >
-              <div className="min-w-0">
-                <p className="font-medium text-zinc-900 dark:text-zinc-50">{v.chwName}</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {formatExactDateTime(v.visitDate)}
-                  {v.ancVisitNumber != null && ` · Home visit #${v.ancVisitNumber}`}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {v.proposedRiskLevel && (
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      RISK_COLOR_CLASSES[v.proposedRiskLevel] ?? ""
-                    }`}
-                  >
-                    {v.proposedRiskLevel.toUpperCase()}
-                    {v.reviewedAt ? (v.rejected ? " (rejected)" : " (accepted)") : " (pending)"}
-                  </span>
+              <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  flagged
+                    ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"
+                    : "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-400"
+                }`}
+              >
+                <IconUsers className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    CHW home visit{v.ancVisitNumber != null && ` #${v.ancVisitNumber}`}
+                  </p>
+                  <p className="text-xs text-zinc-400 dark:text-zinc-500">{formatExactDateTime(v.visitDate)}</p>
+                </div>
+                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{v.chwName}</p>
+                {(v.proposedRiskLevel || v.nurseFlaggedEmergency) && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {v.proposedRiskLevel && (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          RISK_COLOR_CLASSES[v.proposedRiskLevel] ?? ""
+                        }`}
+                      >
+                        {v.proposedRiskLevel.toUpperCase()}
+                        {v.reviewedAt ? (v.rejected ? " (rejected)" : " (accepted)") : " (pending)"}
+                      </span>
+                    )}
+                    {v.nurseFlaggedEmergency && (
+                      <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                        Flagged
+                      </span>
+                    )}
+                  </div>
                 )}
-                {v.nurseFlaggedEmergency && (
-                  <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400">
-                    Flagged
-                  </span>
-                )}
-                <IconChevronRight
-                  className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform dark:text-zinc-500 ${
-                    isExpanded ? "rotate-90" : ""
-                  }`}
-                />
               </div>
+              <IconChevronRight
+                className={`mt-1.5 h-4 w-4 shrink-0 text-zinc-400 transition-transform dark:text-zinc-500 ${
+                  isExpanded ? "rotate-90" : ""
+                }`}
+              />
             </button>
 
             {isExpanded && (

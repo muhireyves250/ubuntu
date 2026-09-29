@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { computePrediction, computePredictionHistory } from "@/lib/patients/ai-prediction";
+import { IconActivity } from "@/components/dashboard/icons";
 import type { Visit } from "@/lib/patients/types";
 
 function riskColor(value: number) {
@@ -238,42 +239,50 @@ export function AiPredictionTab({ visits }: { visits: Visit[] }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">AI Prediction</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Based on assessment of {new Date(latest.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} ·{" "}
-            <span className="font-medium">{Math.round(latest.confidence * 100)}% confidence</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-              latest.riskLevel === "red"
-                ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 ring-1 ring-red-300"
-                : latest.riskLevel === "orange"
-                  ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 ring-1 ring-orange-300"
-                  : latest.riskLevel === "yellow"
-                    ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 ring-1 ring-amber-300"
-                    : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 ring-1 ring-emerald-200"
-            }`}
-          >
+      <div className="overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-[#ffeedb] px-5 py-3.5 dark:border-zinc-800 dark:bg-orange-950/40">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-teal-700 dark:bg-zinc-900 dark:text-teal-400">
+              <IconActivity className="h-4 w-4" />
+            </span>
+            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">AI Prediction</h3>
+          </div>
+          <div className="flex items-center gap-2">
             <span
-              className={`h-2 w-2 rounded-full ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
                 latest.riskLevel === "red"
-                  ? "bg-red-500 animate-pulse"
+                  ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 ring-1 ring-red-300"
                   : latest.riskLevel === "orange"
-                    ? "bg-orange-500"
+                    ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 ring-1 ring-orange-300"
                     : latest.riskLevel === "yellow"
-                      ? "bg-amber-500"
-                      : "bg-emerald-500"
+                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 ring-1 ring-amber-300"
+                      : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 ring-1 ring-emerald-200"
               }`}
-            />
-            {latest.riskLevel} Case
-          </span>
-          <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300">
-            AI · Simulated
-          </span>
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  latest.riskLevel === "red"
+                    ? "bg-red-500 animate-pulse"
+                    : latest.riskLevel === "orange"
+                      ? "bg-orange-500"
+                      : latest.riskLevel === "yellow"
+                        ? "bg-amber-500"
+                        : "bg-emerald-500"
+                }`}
+              />
+              {latest.riskLevel} Case
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-teal-700 ring-1 ring-teal-200 dark:bg-zinc-900 dark:text-teal-400 dark:ring-teal-900">
+              AI · Simulated
+            </span>
+          </div>
+        </div>
+        <div className="bg-white px-5 py-3 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Based on assessment of{" "}
+            {new Date(latest.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+            {" "}· <span className="font-medium text-zinc-700 dark:text-zinc-300">{Math.round(latest.confidence * 100)}% confidence</span>
+          </p>
         </div>
       </div>
 

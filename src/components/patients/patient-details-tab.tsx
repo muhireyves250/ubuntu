@@ -11,14 +11,21 @@ import { usePregnanciesForPatient } from "@/lib/patients/use-patients";
 import { effectiveLmpDate, gestationalAgeWeeksAndDays } from "@/lib/patients/pregnancy";
 import type { Patient } from "@/lib/patients/types";
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function Field({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  const isEmpty = value === "—" || value === null || value === undefined || value === "";
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
         {label}
       </dt>
-      <dd className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-zinc-50">
-        {value}
+      <dd
+        className={`mt-1 text-sm ${mono && !isEmpty ? "font-mono tracking-tight" : ""} ${
+          isEmpty
+            ? "text-zinc-400 dark:text-zinc-600"
+            : "font-medium text-zinc-900 dark:text-zinc-50"
+        }`}
+      >
+        {isEmpty ? "Not provided" : value}
       </dd>
     </div>
   );
@@ -37,7 +44,7 @@ function Section({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800 ${className}`}
+      className={`overflow-hidden rounded-2xl border border-zinc-200 shadow-sm transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600 ${className}`}
     >
       <div className="flex items-center gap-2.5 border-b border-zinc-200 bg-[#ffeedb] px-4 py-3 dark:border-zinc-800 dark:bg-orange-950/40">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-teal-700 dark:bg-zinc-900 dark:text-teal-400">
@@ -45,7 +52,7 @@ function Section({
         </span>
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">{title}</h3>
       </div>
-      <dl className="grid gap-4 bg-white p-4 sm:grid-cols-2 dark:bg-zinc-900">
+      <dl className="grid gap-x-6 gap-y-5 bg-white p-5 sm:grid-cols-2 dark:bg-zinc-900">
         {children}
       </dl>
     </div>
@@ -94,13 +101,13 @@ export function PatientDetailsTab({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <Section icon={<IconUsers className="h-4 w-4" />} title="Personal Information">
-          <Field label="National ID" value={patient.nationalId} />
+          <Field label="National ID" value={patient.nationalId} mono />
           <Field label="Gender" value={patient.gender || "—"} />
-          <Field label="Date of birth" value={patient.dateOfBirth} />
-          <Field label="Phone" value={patient.phone} />
-          <Field label="Alternative phone" value={patient.altPhone || "—"} />
+          <Field label="Date of birth" value={patient.dateOfBirth} mono />
+          <Field label="Phone" value={patient.phone} mono />
+          <Field label="Alternative phone" value={patient.altPhone || "—"} mono />
           <Field label="Marital status" value={patient.maritalStatus || "—"} />
           <Field label="Religion" value={patient.religion || "—"} />
         </Section>
@@ -146,7 +153,7 @@ export function PatientDetailsTab({
           <Field label="Name" value={patient.emergencyContact.name} />
           <Field label="Relationship" value={patient.emergencyContact.relationship} />
           <div className="sm:col-span-2">
-            <Field label="Phone" value={patient.emergencyContact.phone} />
+            <Field label="Phone" value={patient.emergencyContact.phone} mono />
           </div>
         </Section>
 
@@ -162,7 +169,7 @@ export function PatientDetailsTab({
 
         <Section icon={<IconClipboard className="h-4 w-4" />} title="Insurance">
           <Field label="Insurance type" value={patient.insuranceType || "—"} />
-          <Field label="Insurance number" value={patient.insuranceNumber || "—"} />
+          <Field label="Insurance number" value={patient.insuranceNumber || "—"} mono />
         </Section>
 
         <PregnancySummarySection patientId={patient.id} />
@@ -172,7 +179,7 @@ export function PatientDetailsTab({
           title="Registration"
           className="lg:col-span-2"
         >
-          <Field label="Registered on" value={patient.registeredAt} />
+          <Field label="Registered on" value={patient.registeredAt} mono />
           <Field label="Registered by" value={patient.registeredBy} />
           <div className="sm:col-span-2">
             <Field label="Registration facility" value={patient.registrationFacility} />

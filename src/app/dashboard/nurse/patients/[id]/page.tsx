@@ -20,6 +20,7 @@ import { FinalizeAssessmentBlocker } from "@/components/patients/finalize-assess
 import { ActiveReferralBlocker, ActiveReferralBanner } from "@/components/patients/active-referral-blocker";
 import { PatientLockedBlocker } from "@/components/patients/patient-locked-blocker";
 import { SpecialistNotesTab } from "@/components/patients/specialist-notes-tab";
+import { PatientCommentsSection } from "@/components/patients/patient-comments-section";
 import { ChwReportsTab } from "@/components/patients/chw-reports-tab";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
@@ -30,27 +31,31 @@ import {
   useVisitsForPregnancy,
   finalizeAssessment,
   useActiveEmergencyReferral,
+  useReferralsForPatient,
   usePatientLock,
   useCommunityVisitsForPregnancy,
   useAllCommunityVisitsForPatient,
+  useRecommendationsForPatient,
+  useVaccinationsForPregnancy,
 } from "@/lib/patients/use-patients";
 import { gestationalAgeWeeks, matchScheduledVisit, effectiveLmpDate, chwVisitSchedule } from "@/lib/patients/pregnancy";
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
-import { IconChevronDown, IconEdit, IconAlert } from "@/components/dashboard/icons";
+import { IconChevronDown, IconEdit, IconAlert, IconClipboard } from "@/components/dashboard/icons";
 
 const TABS = [
   "Patient Details",
+  "Medical History",
   "Pregnancy",
   "Visit",
   "New Assessment",
   "Signs & Symptoms",
-  "Medical History",
   "Vaccination",
   "CHW Reports",
   "AI Prediction",
   "Specialist Notes",
+  "Comments",
 ] as const;
 
 type Tab = (typeof TABS)[number];
@@ -73,6 +78,9 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const pregnancyVisits = useVisitsForPregnancy(openPregnancy?.id ?? "");
   const communityVisits = useCommunityVisitsForPregnancy(openPregnancy?.id ?? "");
   const allCommunityVisits = useAllCommunityVisitsForPatient(patientId);
+  const allReferrals = useReferralsForPatient(patientId);
+  const recommendations = useRecommendationsForPatient(patientId);
+  const vaccinations = useVaccinationsForPregnancy(openPregnancy?.id ?? "");
 
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get("tab");
@@ -149,7 +157,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex h-full flex-col gap-3">
       {showEditModal && (
         <EditPatientModal
           patient={patient}
@@ -173,8 +181,8 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           onCreated={() => {}}
         />
       )}
-      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-300 bg-[#ffeedb] p-5 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xl font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-300 bg-[#ffeedb] p-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-100 text-lg font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
           {getInitials(fullName(patient))}
         </span>
 
@@ -263,13 +271,13 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
       ) : (
         <>
           {activeReferral && <ActiveReferralBanner patient={patient} referral={activeReferral} />}
-          <div className="scrollbar-hidden flex w-fit gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="scrollbar-hidden flex max-w-full gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
             {TABS.filter((tab) => tab !== "Signs & Symptoms" && !(isReadOnlyAdmin && tab === "New Assessment")).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeTab === tab
                     ? "bg-[#0f766e] text-white shadow-sm shadow-teal-700/20"
                     : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -283,9 +291,11 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             ))}
           </div>
 
-          <div className="rounded-xl border border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+          <div className={`rounded-xl border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900 ${activeTab === "Medical History" || activeTab === "Patient Details" || activeTab === "Pregnancy" || activeTab === "Visit" || activeTab === "New Assessment" || activeTab === "CHW Reports" || activeTab === "AI Prediction" || activeTab === "Comments" ? "flex min-h-0 flex-1 flex-col p-3" : "p-5"}`}>
         {activeTab === "Patient Details" && (
-          <PatientDetailsTab patient={patient} />
+          <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
+            <PatientDetailsTab patient={patient} />
+          </div>
         )}
         {activeTab === "Signs & Symptoms" && (
           <>
@@ -347,7 +357,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           </>
         )}
         {activeTab === "New Assessment" && (
-          <>
+          <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
             {isReadOnlyAdmin ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
                 <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
@@ -406,43 +416,68 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                     )}
                   </div>
                 )}
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Start a new assessment from the Visit tab.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("Visit"); }}
-                  className="rounded-xl bg-[#0f766e] px-5 py-3 text-sm font-medium text-white shadow-sm hover:bg-teal-800"
-                >
-                  Go to Visit →
-                </button>
+                <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ffeedb] text-teal-700 dark:bg-orange-950/40 dark:text-teal-400">
+                    <IconClipboard className="h-5 w-5" />
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      No assessment in progress
+                    </p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Start a new assessment from the Visit tab.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab("Visit"); }}
+                    className="mt-1 rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+                  >
+                    Go to Visit →
+                  </button>
+                </div>
               </div>
             ) : (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 This patient has no active pregnancy on record. Please register a pregnancy first.
               </p>
             )}
-          </>
+          </div>
         )}
         {activeTab === "Pregnancy" && (
-          <PregnancyTab
-            patientId={patient.id}
-            onGoToVisitHistory={() => setActiveTab("Visit")}
-            readOnly={isReadOnlyAdmin}
-          />
+          <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
+            <PregnancyTab
+              patientId={patient.id}
+              onGoToVisitHistory={() => setActiveTab("Visit")}
+              readOnly={isReadOnlyAdmin}
+            />
+          </div>
         )}
         {activeTab === "Medical History" && (
-          <div className="flex flex-col gap-5">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
             {pregnancies.length > 0 ? (
-              <ObstetricHistoryTable
-                pregnancies={pregnancies}
-                onSelect={(p) => router.push(`/dashboard/nurse/patients/${patientId}/pregnancies/${p.id}`)}
-              />
+              <div className="shrink-0">
+                <ObstetricHistoryTable
+                  pregnancies={pregnancies}
+                  onSelect={(p) => router.push(`/dashboard/nurse/patients/${patientId}/pregnancies/${p.id}`)}
+                />
+              </div>
             ) : (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="shrink-0 text-sm text-zinc-500 dark:text-zinc-400">
                 No pregnancy history recorded.
               </p>
             )}
+            <div className="flex min-h-[280px] flex-1 flex-col rounded-xl border border-zinc-300 bg-[#ffeedb] p-3 dark:border-zinc-700 dark:bg-orange-950/40">
+              <ActivityTimeline
+                patient={patient}
+                visits={allVisits}
+                pregnancies={pregnancies}
+                referrals={allReferrals}
+                recommendations={recommendations}
+                communityVisits={allCommunityVisits}
+                vaccinations={vaccinations}
+              />
+            </div>
           </div>
         )}
         {activeTab === "Vaccination" && (
@@ -457,7 +492,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           </>
         )}
         {activeTab === "Visit" && (
-          <>
+          <div className="flex min-h-0 flex-1 flex-col p-2">
             {openPregnancy ? (
               <VisitHistoryTab
                 pregnancy={openPregnancy}
@@ -484,41 +519,28 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                 This patient has no active pregnancy on record.
               </p>
             )}
-          </>
+          </div>
         )}
         {activeTab === "CHW Reports" && (
-          <ChwReportsTab communityVisits={allCommunityVisits} canReview={user?.role === "nurse"} />
+          <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
+            <ChwReportsTab communityVisits={allCommunityVisits} canReview={user?.role === "nurse"} />
+          </div>
         )}
         {activeTab === "AI Prediction" && (
-          <AiPredictionTab visits={allVisits} />
+          <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
+            <AiPredictionTab visits={allVisits} />
+          </div>
         )}
         {activeTab === "Specialist Notes" && (
           <SpecialistNotesTab patientId={patient.id} currentRiskLevel={currentRisk} />
         )}
+        {activeTab === "Comments" && (
+          <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
+            <PatientCommentsSection patientId={patient.id} />
+          </div>
+        )}
       </div>
 
-      <div className="rounded-xl border border-zinc-300 bg-[#ffeedb] p-5 dark:border-zinc-700 dark:bg-orange-950/40">
-        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          Add a comment
-        </p>
-        <textarea
-          disabled
-          rows={3}
-          placeholder="Comments are not supported yet"
-          className="mt-2 w-full resize-none rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-400 placeholder:text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-        />
-        <button
-          type="button"
-          disabled
-          className="mt-2 rounded-md border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-400 dark:border-zinc-800"
-        >
-          Comment
-        </button>
-      </div>
-
-      <div className="rounded-xl border border-zinc-300 bg-[#ffeedb] p-5 dark:border-zinc-700 dark:bg-orange-950/40">
-        <ActivityTimeline patient={patient} visits={allVisits} />
-      </div>
         </>
       )}
     </div>
