@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { ROLE_LABEL } from "@/lib/auth/role-routes";
@@ -22,13 +23,25 @@ export function Topbar() {
 
   return (
     <header className="flex items-center justify-between gap-4 px-6 py-4">
-      <div>
-        <p className="font-semibold text-zinc-900 dark:text-zinc-50">
-          {user.facility}
-        </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {ROLE_LABEL[user.role]}
-        </p>
+      <div className="flex items-center gap-3">
+        {/* Only the sidebar (lg and up) carries the logo — it's hidden
+            below that breakpoint, so this is the only branding a narrow
+            viewport ever sees. */}
+        <span className="flex items-center gap-1.5 lg:hidden">
+          <Image src="/logo-mark.png" alt="ubuntumed" width={40} height={40} className="h-9 w-9 shrink-0 object-contain" />
+          <span className="whitespace-nowrap text-lg font-bold leading-none tracking-tight">
+            <span className="text-teal-600">Ubuntu</span>
+            <span className="text-orange-500">med</span>
+          </span>
+        </span>
+        <div>
+          <p className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
+            {user.facility}
+          </p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            {ROLE_LABEL[user.role]}
+          </p>
+        </div>
       </div>
 
       {user.role === "nurse" || user.role === "gynecologist" ? (

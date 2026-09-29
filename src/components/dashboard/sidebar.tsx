@@ -107,21 +107,15 @@ export function Sidebar() {
   return (
     <aside className={`scrollbar-hidden hidden shrink-0 flex-col overflow-x-hidden overflow-y-auto px-4 pb-8 pt-4 transition-all duration-300 dark:bg-zinc-950 lg:flex ${isCollapsed ? "w-[88px]" : "w-64"}`}>
       <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"} px-2`}>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-md ring-1 ring-zinc-200 transition-transform hover:scale-105 active:scale-95 dark:bg-zinc-900 dark:ring-zinc-800">
-            <Image src="/logo-mark.png" alt="ubuntumed" width={40} height={40} className="h-full w-full object-contain" />
-          </button>
+        <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex items-center gap-2 transition-transform hover:scale-105 active:scale-95">
+          <Image src="/logo-mark.png" alt="ubuntumed" width={40} height={40} className="h-11 w-11 shrink-0 object-contain" priority />
           {!isCollapsed && (
-            <div className="flex flex-col whitespace-nowrap">
-              <span className="text-xl font-bold leading-none tracking-tight text-zinc-900 dark:text-zinc-50">
-                Ubuntu<span className="text-teal-600">med</span>
-              </span>
-              <span className="mt-1 text-[10px] font-bold tracking-widest text-zinc-400">
-                WORKSPACE
-              </span>
-            </div>
+            <span className="whitespace-nowrap text-xl font-bold leading-none tracking-tight">
+              <span className="text-teal-600">Ubuntu</span>
+              <span className="text-orange-500">med</span>
+            </span>
           )}
-        </div>
+        </button>
       </div>
 
       <nav className={`mt-10 flex flex-1 flex-col gap-2 ${isCollapsed ? "items-center" : ""}`}>
