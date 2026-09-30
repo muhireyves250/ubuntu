@@ -9,6 +9,7 @@ import { IconBell, IconChevronDown, IconSearch } from "./icons";
 import { NotificationPanel } from "./notification-panel";
 import { PatientSearch } from "./patient-search";
 import { ProfilePanel } from "./profile-panel";
+import { MobileNav } from "./mobile-nav";
 import { useNotificationAlerts, useReadNotificationIds } from "@/lib/patients/use-patients";
 
 export function Topbar() {
@@ -23,22 +24,24 @@ export function Topbar() {
 
   return (
     <header className="flex items-center justify-between gap-4 px-6 py-4">
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <MobileNav />
         {/* Only the sidebar (lg and up) carries the logo — it's hidden
             below that breakpoint, so this is the only branding a narrow
-            viewport ever sees. */}
-        <span className="flex items-center gap-1.5 lg:hidden">
-          <Image src="/logo-mark.png" alt="ubuntumed" width={40} height={40} className="h-9 w-9 shrink-0 object-contain" />
-          <span className="whitespace-nowrap text-lg font-bold leading-none tracking-tight">
+            viewport ever sees. The wordmark itself drops out below sm,
+            where every pixel goes to the facility name instead. */}
+        <span className="flex shrink-0 items-center gap-1.5 lg:hidden">
+          <Image src="/logo-mark-v3.png" alt="ubuntumed" width={40} height={40} className="h-9 w-9 shrink-0 object-contain" />
+          <span className="hidden whitespace-nowrap text-lg font-bold leading-none tracking-tight sm:inline">
             <span className="text-teal-600">Ubuntu</span>
             <span className="text-orange-500">med</span>
           </span>
         </span>
-        <div>
-          <p className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold tracking-tight text-zinc-900 dark:text-white sm:text-lg">
             {user.facility}
           </p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
             {ROLE_LABEL[user.role]}
           </p>
         </div>

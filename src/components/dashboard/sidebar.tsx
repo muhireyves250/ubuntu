@@ -16,14 +16,14 @@ import {
   IconChevronRight,
 } from "./icons";
 
-interface NavItem {
+export interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
   enabledRoles?: Role[];
 }
 
-const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   {
     label: "Dashboard",
     icon: IconGrid,
@@ -99,6 +99,17 @@ const NAV_ITEMS: NavItem[] = [
 
 import { useState } from "react";
 
+export function isNavItemActive(item: NavItem, pathname: string): boolean {
+  return item.href === "/dashboard"
+    ? pathname === "/dashboard" ||
+        pathname === "/dashboard/nurse" ||
+        pathname === "/dashboard/gynecologist" ||
+        pathname === "/dashboard/lab" ||
+        pathname === "/dashboard/hospital-admin" ||
+        pathname === "/dashboard/chw"
+    : pathname.startsWith(item.href || "");
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
@@ -108,7 +119,7 @@ export function Sidebar() {
     <aside className={`scrollbar-hidden hidden shrink-0 flex-col overflow-x-hidden overflow-y-auto px-4 pb-8 pt-4 transition-all duration-300 dark:bg-zinc-950 lg:flex ${isCollapsed ? "w-[88px]" : "w-64"}`}>
       <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"} px-2`}>
         <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex items-center gap-2 transition-transform hover:scale-105 active:scale-95">
-          <Image src="/logo-mark.png" alt="ubuntumed" width={40} height={40} className="h-11 w-11 shrink-0 object-contain" priority />
+          <Image src="/logo-mark-v3.png" alt="ubuntumed" width={40} height={40} className="h-11 w-11 shrink-0 object-contain" priority />
           {!isCollapsed && (
             <span className="whitespace-nowrap text-xl font-bold leading-none tracking-tight">
               <span className="text-teal-600">Ubuntu</span>
@@ -124,15 +135,7 @@ export function Sidebar() {
             !!user && (item.enabledRoles?.includes(user.role) !== false);
 
           if (isEnabled) {
-            const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard" ||
-                  pathname === "/dashboard/nurse" ||
-                  pathname === "/dashboard/gynecologist" ||
-                  pathname === "/dashboard/lab" ||
-                  pathname === "/dashboard/hospital-admin" ||
-                  pathname === "/dashboard/chw"
-                : pathname.startsWith(item.href || "");
+            const isActive = isNavItemActive(item, pathname);
 
             return (
               <Link

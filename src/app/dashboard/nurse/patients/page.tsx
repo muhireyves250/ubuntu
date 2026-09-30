@@ -181,7 +181,49 @@ function PatientsPageContent() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-300 bg-[#ffeedb] shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <div className="scrollbar-hidden min-h-0 flex-1 overflow-auto">
+        <div className="scrollbar-hidden min-h-0 flex-1 overflow-auto p-2 sm:hidden">
+          <ul className="flex flex-col gap-2">
+            {rows.map(({ patient, latestRisk, lastVisitDate, hospital, gaWeeks }) => (
+              <li key={patient.id}>
+                <Link
+                  href={`/dashboard/nurse/patients/${patient.id}`}
+                  className="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-3 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                      {getInitials(fullName(patient))}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
+                        {fullName(patient)}
+                      </p>
+                      <p className="truncate font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                        {patient.nationalId}
+                      </p>
+                    </div>
+                    <RiskBadge level={latestRisk} size="sm" />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    <span>{computeAge(patient.dateOfBirth)} yrs</span>
+                    {gaWeeks !== null && <span>{gaWeeks} wks GA</span>}
+                    {hospital && <span className="truncate">{hospital}</span>}
+                    {lastVisitDate && (
+                      <span className="font-mono tracking-tight">Last visit {lastVisitDate}</span>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            ))}
+
+            {rows.length === 0 && (
+              <li className="px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                No patients match these filters.
+              </li>
+            )}
+          </ul>
+        </div>
+
+        <div className="scrollbar-hidden hidden min-h-0 flex-1 overflow-auto sm:block">
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-zinc-300 bg-[#ffeedb] text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:bg-orange-950/40 dark:text-zinc-400">
               <tr>

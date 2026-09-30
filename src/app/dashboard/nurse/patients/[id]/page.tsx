@@ -206,7 +206,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           </span>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <RiskBadge level={currentRisk} />
           {!isReadOnlyAdmin && (
             <button
