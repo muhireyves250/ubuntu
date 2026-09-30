@@ -7,7 +7,14 @@ import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { RegisterPatientModal } from "@/components/patients/register-patient-modal";
 import { useAuth } from "@/lib/auth/auth-context";
-import { usePatients, useVisits, usePregnancies, useActiveEmergencyPatientIds } from "@/lib/patients/use-patients";
+import {
+  usePatients,
+  useVisits,
+  usePregnancies,
+  useActiveEmergencyPatientIds,
+  useIsPatientsListLoading,
+} from "@/lib/patients/use-patients";
+import { PatientsListSkeleton } from "@/components/patients/patients-list-skeleton";
 import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import type { RiskLevel } from "@/lib/patients/types";
 import { getInitials, fullName, computeAge } from "@/lib/format";
@@ -33,6 +40,7 @@ function PatientsPageContent() {
   const visits = useVisits();
   const pregnancies = usePregnancies();
   const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
+  const isLoading = useIsPatientsListLoading();
   const searchParams = useSearchParams();
   const [nameFilter, setNameFilter] = useState(() => searchParams.get("q") ?? "");
   const [idFilter, setIdFilter] = useState("");
@@ -92,6 +100,8 @@ function PatientsPageContent() {
     setIdFilter("");
     setRiskFilter("all");
   }
+
+  if (isLoading) return <PatientsListSkeleton />;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-5">
@@ -224,8 +234,8 @@ function PatientsPageContent() {
         </div>
 
         <div className="scrollbar-hidden hidden min-h-0 flex-1 overflow-auto sm:block">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 z-10 border-b border-zinc-300 bg-[#ffeedb] text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:bg-orange-950/40 dark:text-zinc-400">
+          <table className="w-full border-separate border-spacing-x-0 border-spacing-y-1.5 text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-[#ffeedb] text-xs uppercase tracking-wide text-zinc-500 dark:bg-orange-950/40 dark:text-zinc-400">
               <tr>
                 <th className="w-10 px-4 py-3">
                   <input type="checkbox" disabled className="h-4 w-4 rounded border-zinc-300" />
@@ -240,19 +250,16 @@ function PatientsPageContent() {
                 <th className="px-4 py-3">Last visit</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody>
               {rows.map(({ patient, latestRisk, lastVisitDate, hospital, gaWeeks }) => (
-                <tr
-                  key={patient.id}
-                  className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
-                >
-                  <td className="px-4 py-3">
+                <tr key={patient.id} className="group">
+                  <td className="border-y border-l border-transparent bg-white px-4 py-3 first:rounded-l-lg group-hover:border-zinc-400 dark:bg-zinc-900 dark:group-hover:border-zinc-600">
                     <input type="checkbox" disabled className="h-4 w-4 rounded border-zinc-300" />
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                  <td className="border-y border-transparent bg-white px-4 py-3 font-mono text-xs text-zinc-500 group-hover:border-zinc-400 dark:bg-zinc-900 dark:text-zinc-400 dark:group-hover:border-zinc-600">
                     {patient.nationalId}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="border-y border-transparent bg-white px-4 py-3 group-hover:border-zinc-400 dark:bg-zinc-900 dark:group-hover:border-zinc-600">
                     <Link
                       href={`/dashboard/nurse/patients/${patient.id}`}
                       className="flex items-center gap-2.5 font-medium text-zinc-900 hover:text-teal-900 dark:text-zinc-50 dark:hover:text-teal-300"
@@ -263,22 +270,22 @@ function PatientsPageContent() {
                       {fullName(patient)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                  <td className="border-y border-transparent bg-white px-4 py-3 text-zinc-700 group-hover:border-zinc-400 dark:bg-zinc-900 dark:text-zinc-300 dark:group-hover:border-zinc-600">
                     {hospital ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                  <td className="border-y border-transparent bg-white px-4 py-3 text-zinc-700 group-hover:border-zinc-400 dark:bg-zinc-900 dark:text-zinc-300 dark:group-hover:border-zinc-600">
                     {computeAge(patient.dateOfBirth)}
                   </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                  <td className="border-y border-transparent bg-white px-4 py-3 text-zinc-700 group-hover:border-zinc-400 dark:bg-zinc-900 dark:text-zinc-300 dark:group-hover:border-zinc-600">
                     {gaWeeks !== null ? `${gaWeeks} wks` : "—"}
                   </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                  <td className="border-y border-transparent bg-white px-4 py-3 text-zinc-700 group-hover:border-zinc-400 dark:bg-zinc-900 dark:text-zinc-300 dark:group-hover:border-zinc-600">
                     {user?.name ?? "—"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="border-y border-transparent bg-white px-4 py-3 group-hover:border-zinc-400 dark:bg-zinc-900 dark:group-hover:border-zinc-600">
                     <RiskBadge level={latestRisk} size="sm" />
                   </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                  <td className="border-y border-r border-transparent bg-white px-4 py-3 text-zinc-700 last:rounded-r-lg group-hover:border-zinc-400 dark:bg-zinc-900 dark:text-zinc-300 dark:group-hover:border-zinc-600">
                     {lastVisitDate ?? "—"}
                   </td>
                 </tr>
@@ -288,7 +295,7 @@ function PatientsPageContent() {
                 <tr>
                   <td
                     colSpan={9}
-                    className="px-4 py-10 text-center text-zinc-500 dark:text-zinc-400"
+                    className="rounded-lg bg-white px-4 py-10 text-center text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"
                   >
                     No patients match these filters.
                   </td>

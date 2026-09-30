@@ -1,6 +1,13 @@
 "use client";
 
-import { IconLock, IconClock, IconCheckCircle, IconBuilding } from "@/components/dashboard/icons";
+import Link from "next/link";
+import {
+  IconLock,
+  IconClock,
+  IconCheckCircle,
+  IconBuilding,
+  IconChevronLeft,
+} from "@/components/dashboard/icons";
 import { getInitials, fullName } from "@/lib/format";
 import type { Patient } from "@/lib/patients/types";
 
@@ -82,11 +89,8 @@ export function PatientLockedBlocker({
       </div>
 
       <div className="flex flex-col items-center gap-6 bg-white p-8 text-center dark:bg-zinc-900">
-        <div className="relative">
-          <div className="absolute -inset-4 animate-pulse rounded-full bg-amber-100 opacity-50 dark:bg-amber-900/30" />
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-600 shadow-inner dark:bg-amber-950/50 dark:text-amber-400">
-            <IconLock className="h-9 w-9" />
-          </div>
+        <div className="flex h-20 w-20 animate-pulse-ring-amber items-center justify-center rounded-full bg-amber-50 text-amber-600 shadow-inner dark:bg-amber-950/50 dark:text-amber-400">
+          <IconLock className="h-9 w-9" />
         </div>
 
         <div className="flex flex-col items-center gap-3">
@@ -138,6 +142,14 @@ export function PatientLockedBlocker({
             finalizes the visit — no action is needed here.
           </p>
         </div>
+
+        <Link
+          href="/dashboard/nurse/patients"
+          className="flex items-center gap-1.5 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+        >
+          <IconChevronLeft className="h-4 w-4" />
+          Back to Patient Registry
+        </Link>
       </div>
     </div>
   );

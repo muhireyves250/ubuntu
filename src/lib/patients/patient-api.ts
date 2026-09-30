@@ -70,6 +70,7 @@ function toFrontendPatient(p: BackendPatient): Patient {
     insuranceNumber: p.insuranceNumber ?? undefined,
     registeredAt: p.createdAt.slice(0, 10),
     registeredBy: p.registeredBy ? `${p.registeredBy.firstName} ${p.registeredBy.lastName}` : "",
+    registeredById: p.registeredBy?.id ?? undefined,
     registrationFacility: p.facility?.name ?? "",
     assignedChwId: p.assignedChwId ?? undefined,
     assignedChwAt: p.assignedChwAt ?? undefined,

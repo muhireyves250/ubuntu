@@ -9,12 +9,16 @@ import {
   DEFAULT_CAPACITY,
   setFacilityMaxCapacity,
   useReferrals,
+  useIsOverviewDataLoading,
+  type RiskSummaryScope,
 } from "@/lib/patients/use-patients";
 import { IconAlert, IconClipboard, IconUsers } from "./icons";
 import { StatCard } from "./stat-card";
 import { RiskDistribution } from "./risk-distribution";
 import { TodaysVisitsCard } from "./todays-visits-card";
+import { ActiveReferralsCard } from "./active-referrals-card";
 import { SidePanel } from "./side-panel";
+import { OverviewSkeleton } from "./overview-skeleton";
 
 const RANGE_OPTIONS: { value: string; label: string; days?: number }[] = [
   { value: "7", label: "Last 7 days", days: 7 },
@@ -26,13 +30,16 @@ const RANGE_OPTIONS: { value: string; label: string; days?: number }[] = [
 export function DashboardOverview() {
   const { user } = useAuth();
   const [range, setRange] = useState("30");
+  const [riskScope, setRiskScope] = useState<RiskSummaryScope>("all");
   const selectedDays = RANGE_OPTIONS.find((r) => r.value === range)?.days;
-  const summary = useRiskSummary(selectedDays);
+  const summary = useRiskSummary(selectedDays, riskScope);
   const capacity = useFacilityCapacity(user?.facility ?? "");
   const referrals = useReferrals();
   const [capacityDraft, setCapacityDraft] = useState<string>("");
   const [isEditingCapacity, setIsEditingCapacity] = useState(false);
+  const isLoading = useIsOverviewDataLoading();
   if (!user) return null;
+  if (isLoading) return <OverviewSkeleton />;
 
   const hasCapacityConfig = capacity.max !== DEFAULT_CAPACITY;
   const isHospitalAdmin = user.role === "hospital_admin";
@@ -77,15 +84,15 @@ export function DashboardOverview() {
   ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="flex shrink-0 items-center justify-between">
+        <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
           Overview
         </h1>
         <select
           value={range}
           onChange={(e) => setRange(e.target.value)}
-          className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+          className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
         >
           {RANGE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -97,7 +104,7 @@ export function DashboardOverview() {
 
       {(hasCapacityConfig || isHospitalAdmin) && (
         <div
-          className={`flex flex-wrap items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium ${
+          className={`flex shrink-0 flex-wrap items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium ${
             capacity.status === "full"
               ? "border-red-300 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
               : capacity.status === "nearly_full"
@@ -157,7 +164,7 @@ export function DashboardOverview() {
       )}
 
       {isHospitalAdmin && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid shrink-0 grid-cols-3 gap-4">
           <div className="rounded-xl border border-zinc-200 bg-white p-4 text-center dark:border-zinc-800 dark:bg-zinc-900">
             <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{referralCounts.pending}</p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">Pending referrals</p>
@@ -173,23 +180,34 @@ export function DashboardOverview() {
         </div>
       )}
 
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-6">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+        <div className="scrollbar-hidden flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-1 pr-1 lg:pb-0">
+          <div className="grid shrink-0 grid-cols-2 gap-4 sm:grid-cols-4">
             {statCards.map((card) => (
               <StatCard key={card.label} {...card} />
             ))}
           </div>
 
-          <RiskDistribution
-            counts={summary.counts}
-            highRiskRate={summary.highRiskRate}
-          />
+          <div className="flex shrink-0 flex-col gap-4 md:h-60 md:flex-row">
+            <div className="md:flex-[3]">
+              <RiskDistribution
+                counts={summary.counts}
+                highRiskRate={summary.highRiskRate}
+                scope={riskScope}
+                onScopeChange={setRiskScope}
+              />
+            </div>
+            <div className="md:flex-[2]">
+              <ActiveReferralsCard />
+            </div>
+          </div>
 
           <TodaysVisitsCard />
         </div>
 
-        <SidePanel user={user} copy={copy} />
+        <div className="scrollbar-hidden min-h-0 overflow-y-auto lg:shrink-0">
+          <SidePanel user={user} copy={copy} />
+        </div>
       </div>
     </div>
   );

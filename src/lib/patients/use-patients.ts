@@ -66,7 +66,7 @@ import {
 } from "./read-notifications-storage";
 import { fetchAcknowledgments, acknowledgePatientApi } from "./patient-acknowledgment-api";
 import { classifyRiskLevel } from "./symptom-checklist";
-import { matchScheduledVisit, chwVisitSchedule } from "./pregnancy";
+import { matchScheduledVisit, scheduledVisitsInRange, chwVisitSchedule } from "./pregnancy";
 import { getStoredAuthenticatedUser } from "../auth/auth-context";
 import { FOLLOW_UP_REASON_LABELS } from "./types";
 import type {
@@ -159,6 +159,36 @@ export function usePregnancies(): Pregnancy[] {
     staleTime: 120_000,
   });
   return data ?? [];
+}
+
+// The dashboard Overview page (stat cards, Risk Distribution, ANC Visits,
+// Active Referrals, Following Module) is built entirely from these four
+// collections — re-querying the same keys here is cache-shared with
+// usePatients/useVisits/usePregnancies/useReferrals (no extra network
+// request), just to read their initial-load state for the skeleton gate.
+export function useIsOverviewDataLoading(): boolean {
+  const patientsQ = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients(), staleTime: 120_000 });
+  const visitsQ = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits, staleTime: 60_000 });
+  const pregnanciesQ = useQuery({
+    queryKey: ["pregnancies", "all"],
+    queryFn: fetchAllPregnancies,
+    staleTime: 120_000,
+  });
+  const referralsQ = useQuery({ queryKey: ["referrals"], queryFn: fetchReferrals });
+  return patientsQ.isLoading || visitsQ.isLoading || pregnanciesQ.isLoading || referralsQ.isLoading;
+}
+
+// Same cache-sharing trick as useIsOverviewDataLoading, scoped to the
+// Patient Registry list page's own data (no referrals needed there).
+export function useIsPatientsListLoading(): boolean {
+  const patientsQ = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients(), staleTime: 120_000 });
+  const visitsQ = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits, staleTime: 60_000 });
+  const pregnanciesQ = useQuery({
+    queryKey: ["pregnancies", "all"],
+    queryFn: fetchAllPregnancies,
+    staleTime: 120_000,
+  });
+  return patientsQ.isLoading || visitsQ.isLoading || pregnanciesQ.isLoading;
 }
 
 export function usePregnanciesForPatient(patientId: string): Pregnancy[] {
@@ -968,11 +998,39 @@ export interface TodaysVisit {
   dueWeek?: number;
 }
 
-// Shows both visits already logged today AND mothers with an open pregnancy
-// whose ANC calendar puts them due today but who haven't arrived/been
-// logged yet — so the nurse can see everyone expected today, not just who
-// already showed up.
-export function useTodaysVisits(): TodaysVisit[] {
+export type VisitsWorklistPeriod = "today" | "week" | "month" | "year";
+
+// "today" keeps the tight ±3-day tolerance match (matchScheduledVisit) so
+// existing behavior is untouched; the wider periods switch to an inclusive
+// due-date range (scheduledVisitsInRange), since a whole week/month/year can
+// legitimately contain more than one unlogged checkpoint per pregnancy.
+function periodRange(period: VisitsWorklistPeriod, today: string): { start: string; end: string } {
+  const now = new Date(`${today}T00:00:00`);
+  if (period === "week") {
+    const day = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { start: monday.toISOString().slice(0, 10), end: sunday.toISOString().slice(0, 10) };
+  }
+  if (period === "month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+  }
+  if (period === "year") {
+    return { start: `${now.getFullYear()}-01-01`, end: `${now.getFullYear()}-12-31` };
+  }
+  return { start: today, end: today };
+}
+
+// Shows both visits already logged (in the given period) AND mothers with an
+// open pregnancy whose ANC calendar puts them due in that period but who
+// haven't arrived/been logged yet — so the nurse can see everyone expected,
+// not just who already showed up. Defaults to "today" for the day-worklist
+// use case; "week"/"month"/"year" widen it into a longer-range view.
+export function useTodaysVisits(period: VisitsWorklistPeriod = "today"): TodaysVisit[] {
   const visits = useVisits();
   const patients = usePatients();
   const pregnancies = usePregnancies();
@@ -980,6 +1038,7 @@ export function useTodaysVisits(): TodaysVisit[] {
 
   return useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
+    const { start, end } = periodRange(period, today);
     // usePatients() is the shared, cross-facility registry — this widget is
     // a facility-specific worklist, so it only considers patients
     // registered at the viewer's own facility.
@@ -987,35 +1046,38 @@ export function useTodaysVisits(): TodaysVisit[] {
     const scopedPatientIds = new Set(scopedPatients.map((p) => p.id));
     const patientIdByPregnancyId = new Map(pregnancies.map((p) => [p.id, p.patientId]));
 
-    const todaysLoggedVisits = visits.filter(
-      (v) => v.date === today && scopedPatientIds.has(patientIdByPregnancyId.get(v.pregnancyId) ?? ""),
+    const loggedVisitsInPeriod = visits.filter(
+      (v) => v.date >= start && v.date <= end && scopedPatientIds.has(patientIdByPregnancyId.get(v.pregnancyId) ?? ""),
     );
-    const logged: TodaysVisit[] = todaysLoggedVisits.map((visit) => ({
+    const logged: TodaysVisit[] = loggedVisitsInPeriod.map((visit) => ({
       kind: "logged",
       visit,
       patient: scopedPatients.find((p) => p.id === patientIdByPregnancyId.get(visit.pregnancyId)),
     }));
 
-    const loggedPregnancyIdsToday = new Set(todaysLoggedVisits.map((v) => v.pregnancyId));
+    const loggedPregnancyIdsInPeriod = new Set(loggedVisitsInPeriod.map((v) => v.pregnancyId));
 
     const due: TodaysVisit[] = pregnancies
       .filter(
-        (p) => p.status === "open" && !loggedPregnancyIdsToday.has(p.id) && scopedPatientIds.has(p.patientId),
+        (p) =>
+          p.status === "open" && !loggedPregnancyIdsInPeriod.has(p.id) && scopedPatientIds.has(p.patientId),
       )
-      .map((pregnancy): TodaysVisit | null => {
+      .flatMap((pregnancy): TodaysVisit[] => {
         const pregnancyVisits = visits.filter((v) => v.pregnancyId === pregnancy.id);
-        const match = matchScheduledVisit(pregnancy, pregnancyVisits, today);
-        if (!match) return null;
-        return {
-          kind: "due",
-          patient: scopedPatients.find((p) => p.id === pregnancy.patientId),
-          dueWeek: match.dueByWeek,
-        };
-      })
-      .filter((entry): entry is TodaysVisit => entry !== null);
+        const patient = scopedPatients.find((p) => p.id === pregnancy.patientId);
+        if (period === "today") {
+          const match = matchScheduledVisit(pregnancy, pregnancyVisits, today);
+          return match ? [{ kind: "due", patient, dueWeek: match.dueByWeek }] : [];
+        }
+        return scheduledVisitsInRange(pregnancy, pregnancyVisits, start, end).map((entry) => ({
+          kind: "due" as const,
+          patient,
+          dueWeek: entry.dueByWeek,
+        }));
+      });
 
     return [...due, ...logged];
-  }, [visits, patients, pregnancies, currentUser.facility]);
+  }, [visits, patients, pregnancies, currentUser.facility, period]);
 }
 
 export interface RiskSummary {
@@ -1025,7 +1087,9 @@ export interface RiskSummary {
   highRiskRate: number; // percentage of patients currently red or orange
 }
 
-export function useRiskSummary(days?: number): RiskSummary {
+export type RiskSummaryScope = "all" | "active_pregnancy";
+
+export function useRiskSummary(days?: number, scope: RiskSummaryScope = "all"): RiskSummary {
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
@@ -1050,9 +1114,16 @@ export function useRiskSummary(days?: number): RiskSummary {
     // facility-specific dashboard summary, so it only considers patients
     // registered at the viewer's own facility.
     const facilityPatients = patients.filter((p) => p.registrationFacility === currentUser.facility);
-    const scopedPatients = cutoff
+    const windowPatients = cutoff
       ? facilityPatients.filter((p) => p.registeredAt >= cutoff || activePatientIdsInWindow.has(p.id))
       : facilityPatients;
+    const openPregnancyPatientIds = new Set(
+      pregnancies.filter((p) => p.status === "open").map((p) => p.patientId),
+    );
+    const scopedPatients =
+      scope === "active_pregnancy"
+        ? windowPatients.filter((p) => openPregnancyPatientIds.has(p.id))
+        : windowPatients;
 
     const counts: Record<RiskLevel, number> = {
       green: 0,
@@ -1078,7 +1149,7 @@ export function useRiskSummary(days?: number): RiskSummary {
         : Math.round(((counts.red + counts.orange) / totalPatients) * 100);
 
     return { totalPatients, totalVisits: scopedVisits.length, counts, highRiskRate };
-  }, [patients, visits, pregnancies, days, activeEmergencyPatientIds, currentUser.facility]);
+  }, [patients, visits, pregnancies, days, scope, activeEmergencyPatientIds, currentUser.facility]);
 }
 
 export async function registerPatient(
@@ -1264,6 +1335,7 @@ export interface NotificationAlert {
     | "chw_visit_missed"
     | "chw_new_assignment"
     | "chw_case_accepted"
+    | "chw_assigned_to_your_patient"
     | "lab_request_overdue"
     | "lab_result_unacknowledged"
     | "red_risk_escalation"
@@ -1865,6 +1937,32 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
     }
 
     if (role === "nurse") {
+      // A CHW was just assigned to a patient this nurse registered —
+      // mirrors the "chw_new_assignment" alert the CHW themself gets, same
+      // few-day decay window so it doesn't linger indefinitely.
+      for (const patient of patients) {
+        if (patient.registeredById !== currentUser.id) continue;
+        if (!patient.assignedChwId || !patient.assignedChwAt) continue;
+
+        const assignedDate = patient.assignedChwAt.slice(0, 10);
+        const daysSinceAssigned = Math.floor(
+          (new Date(today).getTime() - new Date(assignedDate).getTime()) / (24 * 60 * 60 * 1000),
+        );
+        if (daysSinceAssigned < 0 || daysSinceAssigned > 3) continue;
+
+        const patientName = `${patient.firstName} ${patient.lastName}`;
+        alerts.push({
+          id: `chw-assigned-to-your-patient-${patient.id}`,
+          type: "chw_assigned_to_your_patient",
+          patientId: patient.id,
+          patientName,
+          title: "CHW Assigned",
+          message: `A community health worker has been assigned to ${patientName} for home-visit follow-up.`,
+          date: assignedDate,
+          priority: "Normal",
+        });
+      }
+
       // A CHW home visit that's now overdue and still unlogged — surfaced
       // for a few days after it was missed, same recency window as the
       // "newly assigned"/"case accepted" CHW alerts above.

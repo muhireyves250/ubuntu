@@ -207,3 +207,24 @@ export function matchScheduledVisit(
   }
   return best?.entry ?? null;
 }
+
+// Broader than matchScheduledVisit's single-date ±tolerance window — used by
+// the "This Week/Month/Year" worklist view, where any unlogged checkpoint
+// whose due date falls anywhere in the given range should show up, not just
+// the single closest one to a specific day.
+export function scheduledVisitsInRange(
+  pregnancy: Pregnancy,
+  visits: Visit[],
+  startDate: string,
+  endDate: string,
+): AncCalendarEntry[] {
+  const loggedWeeks = new Set(
+    visits
+      .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
+      .map((v) => v.scheduledWeek as number),
+  );
+  return ancCalendar(pregnancy).filter(
+    (entry) =>
+      !loggedWeeks.has(entry.dueByWeek) && entry.dueDate >= startDate && entry.dueDate <= endDate,
+  );
+}

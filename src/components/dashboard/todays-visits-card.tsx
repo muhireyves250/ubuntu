@@ -1,13 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { getInitials, fullName } from "@/lib/format";
-import { useTodaysVisits } from "@/lib/patients/use-patients";
+import { useTodaysVisits, type VisitsWorklistPeriod } from "@/lib/patients/use-patients";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { IconCalendar } from "./icons";
 import type { RiskLevel } from "@/lib/patients/types";
 
 const TODAY_CAP = 8;
+
+const PERIOD_LABELS: Record<VisitsWorklistPeriod, string> = {
+  today: "Today",
+  week: "This Week",
+  month: "This Month",
+  year: "This Year",
+};
 
 const RISK_CARD_BORDER: Record<RiskLevel, string> = {
   green: "border-emerald-200 hover:border-emerald-300 dark:border-emerald-900/60 dark:hover:border-emerald-700",
@@ -17,55 +25,73 @@ const RISK_CARD_BORDER: Record<RiskLevel, string> = {
 };
 
 export function TodaysVisitsCard() {
-  const todaysVisits = useTodaysVisits();
-  const visibleVisits = todaysVisits.slice(0, TODAY_CAP);
+  const [period, setPeriod] = useState<VisitsWorklistPeriod>("today");
+  const [showAll, setShowAll] = useState(false);
+  const todaysVisits = useTodaysVisits(period);
+  const visibleVisits = showAll ? todaysVisits : todaysVisits.slice(0, TODAY_CAP);
 
   return (
-    <div className="rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-orange-950/40">
-      <div className="flex items-center justify-between">
+    <div className="flex min-h-0 flex-1 flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-orange-950/40">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <IconCalendar className="h-4 w-4 text-zinc-400" />
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">
-            Today&apos;s ANC Visits
+            {PERIOD_LABELS[period]}&apos;s ANC Visits
           </h3>
           <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
             {todaysVisits.length}
           </span>
         </div>
-        <Link
-          href="/dashboard/nurse/patients"
-          className="rounded-md border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
-        >
-          View Weekly
-        </Link>
+        <div className="flex items-center gap-2">
+          <select
+            value={period}
+            onChange={(e) => {
+              setPeriod(e.target.value as VisitsWorklistPeriod);
+              setShowAll(false);
+            }}
+            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-600 outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+          >
+            {(Object.keys(PERIOD_LABELS) as VisitsWorklistPeriod[]).map((p) => (
+              <option key={p} value={p}>
+                {PERIOD_LABELS[p]}
+              </option>
+            ))}
+          </select>
+          <Link
+            href="/dashboard/nurse/patients"
+            className="rounded-md border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+          >
+            View All
+          </Link>
+        </div>
       </div>
       {todaysVisits.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-          No visits due or recorded today.
+          No visits due or recorded {period === "today" ? "today" : PERIOD_LABELS[period].toLowerCase()}.
         </p>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="scrollbar-hidden mt-3 grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-5">
           {visibleVisits.map((entry) => {
             const { kind, visit, patient, dueWeek } = entry;
             if (!patient) return null;
-            const key = kind === "logged" ? visit!.id : `due-${patient.id}`;
+            const key = kind === "logged" ? visit!.id : `due-${patient.id}-${dueWeek}`;
             const borderClass =
               kind === "logged" ? RISK_CARD_BORDER[visit!.riskLevel] : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-600";
             return (
               <Link
                 key={key}
                 href={`/dashboard/nurse/patients/${patient.id}`}
-                className={`flex flex-col gap-2.5 rounded-xl border-2 bg-white p-3 transition-colors hover:shadow-sm dark:bg-zinc-900 ${borderClass}`}
+                className={`flex flex-col gap-1.5 rounded-lg border-2 bg-white p-2 transition-colors hover:shadow-sm dark:bg-zinc-900 ${borderClass}`}
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-[11px] font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
                     {getInitials(fullName(patient))}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    <p className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">
                       {fullName(patient)}
                     </p>
-                    <p className="truncate text-xs capitalize text-zinc-400">
+                    <p className="truncate text-[11px] capitalize text-zinc-400">
                       {kind === "logged" ? visit!.type : `due — week ${dueWeek}`}
                     </p>
                   </div>
@@ -73,7 +99,7 @@ export function TodaysVisitsCard() {
                 {kind === "logged" ? (
                   <RiskBadge level={visit!.riskLevel} size="sm" />
                 ) : (
-                  <span className="w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                  <span className="w-fit rounded-full bg-zinc-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
                     Not yet arrived
                   </span>
                 )}
@@ -81,13 +107,20 @@ export function TodaysVisitsCard() {
             );
           })}
           {todaysVisits.length > TODAY_CAP && (
-            <Link
-              href="/dashboard/nurse/patients"
-              className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-zinc-300 p-3 text-center text-xs font-medium text-zinc-500 hover:bg-white dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="flex flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-zinc-300 p-2 text-center text-[11px] font-medium text-zinc-500 hover:bg-white dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
             >
-              +{todaysVisits.length - TODAY_CAP}
-              <span className="font-normal text-zinc-400">more today</span>
-            </Link>
+              {showAll ? (
+                "Show less"
+              ) : (
+                <>
+                  +{todaysVisits.length - TODAY_CAP}
+                  <span className="font-normal text-zinc-400">more</span>
+                </>
+              )}
+            </button>
           )}
         </div>
       )}

@@ -94,6 +94,7 @@ const TYPE_CATEGORY: Record<NotificationAlert["type"], Category> = {
   chw_report_submitted: "chw",
   chw_case_accepted: "chw",
   chw_new_assignment: "chw",
+  chw_assigned_to_your_patient: "chw",
   new_followup_assignment: "chw",
   facility_full: "system",
   lab_request_overdue: "lab",

@@ -32,6 +32,7 @@ export interface Patient {
   insuranceNumber?: string;
   registeredAt: string; // ISO date
   registeredBy: string;
+  registeredById?: string;
   registrationFacility: string;
   assignedChwId?: string;
   assignedChwAt?: string; // ISO datetime — when assignedChwId was last set
