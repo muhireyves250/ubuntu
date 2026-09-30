@@ -9,9 +9,8 @@ import {
 } from "react";
 import { apiFetch, ApiError } from "@/lib/api/client";
 import { mapBackendRole, mapBackendFacilityLevel, titleForRole } from "./role-mapping";
+import { AUTH_STORAGE_KEY, clearStoredSession, emitSessionChange, subscribeToSession } from "./session-storage";
 import type { FacilityLevel, Role } from "./types";
-
-const AUTH_STORAGE_KEY = "ubuntumed.auth";
 
 export interface AuthenticatedUser {
   id: string;
@@ -27,17 +26,6 @@ export interface AuthenticatedUser {
 interface StoredAuth {
   accessToken: string;
   user: AuthenticatedUser;
-}
-
-const listeners = new Set<() => void>();
-
-function emitSessionChange() {
-  listeners.forEach((listener) => listener());
-}
-
-function subscribeToSession(onChange: () => void) {
-  listeners.add(onChange);
-  return () => listeners.delete(onChange);
 }
 
 function readStoredAuth(): StoredAuth | null {
@@ -137,8 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-    emitSessionChange();
+    clearStoredSession();
   }, []);
 
   return (
