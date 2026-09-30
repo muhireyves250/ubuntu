@@ -142,11 +142,8 @@ export default function LoginPage() {
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-teal-950/65" />
 
-        {/* Logo — the logo's own teal tones blend into the dark teal photo
-            overlay behind it, so it gets a light backdrop chip here for
-            contrast (the card version below sits on white and needs none). */}
-        <div className="relative mb-8 rounded-3xl bg-white/90 px-6 py-4 shadow-lg backdrop-blur-sm">
-          <Image src="/logo-full.png" alt="ubuntumed" width={220} height={190} className="h-auto w-28 object-contain sm:w-32" priority />
+        <div className="relative mb-8">
+          <Image src="/logo-full-v3.png" alt="ubuntumed" width={220} height={220} className="h-auto w-44 object-contain sm:w-56" priority />
         </div>
 
         {/* Role tab switcher */}
@@ -189,7 +186,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm rounded-4xl bg-white p-8 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
           {/* Card header */}
           <div className="flex flex-col items-center text-center">
-            <Image src="/logo-full.png" alt="ubuntumed logo" width={220} height={190} className="h-auto w-20 object-contain" />
+            <Image src="/logo-full-v3.png" alt="ubuntumed logo" width={220} height={220} className="h-auto w-20 object-contain" />
 
             {/* Role badge */}
             <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800 ring-1 ring-teal-200">

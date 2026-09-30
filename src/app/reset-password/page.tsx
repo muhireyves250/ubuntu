@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
       {/* Left panel */}
       <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-teal-900 via-teal-800 to-teal-700 px-12 py-16 text-white lg:flex lg:w-1/2">
         <div className="relative z-10">
-          <Image src="/logo-full.png" alt="ubuntumed" width={220} height={190} className="h-auto w-24 object-contain" />
+          <Image src="/logo-full-v3.png" alt="ubuntumed" width={220} height={220} className="h-auto w-24 object-contain" />
         </div>
 
         <div className="relative z-10">
@@ -168,7 +168,7 @@ export default function ResetPasswordPage() {
       <div className="flex flex-1 items-center justify-center bg-[#fff6ef] px-8 py-20 shadow-[inset_4px_0_24px_rgba(0,0,0,0.04)] sm:px-16">
         <div className="w-full max-w-sm rounded-4xl bg-white p-8 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
           <div className="flex flex-col items-center text-center">
-            <Image src="/logo-full.png" alt="ubuntumed logo" width={220} height={190} className="h-auto w-20 object-contain" />
+            <Image src="/logo-full-v3.png" alt="ubuntumed logo" width={220} height={220} className="h-auto w-20 object-contain" />
 
             <h2 className="mt-4 text-2xl font-bold text-zinc-900">
               Reset password
