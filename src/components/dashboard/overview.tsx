@@ -19,6 +19,7 @@ import { TodaysVisitsCard } from "./todays-visits-card";
 import { ActiveReferralsCard } from "./active-referrals-card";
 import { SidePanel } from "./side-panel";
 import { OverviewSkeleton } from "./overview-skeleton";
+import { MobileOverview } from "./mobile-overview";
 
 const RANGE_OPTIONS: { value: string; label: string; days?: number }[] = [
   { value: "7", label: "Last 7 days", days: 7 },
@@ -84,15 +85,15 @@ export function DashboardOverview() {
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex flex-col gap-3 max-sm:h-full max-sm:min-h-0 sm:gap-4 lg:h-full lg:min-h-0">
       <div className="flex shrink-0 items-center justify-between">
-        <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-base font-bold sm:text-lg text-zinc-900 dark:text-zinc-50">
           Overview
         </h1>
         <select
           value={range}
           onChange={(e) => setRange(e.target.value)}
-          className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+          className="rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-xs text-zinc-700 sm:px-3 sm:py-1 sm:text-sm outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
         >
           {RANGE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -180,16 +181,29 @@ export function DashboardOverview() {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-        <div className="scrollbar-hidden flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-1 pr-1 lg:pb-0">
-          <div className="grid shrink-0 grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="flex min-h-0 flex-1 flex-col sm:hidden">
+        <MobileOverview
+          user={user}
+          copy={copy}
+          counts={summary.counts}
+          highRiskRate={summary.highRiskRate}
+          riskScope={riskScope}
+          onScopeChange={setRiskScope}
+          totalPatients={summary.totalPatients}
+          totalVisits={summary.totalVisits}
+        />
+      </div>
+
+      <div className="flex flex-col gap-4 max-sm:hidden lg:min-h-0 lg:flex-1 lg:flex-row">
+        <div className="scrollbar-hidden order-2 flex flex-col gap-4 pb-1 pr-1 lg:order-none lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pb-0">
+          <div className="grid shrink-0 grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
             {statCards.map((card) => (
               <StatCard key={card.label} {...card} />
             ))}
           </div>
 
-          <div className="flex shrink-0 flex-col gap-4 md:h-60 md:flex-row">
-            <div className="md:flex-[3]">
+          <div className="flex shrink-0 flex-col gap-4 xl:h-60 xl:flex-row">
+            <div className="xl:flex-[3]">
               <RiskDistribution
                 counts={summary.counts}
                 highRiskRate={summary.highRiskRate}
@@ -197,15 +211,19 @@ export function DashboardOverview() {
                 onScopeChange={setRiskScope}
               />
             </div>
-            <div className="md:flex-[2]">
+            {/* Referrals and today's visits are desktop-only (lg+) — on
+                smaller screens they're dropped to keep the overview short. */}
+            <div className="max-lg:hidden xl:flex-[2]">
               <ActiveReferralsCard />
             </div>
           </div>
 
-          <TodaysVisitsCard />
+          <div className="contents max-lg:hidden">
+            <TodaysVisitsCard />
+          </div>
         </div>
 
-        <div className="scrollbar-hidden min-h-0 overflow-y-auto lg:shrink-0">
+        <div className="scrollbar-hidden order-1 lg:order-none lg:min-h-0 lg:shrink-0 lg:overflow-y-auto">
           <SidePanel user={user} copy={copy} />
         </div>
       </div>

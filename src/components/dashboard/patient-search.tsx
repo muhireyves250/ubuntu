@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { usePatients, useVisits, usePregnancies, useActiveEmergencyPatientIds } from "@/lib/patients/use-patients";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { getInitials, shortId, fullName } from "@/lib/format";
-import { IconSearch } from "./icons";
+import { IconSearch, IconClose } from "./icons";
 
 const MAX_RESULTS = 6;
 
@@ -17,6 +17,7 @@ export function PatientSearch() {
   const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const patientIdByPregnancyId = useMemo(
@@ -55,11 +56,13 @@ export function PatientSearch() {
   function goToPatient(id: string) {
     setQuery("");
     setIsOpen(false);
+    setIsMobileOpen(false);
     router.push(`/dashboard/nurse/patients/${id}`);
   }
 
   function viewAllResults() {
     setIsOpen(false);
+    setIsMobileOpen(false);
     router.push(`/dashboard/nurse/patients?q=${encodeURIComponent(query.trim())}`);
   }
 
@@ -71,66 +74,129 @@ export function PatientSearch() {
     }
   }
 
+  function renderResults() {
+    return results.length === 0 ? (
+      <p className="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400">
+        No patients found.
+      </p>
+    ) : (
+      results.map(({ patient, latestRisk }) => (
+        <button
+          key={patient.id}
+          type="button"
+          onClick={() => goToPatient(patient.id)}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            {getInitials(fullName(patient))}
+          </span>
+          <span className="flex-1 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+            {fullName(patient)}
+          </span>
+          <RiskBadge level={latestRisk} size="sm" />
+        </button>
+      ))
+    );
+  }
+
   return (
-    <div
-      ref={containerRef}
-      className="relative hidden flex-1 max-w-sm sm:block"
-      onBlur={(event) => {
-        if (!containerRef.current?.contains(event.relatedTarget as Node)) {
-          setIsOpen(false);
-        }
-      }}
-    >
-      <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-50">
-        <IconSearch className="h-4 w-4 text-zinc-400" />
-        <input
-          type="text"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          onKeyDown={handleKeyDown}
-          placeholder="Search by ID or phone…"
-          className="w-full bg-transparent outline-none placeholder:text-zinc-400"
-        />
+    <>
+      {/* Mobile trigger — the inline search bar below is sm:hidden, so a
+          phone-width viewport needs its own way to reach search instead of
+          losing the feature entirely. */}
+      <button
+        type="button"
+        onClick={() => setIsMobileOpen(true)}
+        aria-label="Search patients"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-zinc-500 shadow-sm dark:bg-zinc-900 sm:hidden"
+      >
+        <IconSearch className="h-4 w-4" />
+      </button>
+
+      <div
+        ref={containerRef}
+        className="relative hidden flex-1 max-w-sm sm:block"
+        onBlur={(event) => {
+          if (!containerRef.current?.contains(event.relatedTarget as Node)) {
+            setIsOpen(false);
+          }
+        }}
+      >
+        <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-50">
+          <IconSearch className="h-4 w-4 text-zinc-400" />
+          <input
+            type="text"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+            onKeyDown={handleKeyDown}
+            placeholder="Search by ID or phone…"
+            className="w-full bg-transparent outline-none placeholder:text-zinc-400"
+          />
+        </div>
+
+        {isOpen && query.trim().length >= 2 && (
+          <div className="absolute left-0 right-0 z-20 mt-2 max-h-80 overflow-auto rounded-xl border border-zinc-200 bg-white p-1.5 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+            {renderResults()}
+            <button
+              type="button"
+              onClick={viewAllResults}
+              className="mt-1 w-full rounded-lg px-2.5 py-2 text-left text-sm font-medium text-teal-700 hover:bg-zinc-50 dark:text-teal-400 dark:hover:bg-zinc-800"
+            >
+              View all results for &ldquo;{query.trim()}&rdquo;
+            </button>
+          </div>
+        )}
       </div>
 
-      {isOpen && query.trim().length >= 2 && (
-        <div className="absolute left-0 right-0 z-20 mt-2 max-h-80 overflow-auto rounded-xl border border-zinc-200 bg-white p-1.5 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400">
-              No patients found.
-            </p>
-          ) : (
-            results.map(({ patient, latestRisk }) => (
-              <button
-                key={patient.id}
-                type="button"
-                onClick={() => goToPatient(patient.id)}
-                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                  {getInitials(fullName(patient))}
-                </span>
-                <span className="flex-1 text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                  {fullName(patient)}
-                </span>
-                <RiskBadge level={latestRisk} size="sm" />
-              </button>
-            ))
-          )}
-
-          <button
-            type="button"
-            onClick={viewAllResults}
-            className="mt-1 w-full rounded-lg px-2.5 py-2 text-left text-sm font-medium text-teal-700 hover:bg-zinc-50 dark:text-teal-400 dark:hover:bg-zinc-800"
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/30 sm:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        >
+          <div
+            className="mx-4 mt-4 rounded-2xl bg-white p-3 shadow-lg dark:bg-zinc-900"
+            onClick={(event) => event.stopPropagation()}
           >
-            View all results for &ldquo;{query.trim()}&rdquo;
-          </button>
+            <div className="flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-2.5 text-sm text-zinc-900 dark:border-zinc-700 dark:text-zinc-50">
+              <IconSearch className="h-4 w-4 shrink-0 text-zinc-400" />
+              <input
+                type="text"
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Search by ID or phone…"
+                className="w-full bg-transparent outline-none placeholder:text-zinc-400"
+              />
+              <button
+                type="button"
+                onClick={() => setIsMobileOpen(false)}
+                aria-label="Close search"
+                className="shrink-0 text-zinc-400"
+              >
+                <IconClose className="h-4 w-4" />
+              </button>
+            </div>
+
+            {query.trim().length >= 2 && (
+              <div className="mt-2 max-h-[60vh] overflow-auto rounded-xl border border-zinc-200 p-1.5 dark:border-zinc-800">
+                {renderResults()}
+                <button
+                  type="button"
+                  onClick={viewAllResults}
+                  className="mt-1 w-full rounded-lg px-2.5 py-2 text-left text-sm font-medium text-teal-700 hover:bg-zinc-50 dark:text-teal-400 dark:hover:bg-zinc-800"
+                >
+                  View all results for &ldquo;{query.trim()}&rdquo;
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

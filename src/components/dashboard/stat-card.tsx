@@ -16,7 +16,7 @@ export function StatCard({ icon: Icon, value, label, accentClass }: StatCardProp
         <p className="text-lg font-bold leading-tight text-zinc-900 dark:text-zinc-50">
           {value}
         </p>
-        <p className="truncate text-[11px] font-medium text-zinc-400">{label}</p>
+        <p className="text-[11px] font-medium leading-snug text-zinc-400">{label}</p>
       </div>
     </div>
   );

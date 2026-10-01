@@ -23,14 +23,14 @@ function CardBone({ className = "" }: { className?: string }) {
 
 export function OverviewSkeleton() {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex flex-col gap-4 lg:h-full lg:min-h-0">
       <div className="flex shrink-0 items-center justify-between">
         <Bone className="h-5 w-24" />
         <Bone className="h-7 w-32 rounded-md" />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-        <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:flex-row">
+        <div className="order-2 flex flex-col gap-4 lg:order-none lg:min-h-0 lg:flex-1">
           <div className="grid shrink-0 grid-cols-2 gap-4 sm:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <CardBone key={i} />
@@ -68,12 +68,12 @@ export function OverviewSkeleton() {
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-4 dark:border-zinc-700 dark:bg-orange-950/40">
+          <div className="flex flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-4 dark:border-zinc-700 dark:bg-orange-950/40 lg:min-h-0 lg:flex-1">
             <div className="flex shrink-0 items-center justify-between">
               <Bone className="h-4 w-32" />
               <Bone className="h-7 w-40 rounded-md" />
             </div>
-            <div className="mt-3 grid min-h-0 flex-1 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:min-h-0 lg:flex-1 lg:grid-cols-5">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Bone key={i} className="h-20 w-full rounded-lg" />
               ))}
@@ -81,8 +81,8 @@ export function OverviewSkeleton() {
           </div>
         </div>
 
-        <div className="flex h-full min-h-0 w-full flex-col gap-4 lg:w-80 lg:shrink-0">
-          <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-6 dark:border-zinc-700 dark:bg-orange-950/40">
+        <div className="order-1 flex w-full flex-col gap-4 lg:order-none lg:h-full lg:min-h-0 lg:w-80 lg:shrink-0">
+          <div className="flex flex-col gap-3 rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-6 dark:border-zinc-700 dark:bg-orange-950/40 lg:min-h-0 lg:flex-1">
             <div className="flex shrink-0 items-center gap-3">
               <Bone className="h-12 w-12 shrink-0 rounded-full" />
               <Bone className="h-6 w-28 rounded-full" />
@@ -92,7 +92,7 @@ export function OverviewSkeleton() {
               <Bone className="h-3 w-full" />
               <Bone className="h-3 w-2/3" />
             </div>
-            <div className="mt-4 flex min-h-0 flex-1 flex-col gap-2 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="mt-4 flex flex-col gap-2 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900 lg:min-h-0 lg:flex-1">
               <Bone className="h-4 w-28" />
               <div className="mt-2 flex flex-1 flex-col gap-2">
                 {Array.from({ length: 4 }).map((_, i) => (

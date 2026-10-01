@@ -21,52 +21,62 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
   enabledRoles?: Role[];
+  /** Label for the mobile bottom bar, where the full label won't fit. */
+  shortLabel?: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
   {
     label: "Dashboard",
+    shortLabel: "Home",
     icon: IconGrid,
     href: "/dashboard",
   },
   {
     label: "Patient Registry",
+    shortLabel: "Patients",
     icon: IconUsers,
     href: "/dashboard/nurse/patients",
     enabledRoles: ["nurse", "gynecologist", "hospital_admin"],
   },
   {
     label: "ANC Visits",
+    shortLabel: "Visits",
     icon: IconCalendar,
     href: "/dashboard/nurse/visits",
     enabledRoles: ["nurse"],
   },
   {
     label: "Risk Classification",
+    shortLabel: "Risk",
     icon: IconClipboard,
     href: "/dashboard/nurse/risk-classification",
     enabledRoles: ["nurse", "gynecologist", "hospital_admin"],
   },
   {
     label: "Active Alerts",
+    shortLabel: "Alerts",
     icon: IconAlert,
     href: "/dashboard/nurse/alerts",
     enabledRoles: ["nurse"],
   },
   {
     label: "Community Reports",
+    shortLabel: "Community",
     icon: IconReport,
     href: "/dashboard/nurse/community-reports",
     enabledRoles: ["nurse"],
   },
   {
     label: "Pharmacy Inventory",
+    shortLabel: "Pharmacy",
     icon: IconClipboard,
     href: "/dashboard/nurse/inventory",
     enabledRoles: ["nurse", "hospital_admin"],
   },
   {
     label: "Referral Log",
+    shortLabel: "Referrals",
     icon: IconReport,
     href: "/dashboard/nurse/referrals",
     enabledRoles: ["nurse", "gynecologist", "hospital_admin"],
@@ -79,18 +89,21 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Staff Management",
+    shortLabel: "Staff",
     icon: IconUsers,
     href: "/dashboard/hospital-admin/staff",
     enabledRoles: ["hospital_admin"],
   },
   {
     label: "Lab Requests",
+    shortLabel: "Requests",
     icon: IconClipboard,
     href: "/dashboard/lab/requests",
     enabledRoles: ["lab_nurse"],
   },
   {
     label: "Lab History",
+    shortLabel: "History",
     icon: IconReport,
     href: "/dashboard/lab/history",
     enabledRoles: ["lab_nurse"],

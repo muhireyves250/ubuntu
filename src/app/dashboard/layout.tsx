@@ -7,11 +7,18 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { SupportButton } from "@/components/dashboard/support-button";
 import { RedCaseAlertPanel } from "@/components/dashboard/red-case-alert";
+import { BottomNav } from "@/components/dashboard/bottom-nav";
 
 // The dashboard "Overview" root for every role — the only page that gets the
 // fit-to-screen treatment (no outer-page scroll, internal scroll per
-// column) today, matching the patient detail page's per-tab pattern. Every
-// other route keeps the default: content grows and this shared card scrolls.
+// column), matching the patient detail page's per-tab pattern. Every other
+// route keeps the default: content grows and this shared card scrolls.
+// Fit-to-screen applies on phones (below sm, where the overview is laid
+// out as a single compact app screen with only the referrals list
+// scrolling) and at lg+. Tablets in between fall back to the same "card
+// scrolls normally" behavior as every other route — the stacked layout is
+// too tall to fit there. If content still can't fit (very short screens)
+// the card's own overflow-y-auto lets it scroll rather than clip.
 const FIT_TO_SCREEN_ROUTES = [
   "/dashboard",
   "/dashboard/nurse",
@@ -41,28 +48,41 @@ export default function DashboardLayout({
   const fitToScreen = FIT_TO_SCREEN_ROUTES.includes(pathname);
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden bg-[#ffebd6] text-zinc-900 dark:bg-zinc-950">
+    <div className="flex h-dvh overflow-hidden bg-[#ffebd6] text-zinc-900 dark:bg-zinc-950">
+      {/* h-dvh (not fixed inset-0 / 100vh) — tracks the real visible
+          viewport on mobile, which shrinks correctly when the on-screen
+          keyboard opens or the browser's address bar collapses, instead of
+          staying pinned to a stale layout viewport size. */}
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar />
-        <main className="flex flex-1 flex-col overflow-hidden px-4 pb-4 sm:px-6 sm:pb-6">
+        <main className="flex flex-1 flex-col overflow-hidden sm:px-6 sm:pb-6">
+          {/* Edge-to-edge below the topbar on mobile — no floating card in
+              a colored gutter, which reads as a desktop dashboard rather
+              than a native screen. The card look (rounding, shadow, margin)
+              returns at sm+ where there's room for it to read as a panel
+              rather than the whole screen. */}
           <div
-            className={`rounded-4xl bg-white shadow-sm dark:bg-zinc-900 ${
+            className={`scrollbar-hidden bg-white dark:bg-zinc-900 flex-1 overflow-y-auto px-5 py-6 sm:rounded-4xl sm:px-8 sm:py-8 sm:shadow-sm ${
               fitToScreen
-                ? "flex min-h-0 flex-1 flex-col px-6 py-8 sm:px-8"
-                : "scrollbar-hidden flex-1 overflow-y-auto px-6 py-8 sm:px-8"
+                ? "max-sm:flex max-sm:min-h-0 max-sm:flex-col max-sm:px-3 max-sm:py-3 lg:flex lg:min-h-0 lg:flex-col lg:overflow-visible"
+                : ""
             }`}
           >
-            <div className="sticky top-0 z-20 shrink-0 [&:has(>*)]:mb-6">
+            {/* Sticky only at lg+ — on a phone the panel can take up most of
+                the screen, so pinning it would cover the content scrolling
+                beneath it. On mobile it scrolls away with the page. */}
+            <div className="shrink-0 bg-white dark:bg-zinc-900 lg:sticky lg:top-0 lg:z-20 [&:has(>*)]:mb-6">
               <RedCaseAlertPanel />
             </div>
             {fitToScreen ? (
-              <div className="min-h-0 flex-1">{children}</div>
+              <div className="max-sm:min-h-0 max-sm:flex-1 lg:min-h-0 lg:flex-1">{children}</div>
             ) : (
               children
             )}
           </div>
         </main>
+        <BottomNav />
       </div>
       <SupportButton />
     </div>
