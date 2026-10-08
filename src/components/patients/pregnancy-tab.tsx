@@ -191,7 +191,7 @@ export function PregnancySummaryCard({
               <div>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Birth weight</dt>
                 <dd className="font-mono tracking-tight text-zinc-900 dark:text-zinc-50">
-                  {pregnancy.delivery.birthWeightKg} kg
+                  {pregnancy.delivery.birthWeightKg != null ? `${pregnancy.delivery.birthWeightKg} kg` : "—"}
                 </dd>
               </div>
               <div className="col-span-2">

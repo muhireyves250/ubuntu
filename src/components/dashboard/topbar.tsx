@@ -23,9 +23,8 @@ export function Topbar() {
   if (!user) return null;
 
   return (
-    <header className="flex items-center justify-between gap-4 px-6 py-4">
+    <header className="flex items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
       <div className="flex min-w-0 items-center gap-2">
-        <MobileNav />
         {/* Only the sidebar (lg and up) carries the logo — it's hidden
             below that breakpoint, so this is the only branding a narrow
             viewport ever sees. The wordmark itself drops out below sm,
@@ -38,17 +37,17 @@ export function Topbar() {
           </span>
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold tracking-tight text-zinc-900 dark:text-white sm:text-lg">
+          <p className="line-clamp-2 text-balance text-[13px] font-bold leading-tight tracking-tight text-zinc-900 dark:text-white sm:truncate sm:text-lg sm:leading-normal">
             {user.facility}
           </p>
-          <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400 sm:text-xs">
             {ROLE_LABEL[user.role]}
           </p>
         </div>
       </div>
 
       {user.role === "nurse" || user.role === "gynecologist" ? (
-        <PatientSearch />
+        <PatientSearch variant="bar" />
       ) : (
         <div className="hidden flex-1 max-w-sm items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm text-zinc-400 shadow-sm dark:bg-zinc-900 sm:flex">
           <IconSearch className="h-4 w-4" />
@@ -56,7 +55,8 @@ export function Topbar() {
         </div>
       )}
 
-      <div className="flex items-center gap-3 rounded-full bg-white p-1.5 shadow-sm dark:bg-zinc-900">
+      <div className="flex shrink-0 items-center gap-1 rounded-full bg-white p-1 shadow-sm dark:bg-zinc-900 sm:gap-3 sm:p-1.5">
+        {(user.role === "nurse" || user.role === "gynecologist") && <PatientSearch variant="icon" />}
         <button
           type="button"
           title="Notifications"
@@ -74,13 +74,16 @@ export function Topbar() {
         <button
           type="button"
           onClick={() => setIsProfileOpen(true)}
-          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          className="flex items-center gap-2 rounded-full p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 sm:py-1 sm:pl-1 sm:pr-2"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-900 text-xs font-semibold text-white">
             {getInitials(user.name)}
           </span>
-          <IconChevronDown className="h-4 w-4 text-zinc-500" />
+          <IconChevronDown className="hidden h-4 w-4 text-zinc-500 sm:block" />
         </button>
+
+        {/* Mobile menu (lg:hidden) shares the pill with notifications and profile. */}
+        <MobileNav />
       </div>
 
       {isNotificationsOpen && (

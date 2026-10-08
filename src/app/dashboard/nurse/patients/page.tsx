@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RoleGuard } from "@/components/role-guard";
+import { queryClient } from "@/lib/query-client";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { RegisterPatientModal } from "@/components/patients/register-patient-modal";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -33,6 +34,16 @@ const RISK_FILTERS: { value: "all" | RiskLevel; label: string }[] = [
   { value: "green", label: "Green" },
 ];
 
+type SortKey = "updated" | "name" | "risk";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "updated", label: "Last Updated On" },
+  { value: "name", label: "Name (A–Z)" },
+  { value: "risk", label: "Highest risk first" },
+];
+
+const RISK_RANK: Record<RiskLevel, number> = { red: 0, orange: 1, yellow: 2, green: 3 };
+
 function PatientsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
@@ -46,6 +57,25 @@ function PatientsPageContent() {
   const [idFilter, setIdFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [view, setView] = useState<"list" | "cards">("list");
+  const [sortKey, setSortKey] = useState<SortKey>("updated");
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  async function refresh() {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["patients"] }),
+        queryClient.invalidateQueries({ queryKey: ["visits", "all"] }),
+        queryClient.invalidateQueries({ queryKey: ["pregnancies", "all"] }),
+        queryClient.invalidateQueries({ queryKey: ["referrals"] }),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
 
   const patientIdByPregnancyId = useMemo(
     () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
@@ -90,8 +120,16 @@ function PatientsPageContent() {
         (row.patient.nationalId ?? "").toLowerCase().includes(idFilter.toLowerCase()),
       )
       .filter((row) => riskFilter === "all" || row.latestRisk === riskFilter)
-      .sort((a, b) => fullName(a.patient).localeCompare(fullName(b.patient)));
-  }, [allRows, nameFilter, idFilter, riskFilter]);
+      .sort((a, b) => {
+        const byName = fullName(a.patient).localeCompare(fullName(b.patient));
+        if (sortKey === "name") return byName;
+        if (sortKey === "risk") return RISK_RANK[a.latestRisk] - RISK_RANK[b.latestRisk] || byName;
+        // "Last updated": most recent visit (or registration, if never seen) first.
+        const aUpdated = a.lastVisitDate ?? a.patient.registeredAt;
+        const bUpdated = b.lastVisitDate ?? b.patient.registeredAt;
+        return bUpdated.localeCompare(aUpdated) || byName;
+      });
+  }, [allRows, nameFilter, idFilter, riskFilter, sortKey]);
 
   const hasActiveFilters = nameFilter !== "" || idFilter !== "" || riskFilter !== "all";
 
@@ -111,20 +149,62 @@ function PatientsPageContent() {
         </h2>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:border-zinc-800 dark:text-zinc-300"
+          <div
+            className="relative"
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node)) setIsViewMenuOpen(false);
+            }}
           >
-            List View
-            <IconChevronDown className="h-3.5 w-3.5" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setIsViewMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={isViewMenuOpen}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              {view === "list" ? "List View" : "Card View"}
+              <IconChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {isViewMenuOpen && (
+              <div
+                role="menu"
+                className="absolute left-0 z-20 mt-1 w-36 rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                {(
+                  [
+                    { value: "list", label: "List View" },
+                    { value: "cards", label: "Card View" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={view === option.value}
+                    onClick={() => {
+                      setView(option.value);
+                      setIsViewMenuOpen(false);
+                    }}
+                    className={`block w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800 ${
+                      view === option.value
+                        ? "font-semibold text-teal-900 dark:text-teal-300"
+                        : "text-zinc-600 dark:text-zinc-300"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             type="button"
             title="Refresh"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+            onClick={refresh}
+            disabled={isRefreshing}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-800 dark:hover:bg-zinc-800"
           >
-            <IconRefresh className="h-4 w-4" />
+            <IconRefresh className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
           </button>
           <button
             type="button"
@@ -178,21 +258,55 @@ function PatientsPageContent() {
           </button>
         )}
 
-        <div className="ml-auto flex items-center gap-2">
+        <div
+          className="relative ml-auto flex items-center gap-2"
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node)) setIsSortMenuOpen(false);
+          }}
+        >
           <button
             type="button"
-            disabled
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            onClick={() => setIsSortMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={isSortMenuOpen}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             <IconSort className="h-4 w-4" />
-            Last Updated On
+            {SORT_OPTIONS.find((option) => option.value === sortKey)?.label}
           </button>
+          {isSortMenuOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={sortKey === option.value}
+                  onClick={() => {
+                    setSortKey(option.value);
+                    setIsSortMenuOpen(false);
+                  }}
+                  className={`block w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800 ${
+                    sortKey === option.value
+                      ? "font-semibold text-teal-900 dark:text-teal-300"
+                      : "text-zinc-600 dark:text-zinc-300"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-300 bg-[#ffeedb] shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
-        <div className="scrollbar-hidden min-h-0 flex-1 overflow-auto p-2 sm:hidden">
-          <ul className="flex flex-col gap-2">
+        {/* Card view: always on phones; on sm+ only when chosen from the view menu. */}
+        <div className={`scrollbar-hidden min-h-0 flex-1 overflow-auto p-2 ${view === "cards" ? "" : "sm:hidden"}`}>
+          <ul className={view === "cards" ? "grid gap-2 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-2"}>
             {rows.map(({ patient, latestRisk, lastVisitDate, hospital, gaWeeks }) => (
               <li key={patient.id}>
                 <Link
@@ -233,7 +347,7 @@ function PatientsPageContent() {
           </ul>
         </div>
 
-        <div className="scrollbar-hidden hidden min-h-0 flex-1 overflow-auto sm:block">
+        <div className={`scrollbar-hidden hidden min-h-0 flex-1 overflow-auto ${view === "list" ? "sm:block" : ""}`}>
           <table className="w-full border-separate border-spacing-x-0 border-spacing-y-1.5 text-left text-sm">
             <thead className="sticky top-0 z-10 bg-[#ffeedb] text-xs uppercase tracking-wide text-zinc-500 dark:bg-orange-950/40 dark:text-zinc-400">
               <tr>

@@ -25,13 +25,13 @@ export function MobileNav() {
         type="button"
         onClick={() => setIsOpen(true)}
         title="Menu"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-600 hover:bg-white/60 dark:text-zinc-300 dark:hover:bg-zinc-800/60 lg:hidden"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 lg:hidden"
       >
         <IconMenu className="h-5 w-5" />
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
+        <div className="fixed inset-0 z-50 flex justify-end lg:hidden">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setIsOpen(false)}

@@ -318,7 +318,8 @@ export interface Pregnancy extends PregnancyMedicalHistory {
     date: string;
     method: "vaginal" | "cesarean" | "assisted";
     babyStatus: "alive" | "deceased";
-    birthWeightKg: number;
+    // Optional — only required in the form when the baby is alive.
+    birthWeightKg?: number;
     motherCondition: string;
     summary: string;
     numberOfBabies?: number;

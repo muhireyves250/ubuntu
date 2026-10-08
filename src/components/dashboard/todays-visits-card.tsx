@@ -31,7 +31,7 @@ export function TodaysVisitsCard() {
   const visibleVisits = showAll ? todaysVisits : todaysVisits.slice(0, TODAY_CAP);
 
   return (
-    <div className="flex flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-orange-950/40 lg:min-h-0 lg:flex-1">
+    <div className="flex flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-orange-950/40 lg:min-h-48 lg:flex-1">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <IconCalendar className="h-4 w-4 text-zinc-400" />

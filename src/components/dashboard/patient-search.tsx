@@ -9,7 +9,10 @@ import { IconSearch, IconClose } from "./icons";
 
 const MAX_RESULTS = 6;
 
-export function PatientSearch() {
+// "bar" is the inline search field (sm+); "icon" is the phone trigger plus
+// its full-width overlay (below sm), rendered inside the Topbar's
+// notifications/profile pill.
+export function PatientSearch({ variant }: { variant: "bar" | "icon" }) {
   const router = useRouter();
   const patients = usePatients();
   const visits = useVisits();
@@ -99,20 +102,8 @@ export function PatientSearch() {
     );
   }
 
-  return (
-    <>
-      {/* Mobile trigger — the inline search bar below is sm:hidden, so a
-          phone-width viewport needs its own way to reach search instead of
-          losing the feature entirely. */}
-      <button
-        type="button"
-        onClick={() => setIsMobileOpen(true)}
-        aria-label="Search patients"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-zinc-500 shadow-sm dark:bg-zinc-900 sm:hidden"
-      >
-        <IconSearch className="h-4 w-4" />
-      </button>
-
+  if (variant === "bar") {
+    return (
       <div
         ref={containerRef}
         className="relative hidden flex-1 max-w-sm sm:block"
@@ -151,6 +142,21 @@ export function PatientSearch() {
           </div>
         )}
       </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Phone trigger — the inline search bar is hidden below sm, so a
+          phone-width viewport needs its own way to reach search. */}
+      <button
+        type="button"
+        onClick={() => setIsMobileOpen(true)}
+        aria-label="Search patients"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 sm:hidden"
+      >
+        <IconSearch className="h-4 w-4" />
+      </button>
 
       {isMobileOpen && (
         <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
@@ -11,32 +11,45 @@ import { getInitials, shortId, fullName } from "@/lib/format";
 
 const RISK_LEVEL_ORDER: RiskLevel[] = ["red", "orange", "yellow", "green"];
 
+const LIST_CAP = 5;
+
+// Same 2px risk-coloured row border as the dashboard's Following Module.
+const RISK_ROW_BORDER: Record<RiskLevel, string> = {
+  green: "border-emerald-200 hover:border-emerald-300 dark:border-emerald-900/60 dark:hover:border-emerald-700",
+  yellow: "border-yellow-300 hover:border-yellow-400 dark:border-yellow-900/60 dark:hover:border-yellow-700",
+  orange: "border-orange-300 hover:border-orange-400 dark:border-orange-900/60 dark:hover:border-orange-700",
+  red: "border-red-300 hover:border-red-400 dark:border-red-900/60 dark:hover:border-red-700",
+};
+
+const RISK_DOT: Record<RiskLevel, string> = {
+  red: "bg-red-600",
+  orange: "bg-orange-500",
+  yellow: "bg-yellow-400",
+  green: "bg-emerald-500",
+};
+
 const RISK_LEVEL_META: Record<
   RiskLevel,
-  { title: string; description: string; cardClass: string; headingClass: string }
+  { title: string; description: string; headingClass: string }
 > = {
   red: {
     title: "Red — Emergency",
     description: "Obstetric emergency. Requires immediate referral and acceptance by a receiving facility.",
-    cardClass: "border-red-300 bg-red-50/60 dark:border-red-900/50 dark:bg-red-950/20",
     headingClass: "text-red-900 dark:text-red-300",
   },
   orange: {
     title: "Orange — Urgent",
     description: "Urgent condition requiring close monitoring and prompt clinical attention.",
-    cardClass: "border-orange-300 bg-orange-50/60 dark:border-orange-900/50 dark:bg-orange-950/20",
     headingClass: "text-orange-900 dark:text-orange-300",
   },
   yellow: {
     title: "Yellow — Close follow-up",
     description: "Elevated risk factors. Requires closer antenatal follow-up than routine care.",
-    cardClass: "border-yellow-300 bg-yellow-50/60 dark:border-yellow-900/50 dark:bg-yellow-950/20",
     headingClass: "text-yellow-900 dark:text-yellow-300",
   },
   green: {
     title: "Green — Routine",
     description: "No elevated risk factors identified. Continue routine antenatal care schedule.",
-    cardClass: "border-emerald-300 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20",
     headingClass: "text-emerald-900 dark:text-emerald-300",
   },
 };
@@ -46,6 +59,17 @@ function RiskClassificationContent() {
   const visits = useVisits();
   const pregnancies = usePregnancies();
   const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
+  const [expandedLevels, setExpandedLevels] = useState<Set<RiskLevel>>(new Set());
+
+  function toggleLevel(level: RiskLevel) {
+    setExpandedLevels((prev) => {
+      const next = new Set(prev);
+      if (next.has(level)) next.delete(level);
+      else next.add(level);
+      return next;
+    });
+  }
+
   const patientIdByPregnancyId = useMemo(
     () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
     [pregnancies],
@@ -83,8 +107,10 @@ function RiskClassificationContent() {
   }, [patients, visits, patientIdByPregnancyId, activeEmergencyPatientIds]);
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
+    // Header stays put and only the level cards scroll — same as the
+    // Patient Registry.
+    <div className="flex h-full min-h-0 flex-col gap-5">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">
           Risk Classification
         </h2>
@@ -93,19 +119,24 @@ function RiskClassificationContent() {
         </span>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="scrollbar-hidden grid min-h-0 flex-1 auto-rows-min gap-4 overflow-y-auto sm:grid-cols-2">
         {RISK_LEVEL_ORDER.map((level) => {
           const meta = RISK_LEVEL_META[level];
           const levelPatients = patientsByLevel.get(level) ?? [];
           const levelSymptoms = symptomsByLevel.get(level) ?? [];
+          const isExpanded = expandedLevels.has(level);
+          const visiblePatients = isExpanded ? levelPatients : levelPatients.slice(0, LIST_CAP);
 
           return (
             <div
               key={level}
-              className={`flex flex-col gap-3 rounded-[1.25rem] border p-5 shadow-sm ${meta.cardClass}`}
+              className="flex min-w-0 flex-col gap-3 rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-5 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40"
             >
               <div className="flex items-center justify-between gap-2">
-                <h3 className={`font-semibold ${meta.headingClass}`}>{meta.title}</h3>
+                <h3 className={`flex items-center gap-2 font-semibold ${meta.headingClass}`}>
+                  <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${RISK_DOT[level]}`} />
+                  {meta.title}
+                </h3>
                 <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-zinc-700 shadow-sm dark:bg-zinc-900 dark:text-zinc-200">
                   {levelPatients.length}
                 </span>
@@ -136,26 +167,39 @@ function RiskClassificationContent() {
                 {levelPatients.length === 0 ? (
                   <p className="mt-1.5 text-sm text-zinc-400">None currently.</p>
                 ) : (
-                  <ul className="mt-1.5 flex flex-col gap-1.5">
-                    {levelPatients.map((patient) => (
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {visiblePatients.map((patient) => (
                       <li key={patient.id}>
                         <Link
                           href={`/dashboard/nurse/patients/${patient.id}`}
-                          className="flex items-center gap-2.5 text-sm font-medium text-zinc-900 hover:text-teal-900 dark:text-zinc-50 dark:hover:text-teal-300"
+                          className={`flex items-center gap-2.5 rounded-lg border-2 px-3 py-2 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800 ${RISK_ROW_BORDER[level]}`}
                         >
                           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
                             {getInitials(fullName(patient))}
                           </span>
-                          <span>
-                            {fullName(patient)}
-                            <span className="ml-2 font-mono text-xs text-zinc-400">
-                              {shortId(patient.id)}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium leading-snug text-zinc-900 dark:text-zinc-100">
+                              {fullName(patient)}
+                            </span>
+                            <span className="block truncate font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                              {patient.nationalId || shortId(patient.id)}
                             </span>
                           </span>
                           <RiskBadge level={level} size="sm" />
                         </Link>
                       </li>
                     ))}
+                    {levelPatients.length > LIST_CAP && (
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => toggleLevel(level)}
+                          className="px-1 text-left text-xs font-semibold text-teal-700 hover:underline dark:text-teal-400"
+                        >
+                          {isExpanded ? "Show less" : `+${levelPatients.length - LIST_CAP} more`}
+                        </button>
+                      </li>
+                    )}
                   </ul>
                 )}
               </div>

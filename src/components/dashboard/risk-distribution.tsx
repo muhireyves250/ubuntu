@@ -43,7 +43,7 @@ export function RiskDistribution({
       : undefined;
 
   return (
-    <div className="flex h-full flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-orange-950/40">
+    <div className="@container flex h-full flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-orange-950/40">
       <div className="flex shrink-0 items-center justify-between">
         <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">
           Risk Distribution
@@ -58,7 +58,7 @@ export function RiskDistribution({
         </select>
       </div>
 
-      <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:items-center sm:gap-7 lg:flex-col lg:gap-5 xl:flex-row xl:gap-7">
+      <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 @[30rem]:flex-row @[30rem]:gap-7">
         <div
           className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full"
           style={{ background: gradient ?? "#e4e4e7" }}
@@ -76,7 +76,7 @@ export function RiskDistribution({
           </div>
         </div>
 
-        <ul className="flex flex-1 flex-col gap-2">
+        <ul className="flex w-full flex-1 flex-col gap-2">
           {LEGEND_ITEMS.map((item) => (
             <li
               key={item.color}

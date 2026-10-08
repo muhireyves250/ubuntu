@@ -202,7 +202,7 @@ export function DashboardOverview() {
             ))}
           </div>
 
-          <div className="flex shrink-0 flex-col gap-4 xl:h-60 xl:flex-row">
+          <div className="flex shrink-0 flex-col gap-4 xl:flex-row">
             <div className="xl:flex-[3]">
               <RiskDistribution
                 counts={summary.counts}

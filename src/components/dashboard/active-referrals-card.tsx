@@ -25,7 +25,7 @@ export function ActiveReferralsCard() {
   const visibleReferrals = showAllReferrals ? activeReferrals : activeReferrals.slice(0, REFERRALS_CAP);
 
   return (
-    <div className="flex h-full flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-orange-950/40">
+    <div className="@container flex h-full flex-col rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-orange-950/40">
       <div className="flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-2">
           <IconReport className="h-4 w-4 text-zinc-400" />
@@ -45,7 +45,7 @@ export function ActiveReferralsCard() {
           No active referrals.
         </p>
       ) : (
-        <div className="scrollbar-hidden mt-3 flex flex-col gap-2 pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+        <div className="scrollbar-hidden mt-3 flex flex-col gap-2 pr-1 ">
           {visibleReferrals.map((referral) => {
             const patient = patients.find((p) => p.id === referral.patientId);
             if (!patient) return null;
@@ -69,8 +69,13 @@ export function ActiveReferralsCard() {
                   <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                     {gaWeeks !== null ? `${gaWeeks}w gestation` : "—"}
                   </p>
+                  {/* Narrow card: the date drops under the name so the name
+                      keeps the full row width. */}
+                  <p className="truncate text-[11px] text-zinc-400 dark:text-zinc-500 @[24rem]:hidden">
+                    {formatExactDateTime(referral.acceptedAt ?? referral.createdAt)}
+                  </p>
                 </div>
-                <p className="ml-2 max-w-[6.5rem] shrink-0 text-right text-xs xl:max-w-none xl:text-left text-zinc-400 dark:text-zinc-500">
+                <p className="ml-2 hidden max-w-[6.5rem] shrink-0 text-right text-xs text-zinc-400 dark:text-zinc-500 @[24rem]:block">
                   {formatExactDateTime(referral.acceptedAt ?? referral.createdAt)}
                 </p>
               </Link>

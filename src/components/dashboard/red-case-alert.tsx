@@ -116,6 +116,9 @@ export function RedCaseAlertPanel() {
   const [viewInfoReferralId, setViewInfoReferralId] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  // Lets staff collapse the panel to its header row (title + count) to get
+  // at the rest of the page; the alert itself never disappears.
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const capacity = useFacilityCapacity(user?.facility ?? "");
 
   const patientById = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
@@ -170,7 +173,7 @@ export function RedCaseAlertPanel() {
 
   return (
     <div className="rounded-[1.25rem] border border-red-300 bg-white p-6 shadow-[0_2px_12px_rgba(220,38,38,0.08)] dark:border-red-900/50 dark:bg-red-950/20">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <span className="relative flex h-3 w-3">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
@@ -183,11 +186,22 @@ export function RedCaseAlertPanel() {
             {pendingCases.length}
           </span>
         </div>
-        <span className="text-xs text-red-600/70 dark:text-red-400/70">
-          Visible to all capable facilities
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-red-600/70 dark:text-red-400/70">
+            Visible to all capable facilities
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((v) => !v)}
+            aria-expanded={!isCollapsed}
+            className="shrink-0 rounded-full border border-red-300 px-2.5 py-0.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50"
+          >
+            {isCollapsed ? "Show" : "Hide"}
+          </button>
+        </div>
       </div>
 
+      <div className={isCollapsed ? "hidden" : ""}>
       <p className="mt-2 text-sm text-red-700/80 dark:text-red-400/80">
         These emergency cases need a facility equipped to manage them. Accept one to take
         responsibility for the patient.
@@ -214,6 +228,7 @@ export function RedCaseAlertPanel() {
             onViewInfo={() => setViewInfoReferralId(referral.id)}
           />
         ))}
+      </div>
       </div>
 
       {pendingAccept && (

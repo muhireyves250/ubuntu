@@ -159,7 +159,7 @@ export function toFrontendPregnancy(p: BackendPregnancy): Pregnancy {
             date: p.deliveryDate.slice(0, 10),
             method: DELIVERY_METHOD_TO_FRONTEND[p.deliveryMethod],
             babyStatus: BABY_STATUS_TO_FRONTEND[p.babyStatus],
-            birthWeightKg: p.birthWeightKg ?? 0,
+            birthWeightKg: p.birthWeightKg ?? undefined,
             motherCondition: p.motherCondition,
             summary: p.pregnancySummary ?? "",
             numberOfBabies: p.numberOfBabies,

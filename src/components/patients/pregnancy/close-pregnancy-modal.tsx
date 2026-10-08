@@ -44,7 +44,8 @@ export function ClosePregnancyModal({
         date,
         method,
         babyStatus,
-        birthWeightKg: Number(birthWeightKg),
+        // Weight is only required for a live baby; left blank otherwise.
+        birthWeightKg: birthWeightKg === "" ? undefined : Number(birthWeightKg),
         motherCondition,
         summary,
         numberOfBabies: Number(numberOfBabies),
@@ -104,8 +105,13 @@ export function ClosePregnancyModal({
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Birth weight (kg)
-            <input type="number" required min={0} step="0.1" value={birthWeightKg} onChange={(e) => setBirthWeightKg(e.target.value)} className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
+            <span>
+              Birth weight (kg)
+              {babyStatus === "deceased" && (
+                <span className="ml-1 font-normal text-zinc-400">(optional)</span>
+              )}
+            </span>
+            <input type="number" required={babyStatus === "alive"} min={0} step="0.1" value={birthWeightKg} onChange={(e) => setBirthWeightKg(e.target.value)} className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Number of babies
