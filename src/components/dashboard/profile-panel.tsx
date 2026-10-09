@@ -10,7 +10,7 @@ import { ConfirmModal } from "./confirm-modal";
 import { SlideOverPanel } from "./slide-over-panel";
 import { IconBuilding, IconCheckCircle, IconClose } from "./icons";
 
-const FACILITY_LEVEL_LABEL: Record<FacilityLevel, string> = {
+export const FACILITY_LEVEL_LABEL: Record<FacilityLevel, string> = {
   hc: "Health Center",
   dh: "District Hospital",
   th: "Tertiary Hospital",

@@ -20,6 +20,7 @@ import { ActiveReferralsCard } from "./active-referrals-card";
 import { SidePanel } from "./side-panel";
 import { OverviewSkeleton } from "./overview-skeleton";
 import { MobileOverview } from "./mobile-overview";
+import { getPreferences } from "@/lib/preferences";
 
 const RANGE_OPTIONS: { value: string; label: string; days?: number }[] = [
   { value: "7", label: "Last 7 days", days: 7 },
@@ -30,7 +31,7 @@ const RANGE_OPTIONS: { value: string; label: string; days?: number }[] = [
 
 export function DashboardOverview() {
   const { user } = useAuth();
-  const [range, setRange] = useState("30");
+  const [range, setRange] = useState<string>(() => getPreferences().overviewRange);
   const [riskScope, setRiskScope] = useState<RiskSummaryScope>("all");
   const selectedDays = RANGE_OPTIONS.find((r) => r.value === range)?.days;
   const summary = useRiskSummary(selectedDays, riskScope);

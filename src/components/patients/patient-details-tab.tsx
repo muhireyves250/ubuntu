@@ -11,7 +11,7 @@ import { usePregnanciesForPatient } from "@/lib/patients/use-patients";
 import { effectiveLmpDate, gestationalAgeWeeksAndDays } from "@/lib/patients/pregnancy";
 import type { Patient } from "@/lib/patients/types";
 
-function Field({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
+export function Field({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
   const isEmpty = value === "—" || value === null || value === undefined || value === "";
   return (
     <div>

@@ -172,19 +172,32 @@ export function Sidebar() {
         })}
       </nav>
 
-      <button
-        type="button"
+      <Link
+        href="/dashboard/settings"
         title="Settings"
-        className={`mt-6 flex items-center rounded-xl p-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200/60 dark:text-zinc-400 ${
+        aria-current={pathname.startsWith("/dashboard/settings") ? "page" : undefined}
+        className={`mt-6 flex items-center rounded-xl p-3 text-sm font-medium transition-colors ${
           isCollapsed ? "justify-center w-12 mx-auto" : "justify-between px-4"
+        } ${
+          pathname.startsWith("/dashboard/settings")
+            ? "bg-[#0f766e] text-white shadow-sm shadow-teal-700/20"
+            : "text-zinc-700 hover:bg-zinc-200/60 dark:text-zinc-400"
         }`}
       >
         <span className="flex items-center gap-3">
-          <IconSettings className={`shrink-0 ${isCollapsed ? "h-6 w-6" : "h-5 w-5 text-zinc-400"}`} />
+          <IconSettings
+            className={`shrink-0 ${isCollapsed ? "h-6 w-6" : "h-5 w-5"} ${
+              pathname.startsWith("/dashboard/settings") ? "text-white" : "text-zinc-400"
+            }`}
+          />
           {!isCollapsed && <span>Settings</span>}
         </span>
-        {!isCollapsed && <IconChevronRight className="h-4 w-4 text-zinc-400" />}
-      </button>
+        {!isCollapsed && (
+          <IconChevronRight
+            className={`h-4 w-4 ${pathname.startsWith("/dashboard/settings") ? "text-white" : "text-zinc-400"}`}
+          />
+        )}
+      </Link>
     </aside>
   );
 }

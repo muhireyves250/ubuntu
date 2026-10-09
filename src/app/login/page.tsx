@@ -90,6 +90,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when the app signs you out: password change, inactivity, or "sign out everywhere".
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    // Read after mount so the server and first client render match.
+    const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNotice(
+      params.has("password-changed")
+        ? "Password changed. Sign in with your new password."
+        : params.has("timed-out")
+          ? "You were signed out after a period of inactivity."
+          : params.has("signed-out-everywhere")
+            ? "You've been signed out on all devices."
+            : null,
+    );
+  }, []);
 
   useEffect(() => {
     if (isHydrated && user) {
@@ -248,6 +264,11 @@ export default function LoginPage() {
               </Link>
             </div>
 
+            {notice && !error && (
+              <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                {notice}
+              </p>
+            )}
             {error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                 {error}

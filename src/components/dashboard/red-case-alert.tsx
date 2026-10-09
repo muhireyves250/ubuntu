@@ -216,7 +216,9 @@ export function RedCaseAlertPanel() {
         </div>
       )}
 
-      <div className="mt-4 flex flex-col gap-3">
+      {/* Capped at about a third of the screen and scrolls inside, so the
+          panel never pushes the page under it off screen. */}
+      <div className="scrollbar-hidden mt-4 flex max-h-[33dvh] flex-col gap-3 overflow-y-auto p-1">
         {pendingCases.map(({ referral, patient, latestVisit, gaWeeks }) => (
           <RedCaseCard
             key={referral.id}

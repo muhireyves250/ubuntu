@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RoleGuard } from "@/components/role-guard";
 import { queryClient } from "@/lib/query-client";
+import { getPreferences } from "@/lib/preferences";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { RegisterPatientModal } from "@/components/patients/register-patient-modal";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -57,7 +58,7 @@ function PatientsPageContent() {
   const [idFilter, setIdFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [view, setView] = useState<"list" | "cards">("list");
+  const [view, setView] = useState<"list" | "cards">(() => getPreferences().patientListView);
   const [sortKey, setSortKey] = useState<SortKey>("updated");
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);

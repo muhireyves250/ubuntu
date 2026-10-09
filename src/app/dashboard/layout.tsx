@@ -8,6 +8,7 @@ import { Topbar } from "@/components/dashboard/topbar";
 import { SupportButton } from "@/components/dashboard/support-button";
 import { RedCaseAlertPanel } from "@/components/dashboard/red-case-alert";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
+import { useIdleSignOut } from "@/lib/auth/use-idle-sign-out";
 
 // The dashboard "Overview" root for every role — the only page that gets the
 // fit-to-screen treatment (no outer-page scroll, internal scroll per
@@ -28,6 +29,17 @@ const FIT_TO_SCREEN_ROUTES = [
   "/dashboard/chw",
 ];
 
+// Pages built as a fixed-height screen (header + tabs/filters pinned, one
+// inner area that scrolls). They get exactly the height left below the
+// Pending Emergency Referrals panel, so when that panel is open the page's
+// scroll area gets shorter instead of the whole card scrolling — at every
+// screen size.
+const FIXED_HEIGHT_ROUTES = [
+  "/dashboard/settings",
+  "/dashboard/nurse/patients",
+  "/dashboard/nurse/risk-classification",
+];
+
 export default function DashboardLayout({
   children,
 }: {
@@ -36,6 +48,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isHydrated } = useAuth();
+  useIdleSignOut();
 
   useEffect(() => {
     if (isHydrated && !user) {
@@ -46,6 +59,7 @@ export default function DashboardLayout({
   if (!isHydrated || !user) return null;
 
   const fitToScreen = FIT_TO_SCREEN_ROUTES.includes(pathname);
+  const fixedHeight = FIXED_HEIGHT_ROUTES.includes(pathname);
 
   return (
     <div className="flex h-dvh overflow-hidden bg-[#ffebd6] text-zinc-900 dark:bg-zinc-950">
@@ -66,7 +80,9 @@ export default function DashboardLayout({
             className={`scrollbar-hidden bg-white dark:bg-zinc-900 flex-1 overflow-y-auto px-5 py-6 sm:rounded-4xl sm:px-8 sm:py-8 sm:shadow-sm ${
               fitToScreen
                 ? "max-sm:flex max-sm:min-h-0 max-sm:flex-col max-sm:px-3 max-sm:py-3 lg:flex lg:min-h-0 lg:flex-col lg:overflow-visible"
-                : ""
+                : fixedHeight
+                  ? "flex min-h-0 flex-col"
+                  : ""
             }`}
           >
             {/* Sticky only at lg+ — on a phone the panel can take up most of
@@ -77,6 +93,8 @@ export default function DashboardLayout({
             </div>
             {fitToScreen ? (
               <div className="max-sm:min-h-0 max-sm:flex-1 lg:min-h-0 lg:flex-1">{children}</div>
+            ) : fixedHeight ? (
+              <div className="min-h-0 flex-1">{children}</div>
             ) : (
               children
             )}

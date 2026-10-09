@@ -282,3 +282,17 @@ export function IconAlertTriangle({ className = "h-5 w-5" }: IconProps) {
     </svg>
   );
 }
+
+export function IconPhone({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M6.5 3.5h2.2l1.3 4-2 1.4a11 11 0 0 0 7.1 7.1l1.4-2 4 1.3v2.2a2 2 0 0 1-2.2 2A16 16 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
