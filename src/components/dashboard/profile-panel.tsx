@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { ROLE_LABEL } from "@/lib/auth/role-routes";
 import type { FacilityLevel, Role } from "@/lib/auth/types";
-import { getInitials } from "@/lib/format";
 import { ConfirmModal } from "./confirm-modal";
 import { SlideOverPanel } from "./slide-over-panel";
+import { ProfilePhoto } from "./profile-photo";
 import { IconBuilding, IconCheckCircle, IconClose } from "./icons";
 
 export const FACILITY_LEVEL_LABEL: Record<FacilityLevel, string> = {
@@ -79,9 +79,10 @@ export function ProfilePanel({ onClose }: { onClose: () => void }) {
           >
             <IconClose className="h-4 w-4" />
           </button>
-          <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-2xl font-bold text-teal-800 shadow-lg ring-4 ring-white/30">
-            {getInitials(user.name)}
-          </span>
+          <ProfilePhoto
+            name={user.name}
+            className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-2xl font-bold text-teal-800 shadow-lg ring-4 ring-white/30"
+          />
           <p className="mt-3 text-lg font-bold text-white">{user.name}</p>
           <p className="text-sm text-teal-100">{subtitle}</p>
         </div>

@@ -8,6 +8,7 @@ import { getInitials, fullName } from "@/lib/format";
 import { useFollowUpPatients } from "@/lib/patients/use-patients";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { IconAlert } from "./icons";
+import { ProfilePhoto } from "./profile-photo";
 import type { RiskLevel } from "@/lib/patients/types";
 
 const LIST_CAP = 4;
@@ -45,9 +46,10 @@ export function SidePanel({
       <div className="flex flex-col gap-2 rounded-[1.25rem] border border-zinc-300 bg-[#ffeedb] p-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40 max-lg:border-transparent max-lg:bg-teal-900 max-lg:dark:bg-teal-950 sm:gap-3 sm:p-6 max-lg:sm:p-5 lg:min-h-0 lg:flex-1">
         <div className="flex shrink-0 items-center gap-3 lg:flex-col lg:items-start">
         <div className="flex shrink-0 items-center gap-2 max-lg:contents sm:gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-zinc-700 shadow-sm dark:bg-zinc-900 dark:text-zinc-300 max-lg:bg-white/10 max-lg:text-white max-lg:shadow-none max-lg:dark:bg-white/10 sm:h-12 sm:w-12 sm:text-sm max-lg:sm:h-10 max-lg:sm:w-10">
-            {getInitials(user.name)}
-          </div>
+          <ProfilePhoto
+            name={user.name}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-zinc-700 shadow-sm dark:bg-zinc-900 dark:text-zinc-300 max-lg:bg-white/10 max-lg:text-white max-lg:shadow-none max-lg:dark:bg-white/10 sm:h-12 sm:w-12 sm:text-sm max-lg:sm:h-10 max-lg:sm:w-10"
+          />
           <span className="shrink-0 rounded-full bg-orange-200/70 px-2.5 py-0.5 text-[11px] font-semibold text-orange-800 dark:bg-orange-900/60 dark:text-orange-300 max-lg:order-last max-lg:ml-auto max-lg:bg-white/10 max-lg:font-medium max-lg:text-teal-50 max-lg:dark:bg-white/10 max-lg:dark:text-teal-50 sm:px-3 sm:py-1 sm:text-xs">
             {copy.scope}
           </span>

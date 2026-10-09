@@ -4,12 +4,12 @@ import Image from "next/image";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { ROLE_LABEL } from "@/lib/auth/role-routes";
-import { getInitials } from "@/lib/format";
 import { IconBell, IconChevronDown, IconSearch } from "./icons";
 import { NotificationPanel } from "./notification-panel";
 import { PatientSearch } from "./patient-search";
 import { ProfilePanel } from "./profile-panel";
 import { MobileNav } from "./mobile-nav";
+import { ProfilePhoto } from "./profile-photo";
 import { useNotificationAlerts, useReadNotificationIds } from "@/lib/patients/use-patients";
 
 export function Topbar() {
@@ -76,9 +76,10 @@ export function Topbar() {
           onClick={() => setIsProfileOpen(true)}
           className="flex items-center gap-2 rounded-full p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 sm:py-1 sm:pl-1 sm:pr-2"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-900 text-xs font-semibold text-white">
-            {getInitials(user.name)}
-          </span>
+          <ProfilePhoto
+            name={user.name}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-900 text-xs font-semibold text-white"
+          />
           <IconChevronDown className="hidden h-4 w-4 text-zinc-500 sm:block" />
         </button>
 

@@ -7,13 +7,12 @@ import { ROLE_LABEL } from "@/lib/auth/role-routes";
 import {
   changePassword,
   fetchMyActivity,
-  fetchMyProfile,
   signOutEverywhere,
-  updateMyPhone,
+  updateMyProfile,
   type ActivityEntry,
 } from "@/lib/auth/account-api";
 import { ApiError } from "@/lib/api/client";
-import { getInitials, formatExactDateTime, relativeTime } from "@/lib/format";
+import { formatExactDateTime, relativeTime } from "@/lib/format";
 import { setPreference, usePreferences, type Preferences } from "@/lib/preferences";
 import { useFacilityCapacity, setFacilityMaxCapacity, DEFAULT_CAPACITY } from "@/lib/patients/use-patients";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
@@ -21,6 +20,8 @@ import { FACILITY_LEVEL_LABEL } from "@/components/dashboard/profile-panel";
 import { Field } from "@/components/patients/patient-details-tab";
 import { IconActivity, IconBuilding, IconClock, IconEdit, IconLock, IconPhone, IconSettings, IconUsers } from "@/components/dashboard/icons";
 import { EditContactModal } from "@/components/dashboard/edit-contact-modal";
+import { ProfilePhoto } from "@/components/dashboard/profile-photo";
+import { useMyProfile } from "@/lib/auth/use-my-profile";
 
 
 type Tab = "profile" | "security" | "preferences" | "facility" | "activity";
@@ -115,7 +116,7 @@ function SettingsContent() {
   const preferences = usePreferences();
   const capacity = useFacilityCapacity(user?.facility ?? "");
 
-  const profileQuery = useQuery({ queryKey: ["account", "me"], queryFn: fetchMyProfile, retry: false });
+  const profileQuery = useMyProfile();
   const activityQuery = useQuery({ queryKey: ["account", "activity"], queryFn: fetchMyActivity, retry: false });
 
   const [isEditingContact, setIsEditingContact] = useState(false);
@@ -146,13 +147,13 @@ function SettingsContent() {
 
   const savedPhone = profileQuery.data?.phone ?? "";
 
-  async function savePhone(phone: string) {
+  async function saveDetails(changes: { phone: string; avatar?: string }) {
     try {
-      const updated = await updateMyPhone(phone);
+      const updated = await updateMyProfile(changes);
       queryClient.setQueryData(["account", "me"], updated);
-      setPhoneStatus({ kind: "saved", text: "Contact details saved." });
+      setPhoneStatus({ kind: "saved", text: "Your details were saved." });
     } catch (err) {
-      throw new Error(errorMessage(err, "Could not save your phone number."));
+      throw new Error(errorMessage(err, "Could not save your details."));
     }
   }
 
@@ -220,9 +221,10 @@ function SettingsContent() {
       {/* Header: who you are + sign out */}
       <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-zinc-700 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
-            {getInitials(user.name)}
-          </span>
+          <ProfilePhoto
+            name={user.name}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-zinc-700 shadow-sm dark:bg-zinc-900 dark:text-zinc-300"
+          />
           <div className="min-w-0">
             <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Settings</h2>
             <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
@@ -282,6 +284,18 @@ function SettingsContent() {
               </div>
               <div className="grid gap-5 lg:grid-cols-2">
                 <Section icon={<IconUsers className="h-4 w-4" />} title="Personal Information">
+                  <div className="mb-5 flex items-center gap-4">
+                    <ProfilePhoto
+                      name={user.name}
+                      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-teal-100 text-lg font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">{user.name}</p>
+                      <p className="text-xs text-zinc-400">
+                        {profileQuery.data?.avatarUrl ? "Profile photo" : "No profile photo — add one with Update details."}
+                      </p>
+                    </div>
+                  </div>
                   <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                     <Field label="Full name" value={user.name} />
                     <Field label="Username" value={`@${user.username}`} />
@@ -465,7 +479,13 @@ function SettingsContent() {
       </div>
 
       {isEditingContact && (
-        <EditContactModal phone={savedPhone} onSave={savePhone} onClose={() => setIsEditingContact(false)} />
+        <EditContactModal
+          name={user.name}
+          phone={savedPhone}
+          avatarUrl={profileQuery.data?.avatarUrl ?? null}
+          onSave={saveDetails}
+          onClose={() => setIsEditingContact(false)}
+        />
       )}
       {confirming === "sign-out" && (
         <ConfirmModal

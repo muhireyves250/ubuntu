@@ -28,14 +28,17 @@ export function signOutEverywhere(): Promise<void> {
 export interface AccountProfile {
   email: string;
   phone?: string | null;
+  /** Small base64 data URL, or null when no photo is set. */
+  avatarUrl?: string | null;
 }
 
 export function fetchMyProfile(): Promise<AccountProfile> {
   return apiFetch<AccountProfile>("/auth/me", { token: token() });
 }
 
-export function updateMyPhone(phone: string): Promise<AccountProfile> {
-  return apiFetch<AccountProfile>("/auth/me", { method: "PATCH", body: { phone }, token: token() });
+/** `avatar: ""` removes the photo; omitted fields are left unchanged. */
+export function updateMyProfile(changes: { phone?: string; avatar?: string }): Promise<AccountProfile> {
+  return apiFetch<AccountProfile>("/auth/me", { method: "PATCH", body: changes, token: token() });
 }
 
 export interface ActivityEntry {
