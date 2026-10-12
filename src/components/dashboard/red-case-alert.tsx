@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   usePatients,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/patients/use-patients";
 import { useAuth } from "@/lib/auth/auth-context";
 import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
-import { fullName } from "@/lib/format";
+import { fullName, formatExactDateTime } from "@/lib/format";
 import type { Patient, Visit } from "@/lib/patients/types";
 import { ConfirmModal } from "./confirm-modal";
 import { PatientEmergencyInfoModal } from "./patient-emergency-info-modal";
@@ -50,16 +50,38 @@ function IconClock({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+// "12 min", "2 h 15 min", "3 days" — how long a case has been waiting.
+function formatWaiting(ms: number): string {
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+// Grey under 30 min, amber from 30 min, red from 1 h of waiting.
+function waitingTone(ms: number): string {
+  const minutes = ms / 60_000;
+  if (minutes >= 60) return "bg-red-600 text-white";
+  if (minutes >= 30) return "bg-amber-400 text-amber-950";
+  return "bg-white text-red-700 ring-1 ring-red-200 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-900";
+}
+
 interface RedCaseCardProps {
+  rank: number;
   patient: Patient;
-  latestVisitDate: string;
+  sentAt: string;
+  waitingMs: number;
+  reason: string;
   referredFrom: string;
   gaWeeks: number | null;
   onAccept: () => void;
   onViewInfo: () => void;
 }
 
-function RedCaseCard({ patient, latestVisitDate, referredFrom, gaWeeks, onAccept, onViewInfo }: RedCaseCardProps) {
+function RedCaseCard({ rank, patient, sentAt, waitingMs, reason, referredFrom, gaWeeks, onAccept, onViewInfo }: RedCaseCardProps) {
   return (
     <div
       role="button"
@@ -70,8 +92,13 @@ function RedCaseCard({ patient, latestVisitDate, referredFrom, gaWeeks, onAccept
       }}
       className="animate-pulse-ring-urgent flex cursor-pointer items-start gap-4 rounded-xl border border-red-200 bg-red-50 p-4 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:hover:bg-red-950/50"
     >
-      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
-        <IconEmergency className="h-5 w-5" />
+      <div className="mt-0.5 flex shrink-0 flex-col items-center gap-1">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
+          <IconEmergency className="h-5 w-5" />
+        </span>
+        <span className="text-[11px] font-bold text-red-700 dark:text-red-300" title="Priority — longest waiting first">
+          #{rank}
+        </span>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -85,9 +112,19 @@ function RedCaseCard({ patient, latestVisitDate, referredFrom, gaWeeks, onAccept
         <p className="mt-0.5 text-xs text-red-700/70 dark:text-red-400/70">
           {gaWeeks !== null ? `${gaWeeks}w gestation · ` : ""}Referred from {referredFrom}
         </p>
-        <div className="mt-1 flex items-center gap-1 text-xs text-red-600/60 dark:text-red-400/60">
-          <IconClock className="h-3.5 w-3.5" />
-          <span>Flagged {latestVisitDate}</span>
+        {reason && (
+          <p className="mt-1 line-clamp-2 text-xs text-red-800 dark:text-red-300">
+            <span className="font-semibold">Reason:</span> {reason}
+          </p>
+        )}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-red-600/80 dark:text-red-400/80">
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${waitingTone(waitingMs)}`}>
+            Waiting {formatWaiting(waitingMs)}
+          </span>
+          <span className="flex items-center gap-1">
+            <IconClock className="h-3.5 w-3.5" />
+            <time dateTime={sentAt}>Sent {formatExactDateTime(sentAt)}</time>
+          </span>
         </div>
       </div>
       <button
@@ -116,6 +153,12 @@ export function RedCaseAlertPanel() {
   const [viewInfoReferralId, setViewInfoReferralId] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  // Ticks every minute so the "Waiting …" times and their order stay current.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   // Lets staff collapse the panel to its header row (title + count) to get
   // at the rest of the page; the alert itself never disappears.
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -162,11 +205,26 @@ export function RedCaseAlertPanel() {
       results.push({ referral, patient, latestVisit, gaWeeks });
     }
 
-    return results.sort((a, b) => b.referral.createdAt.localeCompare(a.referral.createdAt));
+    return results;
   }, [referrals, patientById, visits, pregnancies, patientIdByPregnancyId, user, capacity]);
 
   if (user?.role === "hospital_admin" || user?.role === "chw") return null;
   if (pendingCases.length === 0) return null;
+
+  // Priority: longest waiting first. Cases sent in the same 15-minute clock
+  // window (fixed windows, so the order never shuffles as time passes) are
+  // ordered by gestational age (later pregnancy first), then by time sent.
+  const rankedCases = pendingCases
+    .map((c) => {
+      const sentMs = new Date(c.referral.createdAt).getTime();
+      return { ...c, sentWindow: Math.floor(sentMs / 900_000), waitingMs: now - sentMs };
+    })
+    .sort(
+      (a, b) =>
+        a.sentWindow - b.sentWindow ||
+        (b.gaWeeks ?? -1) - (a.gaWeeks ?? -1) ||
+        a.referral.createdAt.localeCompare(b.referral.createdAt),
+    );
 
   const pendingAccept = pendingCases.find(({ referral }) => referral.id === pendingAcceptId);
   const viewInfo = pendingCases.find(({ referral }) => referral.id === viewInfoReferralId);
@@ -219,11 +277,14 @@ export function RedCaseAlertPanel() {
       {/* Capped at about a third of the screen and scrolls inside, so the
           panel never pushes the page under it off screen. */}
       <div className="scrollbar-hidden mt-4 flex max-h-[33dvh] flex-col gap-3 overflow-y-auto p-1">
-        {pendingCases.map(({ referral, patient, latestVisit, gaWeeks }) => (
+        {rankedCases.map(({ referral, patient, gaWeeks, waitingMs }, index) => (
           <RedCaseCard
             key={referral.id}
+            rank={index + 1}
             patient={patient}
-            latestVisitDate={latestVisit?.date ?? "Unknown"}
+            sentAt={referral.createdAt}
+            waitingMs={waitingMs}
+            reason={referral.reason}
             referredFrom={referral.referredByFacility}
             gaWeeks={gaWeeks}
             onAccept={() => setPendingAcceptId(referral.id)}

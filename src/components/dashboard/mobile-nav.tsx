@@ -6,7 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { NAV_ITEMS, isNavItemActive } from "./sidebar";
-import { IconMenu, IconClose, IconSettings, IconChevronRight } from "./icons";
+import { IconMenu, IconClose, IconSettings, IconChevronRight, IconChat } from "./icons";
+import { openHelpAssistant } from "./help-assistant";
 
 // The Sidebar only renders at `lg` and up — below that there is otherwise no
 // way to reach Patient Registry, ANC Visits, etc. This is the mobile
@@ -78,11 +79,26 @@ export function MobileNav() {
               })}
             </nav>
 
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                openHelpAssistant();
+              }}
+              className="mt-6 flex items-center justify-between rounded-xl px-4 p-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200/60 dark:text-zinc-400"
+            >
+              <span className="flex items-center gap-3">
+                <IconChat className="h-5 w-5 shrink-0 text-zinc-400" />
+                <span>Help</span>
+              </span>
+              <IconChevronRight className="h-4 w-4 text-zinc-400" />
+            </button>
+
             <Link
               href="/dashboard/settings"
               title="Settings"
               onClick={() => setIsOpen(false)}
-              className={`mt-6 flex items-center justify-between rounded-xl px-4 p-3 text-sm font-medium transition-colors ${
+              className={`flex items-center justify-between rounded-xl px-4 p-3 text-sm font-medium transition-colors ${
                 pathname.startsWith("/dashboard/settings")
                   ? "bg-[#0f766e] text-white shadow-sm shadow-teal-700/20"
                   : "text-zinc-700 hover:bg-zinc-200/60 dark:text-zinc-400"

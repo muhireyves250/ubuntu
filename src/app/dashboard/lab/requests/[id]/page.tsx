@@ -15,6 +15,14 @@ import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
 import type { AuthenticatedUser } from "@/lib/auth/auth-context";
 import { CriticalAlertModal } from "@/components/dashboard/critical-alert-modal";
 import { LAB_TEST_CATEGORIES } from "@/lib/patients/lab-test-catalog";
+import {
+  OTHER_OPTION,
+  RESULT_OPTIONS,
+  RESULT_PANELS,
+  formatPanelResult,
+  isAbnormalResult,
+  parsePanelResult,
+} from "@/lib/patients/lab-result-options";
 import Link from "next/link";
 
 // Typical result units/format for common tests, shown as an input
@@ -40,45 +48,95 @@ const RESULT_HINTS: Record<string, string> = {
   "Kidney Function Test (Creatinine/Urea)": "e.g. Creatinine 0.7",
   "Thyroid Function Test (TSH)": "e.g. 2.1",
   "Widal Test (Typhoid)": "e.g. titre 1:160",
-  "Urine Analysis": "e.g. Clear, no abnormality",
   "Urine Protein (Dipstick)": "e.g. Negative, Trace, 1+",
   "Urine Culture & Sensitivity": "e.g. No growth",
-  "Urine Microscopy": "e.g. No pus cells",
   "Urine Glucose": "e.g. Negative",
   "Obstetric Ultrasound": "e.g. Single live fetus, cephalic",
   "Anomaly (Detailed) Ultrasound Scan": "e.g. No anomalies detected",
   "Doppler Study": "e.g. Normal flow",
   "Cardiotocography (CTG)": "e.g. Reactive",
   "Pap Smear": "e.g. Normal, no abnormal cells",
-  "Stool Analysis (Ova & Parasites)": "e.g. No ova/parasites seen",
   "COVID-19 Test": "e.g. Negative, Positive",
   "Tuberculosis (TB) Screening": "e.g. Negative, Positive",
 };
 
-// Standard result options for qualitative tests — shown as a dropdown so
-// the lab nurse picks from the recognized clinical values instead of
-// free-typing (and risking inconsistent wording). Quantitative tests
-// (Hemoglobin, Blood Glucose, LFT, KFT, TSH, ...) have no fixed set of
-// values and keep the free-text input with a format hint instead.
-const RESULT_OPTIONS: Record<string, string[]> = {
-  "Blood Group": ["A", "B", "AB", "O"],
-  "Rh Factor": ["Positive", "Negative"],
-  "Rhesus Antibody Screen (Coombs Test)": ["Negative", "Positive"],
-  "HIV Test": ["Negative", "Positive"],
-  "Syphilis (VDRL/RPR)": ["Non-reactive", "Reactive"],
-  "Hepatitis B (HBsAg)": ["Negative", "Positive"],
-  "Hepatitis C (Anti-HCV)": ["Negative", "Positive"],
-  "Malaria (Blood Smear)": ["Negative", "Positive"],
-  "Sickle Cell Test": ["Negative", "Positive"],
-  "Rubella IgG/IgM": ["Immune", "Non-immune", "Indeterminate"],
-  "Toxoplasmosis (IgG/IgM)": ["Negative", "Positive", "Indeterminate"],
-  "Urine Protein (Dipstick)": ["Negative", "Trace", "1+", "2+", "3+", "4+"],
-  "Urine Glucose": ["Negative", "Trace", "1+", "2+", "3+"],
-  "Urine Culture & Sensitivity": ["No growth", "Growth <10⁵ CFU/mL", "Growth >10⁵ CFU/mL"],
-  "Cardiotocography (CTG)": ["Reactive", "Non-reactive", "Suspicious"],
-  "COVID-19 Test": ["Negative", "Positive"],
-  "Tuberculosis (TB) Screening": ["Negative", "Positive"],
-};
+const FIELD_BASE =
+  "w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70";
+const FIELD_NORMAL =
+  "border-zinc-300 bg-zinc-50/50 text-zinc-900 focus:bg-white dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900";
+// Out-of-range answers are tinted like the "Abnormal" interpretation.
+const FIELD_ABNORMAL =
+  "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-300";
+const FIELD_CLS = `${FIELD_BASE} ${FIELD_NORMAL}`;
+
+// A dropdown of known answers plus "Other…", which swaps in a text box.
+// A saved value that isn't in the list (typed via "Other…") reopens as text.
+function AnswerSelect({
+  value,
+  options,
+  normal,
+  disabled,
+  required,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  options: string[];
+  normal?: string[];
+  disabled: boolean;
+  required: boolean;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}) {
+  // "Other…" was picked but nothing typed yet — otherwise a value outside the
+  // list (typed earlier, or loaded from a saved result) means Other too.
+  const [otherPicked, setOtherPicked] = useState(false);
+  const isOther = otherPicked || (value !== "" && !options.includes(value));
+  const isAbnormal = !!normal && value !== "" && !normal.includes(value);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <select
+        aria-label={ariaLabel}
+        required={required && !isOther}
+        disabled={disabled}
+        value={isOther ? OTHER_OPTION : value}
+        onChange={(e) => {
+          if (e.target.value === OTHER_OPTION) {
+            setOtherPicked(true);
+            onChange("");
+          } else {
+            setOtherPicked(false);
+            onChange(e.target.value);
+          }
+        }}
+        className={`${FIELD_BASE} ${isAbnormal ? FIELD_ABNORMAL : FIELD_NORMAL}`}
+      >
+        <option value="" disabled>
+          Select…
+        </option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+        <option value={OTHER_OPTION}>Other…</option>
+      </select>
+      {isOther && (
+        <input
+          type="text"
+          required={required}
+          disabled={disabled}
+          autoFocus
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Type the result"
+          aria-label={`${ariaLabel} (other)`}
+          className={FIELD_CLS}
+        />
+      )}
+    </div>
+  );
+}
 
 const TEST_TO_CATEGORY = new Map<string, string>(
   LAB_TEST_CATEGORIES.flatMap((group) => group.tests.map((test) => [test, group.category])),
@@ -177,13 +235,17 @@ function RequestDetailContent({
   }
 
   function handleResultChange(testName: string, field: keyof ResultForm, value: string) {
-    setResultsForm((prev) => ({
-      ...prev,
-      [testName]: {
-        ...prev[testName],
-        [field]: value,
-      },
-    }));
+    setResultsForm((prev) => {
+      const current = prev[testName];
+      const next = { ...current, [field]: value };
+      // Picking a result suggests the interpretation (Abnormal when a value is
+      // out of range); the nurse can still change it, and Critical is kept.
+      if (field === "result" && current.interp !== "Critical") {
+        const abnormal = isAbnormalResult(testName, value);
+        if (abnormal !== null) next.interp = abnormal ? "Abnormal" : "Normal";
+      }
+      return { ...prev, [testName]: next };
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -341,7 +403,7 @@ function RequestDetailContent({
                 Perform Laboratory Tests
               </h2>
 
-              <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-zinc-200 bg-zinc-50/50 text-[11px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-400">
                     <tr>
@@ -371,19 +433,46 @@ function RequestDetailContent({
                               {testName}
                             </td>
                             <td className="px-4 py-2.5">
-                              {RESULT_OPTIONS[testName] ? (
-                                <select
-                                  required
-                                  disabled={request.status === "Completed"}
-                                  value={resultsForm[testName]?.result || ""}
-                                  onChange={(e) => handleResultChange(testName, "result", e.target.value)}
-                                  className="w-full min-w-[160px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
-                                >
-                                  <option value="" disabled>Select result…</option>
-                                  {RESULT_OPTIONS[testName].map((opt) => (
-                                    <option key={opt} value={opt}>{opt}</option>
-                                  ))}
-                                </select>
+                              {RESULT_PANELS[testName] ? (
+                                <div className="grid min-w-[420px] grid-cols-2 gap-x-3 gap-y-2.5 xl:grid-cols-3">
+                                  {RESULT_PANELS[testName].map((reading) => {
+                                    const values = parsePanelResult(resultsForm[testName]?.result || "");
+                                    return (
+                                      <label key={reading.label} className="flex flex-col gap-1">
+                                        <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                          {reading.label}
+                                        </span>
+                                        <AnswerSelect
+                                          ariaLabel={`${testName} – ${reading.label}`}
+                                          value={values[reading.label] ?? ""}
+                                          options={reading.options}
+                                          normal={reading.normal}
+                                          required
+                                          disabled={request.status === "Completed"}
+                                          onChange={(value) =>
+                                            handleResultChange(
+                                              testName,
+                                              "result",
+                                              formatPanelResult(RESULT_PANELS[testName], { ...values, [reading.label]: value }),
+                                            )
+                                          }
+                                        />
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              ) : RESULT_OPTIONS[testName] ? (
+                                <div className="min-w-[180px]">
+                                  <AnswerSelect
+                                    ariaLabel={testName}
+                                    value={resultsForm[testName]?.result || ""}
+                                    options={RESULT_OPTIONS[testName].options}
+                                    normal={RESULT_OPTIONS[testName].normal}
+                                    required
+                                    disabled={request.status === "Completed"}
+                                    onChange={(value) => handleResultChange(testName, "result", value)}
+                                  />
+                                </div>
                               ) : (
                                 <input
                                   type="text"
@@ -391,12 +480,15 @@ function RequestDetailContent({
                                   disabled={request.status === "Completed"}
                                   value={resultsForm[testName]?.result || ""}
                                   onChange={(e) => handleResultChange(testName, "result", e.target.value)}
-                                  className="w-full min-w-[160px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
+                                  className={`${FIELD_CLS} min-w-[160px]`}
                                   placeholder={RESULT_HINTS[testName] ?? "e.g. 11.5, Positive"}
                                 />
                               )}
                             </td>
                             <td className="px-4 py-2.5">
+                              {RESULT_PANELS[testName] ? (
+                                <span className="text-zinc-400">—</span>
+                              ) : (
                               <input
                                 type="text"
                                 disabled={request.status === "Completed"}
@@ -405,6 +497,7 @@ function RequestDetailContent({
                                 className="w-full min-w-[80px] rounded-lg border border-zinc-300 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-white dark:focus:bg-zinc-900"
                                 placeholder="mg/dL"
                               />
+                              )}
                             </td>
                             <td className="px-4 py-2.5">
                               <div className="relative min-w-[110px]">
