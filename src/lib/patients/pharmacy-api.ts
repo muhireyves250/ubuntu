@@ -25,6 +25,9 @@ export interface Prescription {
   quantity?: number;
   patientInstructions?: string;
   forPartner: boolean;
+  /** Pharmacy status; undefined for prescriptions recorded before the pharmacist role. */
+  pharmacyStatus?: "Pending" | "In Progress" | "Dispensed";
+  dispensedQuantity?: number;
 }
 
 export interface ConsumableUsage {
@@ -59,6 +62,8 @@ interface BackendPrescription {
   quantity: number | null;
   patientInstructions: string | null;
   forPartner: boolean;
+  dispensedQuantity?: number | null;
+  drugRequest?: { status: "PENDING" | "IN_PROGRESS" | "DISPENSED" } | null;
 }
 interface BackendConsumableUsage {
   id: string;
@@ -73,6 +78,12 @@ interface BackendConsumableUsage {
 
 const CATEGORY_TO_FRONTEND: Record<string, InventoryCategory> = { DRUG: "drug", CONSUMABLE: "consumable" };
 const CATEGORY_TO_BACKEND: Record<InventoryCategory, "DRUG" | "CONSUMABLE"> = { drug: "DRUG", consumable: "CONSUMABLE" };
+
+const PHARMACY_STATUS_TO_FRONTEND: Record<string, NonNullable<Prescription["pharmacyStatus"]>> = {
+  PENDING: "Pending",
+  IN_PROGRESS: "In Progress",
+  DISPENSED: "Dispensed",
+};
 
 function toFrontendItem(i: BackendInventoryItem): InventoryItem {
   return {
@@ -98,6 +109,8 @@ function toFrontendPrescription(p: BackendPrescription): Prescription {
     quantity: p.quantity ?? undefined,
     patientInstructions: p.patientInstructions ?? undefined,
     forPartner: p.forPartner,
+    pharmacyStatus: p.drugRequest ? PHARMACY_STATUS_TO_FRONTEND[p.drugRequest.status] : undefined,
+    dispensedQuantity: p.dispensedQuantity ?? undefined,
   };
 }
 function toFrontendConsumable(c: BackendConsumableUsage): ConsumableUsage {

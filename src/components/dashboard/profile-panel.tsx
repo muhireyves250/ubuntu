@@ -30,6 +30,11 @@ const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "Record lab results — hemoglobin, platelets, blood sugar, urine protein",
     "View lab request and results history for your facility",
   ],
+  pharmacist: [
+    "Receive drug requests prescribed by nurses at your facility",
+    "Find patients at the counter by ID or phone and dispense their drugs",
+    "Manage the facility's drug and consumable inventory",
+  ],
   gynecologist: [
     "Specialist oversight of Orange and Yellow risk pregnancies",
     "Accept and lead Red emergency cases alongside ANC nurses",

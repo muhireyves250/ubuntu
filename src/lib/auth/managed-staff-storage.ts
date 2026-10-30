@@ -7,7 +7,7 @@ export interface ManagedStaffAccount {
   title: string;
   facility: string;
   village?: string;
-  role: Extract<Role, "nurse" | "lab_nurse" | "gynecologist">;
+  role: Extract<Role, "nurse" | "lab_nurse" | "gynecologist" | "pharmacist">;
   facilityLevel: FacilityLevel;
   password: string;
   status: "active" | "suspended";

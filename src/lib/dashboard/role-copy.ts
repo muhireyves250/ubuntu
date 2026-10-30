@@ -26,6 +26,11 @@ export const ROLE_OVERVIEW_COPY: Record<Role, RoleOverviewCopy> = {
     description:
       "Monitor performance, configure emergency capacity, and review records for your facility — read-only for clinical data.",
   },
+  pharmacist: {
+    scope: "Pharmacy",
+    description:
+      "Drug requests prescribed by ANC nurses appear here for you to dispense, alongside your facility's stock.",
+  },
   chw: {
     scope: "Community Follow-up",
     description:

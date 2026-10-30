@@ -197,12 +197,12 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: "pharmacy",
     question: "How do I add a medicine or restock the pharmacy?",
-    roles: ["nurse", "hospital_admin"],
+    roles: ["pharmacist", "hospital_admin"],
     keywords: ["pharmacy", "inventory", "stock", "medicine", "drug", "restock", "add item", "consumable", "cart"],
     steps: [
       "Open Pharmacy Inventory from the menu.",
       "To add a new item, fill in the form at the top (name, drug or consumable, unit, quantity, reorder level, unit price) and click “Add Item”.",
-      "To add stock to an existing item, click “+20 Restock” on its row.",
+      "To change stock on an existing item, type a quantity on its row and click “+ Restock” or “− Remove”.",
       "Badges show In Stock, Low Stock (at or below the reorder level) or Out of Stock.",
     ],
     link: { href: "/dashboard/nurse/inventory", label: "Open Pharmacy Inventory" },
@@ -230,6 +230,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     keywords: ["history", "past results", "completed", "previous", "old requests"],
     steps: ["Open Lab History from the menu to see completed requests and their results for your facility."],
     link: { href: "/dashboard/lab/history", label: "Open Lab History" },
+  },
+  {
+    id: "dispense-drug-request",
+    question: "How do I dispense drugs to a patient?",
+    roles: ["pharmacist"],
+    keywords: ["dispense", "drug request", "prescription", "pharmacy", "medicine", "give drugs"],
+    steps: [
+      "When the patient reaches the counter, open Drug Requests and search by their ID or phone.",
+      "Open the request and click “Accept Request & Prepare Drugs” — this locks it to you.",
+      "Check the quantity to give for each drug. It is capped at what is in stock; give less if stock is short.",
+      "Add a note for the nurse if anything was given short, then click “Confirm & Dispense”. Stock goes down automatically.",
+    ],
+    link: { href: "/dashboard/pharmacy/requests", label: "Open Drug Requests" },
+    pages: ["/dashboard/pharmacy/requests", "/dashboard/pharmacy"],
   },
   {
     id: "capacity-limit",

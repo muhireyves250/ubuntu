@@ -26,6 +26,12 @@ export function VisitPharmacySection({
                 {p.durationDays ? ` for ${p.durationDays} days` : ""}
                 {p.quantity ? ` (qty ${p.quantity})` : ""}
                 {p.forPartner ? " · Partner" : ""}
+                {p.pharmacyStatus === "Dispensed" && (
+                  <span className="text-teal-700 dark:text-teal-400"> · Dispensed {p.dispensedQuantity ?? 0}</span>
+                )}
+                {(p.pharmacyStatus === "Pending" || p.pharmacyStatus === "In Progress") && (
+                  <span className="text-amber-700 dark:text-amber-400"> · Waiting at pharmacy</span>
+                )}
               </li>
             ))}
           </ul>

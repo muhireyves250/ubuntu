@@ -6,12 +6,13 @@ import { registerStaffAccount } from "@/lib/auth/managed-staff-storage";
 import { isUsernameTaken } from "@/lib/auth/user-directory";
 import type { Role } from "@/lib/auth/types";
 
-type AssignableRole = Extract<Role, "nurse" | "lab_nurse" | "gynecologist">;
+type AssignableRole = Extract<Role, "nurse" | "lab_nurse" | "gynecologist" | "pharmacist">;
 
 const ASSIGNABLE_ROLES: { value: AssignableRole; label: string }[] = [
   { value: "nurse", label: "Nurse (ANC)" },
   { value: "lab_nurse", label: "Laboratory Nurse" },
   { value: "gynecologist", label: "Gynecologist" },
+  { value: "pharmacist", label: "Pharmacist" },
 ];
 
 export function RegisterStaffForm() {

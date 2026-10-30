@@ -72,7 +72,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: "Pharmacy",
     icon: IconClipboard,
     href: "/dashboard/nurse/inventory",
-    enabledRoles: ["nurse", "hospital_admin"],
+    enabledRoles: ["nurse", "hospital_admin", "pharmacist"],
   },
   {
     label: "Referral Log",
@@ -108,6 +108,20 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/lab/history",
     enabledRoles: ["lab_nurse"],
   },
+  {
+    label: "Drug Requests",
+    shortLabel: "Requests",
+    icon: IconClipboard,
+    href: "/dashboard/pharmacy/requests",
+    enabledRoles: ["pharmacist"],
+  },
+  {
+    label: "Dispensing History",
+    shortLabel: "History",
+    icon: IconReport,
+    href: "/dashboard/pharmacy/history",
+    enabledRoles: ["pharmacist"],
+  },
 ];
 
 import { useState } from "react";
@@ -118,6 +132,7 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
         pathname === "/dashboard/nurse" ||
         pathname === "/dashboard/gynecologist" ||
         pathname === "/dashboard/lab" ||
+        pathname === "/dashboard/pharmacy" ||
         pathname === "/dashboard/hospital-admin" ||
         pathname === "/dashboard/chw"
     : pathname.startsWith(item.href || "");

@@ -112,6 +112,16 @@ export const DEMO_USERS: DemoUser[] = [
     facilityLevel: "hc",
     password: "chw123",
   },
+  {
+    id: "pharmacist-nshuti",
+    username: "nshuti",
+    name: "Pharmacist Nshuti",
+    title: "Pharmacist",
+    facility: "Kabusunzu Health Centre",
+    role: "pharmacist",
+    facilityLevel: "hc",
+    password: "pharmacist123",
+  },
 ];
 
 export function findDemoUserById(id: string): DemoUser | undefined {

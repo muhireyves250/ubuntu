@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RoleGuard } from "@/components/role-guard";
+import { useAuth } from "@/lib/auth/auth-context";
 import { useInventory, createInventoryItem, adjustStock } from "@/lib/patients/use-patients";
 import type { InventoryCategory } from "@/lib/patients/pharmacy-api";
 
@@ -143,26 +144,69 @@ function AddItemForm({ onAdded }: { onAdded: () => void }) {
   );
 }
 
-function InventoryContent() {
-  const items = useInventory();
-  const [adjustingId, setAdjustingId] = useState<string | null>(null);
+function AdjustStockControl({ id }: { id: string }) {
+  const [amount, setAmount] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleRestock(id: string) {
-    setAdjustingId(id);
+  async function apply(sign: 1 | -1) {
+    const value = Number(amount);
+    if (!Number.isInteger(value) || value <= 0) return;
+    setError(null);
+    setIsSaving(true);
     try {
-      await adjustStock(id, 20);
+      await adjustStock(id, sign * value);
+      setAmount("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not adjust stock");
     } finally {
-      setAdjustingId(null);
+      setIsSaving(false);
     }
   }
+
+  const buttonClass =
+    "rounded-lg border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-white disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800";
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          min={1}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="Qty"
+          aria-label="Quantity to add or remove"
+          className="w-16 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+        <button type="button" disabled={isSaving || !amount} onClick={() => apply(1)} className={buttonClass}>
+          + Restock
+        </button>
+        <button type="button" disabled={isSaving || !amount} onClick={() => apply(-1)} className={buttonClass}>
+          − Remove
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+function InventoryContent() {
+  const items = useInventory();
+  const { user } = useAuth();
+  // Pharmacists own the stock; nurses only read it when prescribing.
+  const canManage = user?.role === "pharmacist" || user?.role === "hospital_admin";
 
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-xl border border-zinc-300 bg-[#ffeedb] px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Pharmacy Inventory</h2>
+        {!canManage && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">Stock is managed by the pharmacist.</p>
+        )}
       </div>
 
-      <AddItemForm onAdded={() => undefined} />
+      {canManage && <AddItemForm onAdded={() => undefined} />}
 
       <div className="overflow-hidden rounded-xl border border-zinc-300 bg-[#ffeedb] shadow-sm dark:border-zinc-700 dark:bg-orange-950/40">
         <table className="w-full text-left text-sm">
@@ -190,16 +234,7 @@ function InventoryContent() {
                 <td className="px-4 py-3">
                   <StockBadge quantityOnHand={item.quantityOnHand} reorderLevel={item.reorderLevel} />
                 </td>
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    disabled={adjustingId === item.id}
-                    onClick={() => handleRestock(item.id)}
-                    className="rounded-lg border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-white disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  >
-                    {adjustingId === item.id ? "Restocking…" : "+20 Restock"}
-                  </button>
-                </td>
+                <td className="px-4 py-3">{canManage && <AdjustStockControl id={item.id} />}</td>
               </tr>
             ))}
             {items.length === 0 && (
@@ -218,7 +253,7 @@ function InventoryContent() {
 
 export default function InventoryPage() {
   return (
-    <RoleGuard roles={["nurse", "hospital_admin"]}>
+    <RoleGuard roles={["nurse", "hospital_admin", "pharmacist"]}>
       <InventoryContent />
     </RoleGuard>
   );

@@ -6,6 +6,7 @@ const BACKEND_ROLE_TO_FRONTEND: Record<string, Role> = {
   GYNECOLOGIST: "gynecologist",
   HOSPITAL_DIRECTOR: "hospital_admin",
   COMMUNITY_HEALTH_WORKER: "chw",
+  PHARMACIST: "pharmacist",
 };
 
 const BACKEND_FACILITY_TYPE_TO_LEVEL: Record<string, FacilityLevel> = {
@@ -20,6 +21,7 @@ const ROLE_TITLE: Record<Role, string> = {
   gynecologist: "Gynecologist",
   hospital_admin: "Hospital Administrator",
   chw: "Community Health Worker",
+  pharmacist: "Pharmacist",
 };
 
 export function mapBackendRole(role: string): Role {
