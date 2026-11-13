@@ -14,15 +14,14 @@ import type { LabTestResult } from "@/lib/patients/types";
 import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
 import type { AuthenticatedUser } from "@/lib/auth/auth-context";
 import { CriticalAlertModal } from "@/components/dashboard/critical-alert-modal";
-import { LAB_TEST_CATEGORIES } from "@/lib/patients/lab-test-catalog";
 import {
   OTHER_OPTION,
-  RESULT_OPTIONS,
-  RESULT_PANELS,
   formatPanelResult,
   isAbnormalResult,
   parsePanelResult,
-} from "@/lib/patients/lab-result-options";
+  useLabCatalog,
+  useLabCatalogQuery,
+} from "@/lib/patients/lab-catalog-api";
 import Link from "next/link";
 
 // Typical result units/format for common tests, shown as an input
@@ -138,10 +137,6 @@ function AnswerSelect({
   );
 }
 
-const TEST_TO_CATEGORY = new Map<string, string>(
-  LAB_TEST_CATEGORIES.flatMap((group) => group.tests.map((test) => [test, group.category])),
-);
-
 function readSessionUser(): AuthenticatedUser | null {
   if (typeof window === "undefined") return null;
   return getStoredAuthenticatedUser();
@@ -168,6 +163,12 @@ function RequestDetailContent({
   user: AuthenticatedUser;
 }) {
   const router = useRouter();
+  const catalog = useLabCatalog();
+  const isLoadingCatalog = useLabCatalogQuery().isLoading;
+  const { singleAnswers: RESULT_OPTIONS, panels: RESULT_PANELS } = catalog;
+  const TEST_TO_CATEGORY = new Map<string, string>(
+    catalog.categories.flatMap((group) => group.tests.map((test) => [test, group.category])),
+  );
   const fetchedRequest = useLabRequest(requestId);
   const isLoadingRequest = useLabRequestIsLoading(requestId);
   const request = fetchedRequest && fetchedRequest.facility === user.facility ? fetchedRequest : null;
@@ -195,7 +196,9 @@ function RequestDetailContent({
     }
   }, [request]);
 
-  if (isLoadingRequest) {
+  // The answer lists come with the catalog; wait for it so the form never
+  // flashes free-text boxes in place of dropdowns.
+  if (isLoadingRequest || isLoadingCatalog) {
     return <div className="flex flex-col items-center p-6" />;
   }
 
@@ -241,7 +244,7 @@ function RequestDetailContent({
       // Picking a result suggests the interpretation (Abnormal when a value is
       // out of range); the nurse can still change it, and Critical is kept.
       if (field === "result" && current.interp !== "Critical") {
-        const abnormal = isAbnormalResult(testName, value);
+        const abnormal = isAbnormalResult(catalog, testName, value);
         if (abnormal !== null) next.interp = abnormal ? "Abnormal" : "Normal";
       }
       return { ...prev, [testName]: next };

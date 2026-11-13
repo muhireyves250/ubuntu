@@ -1,7 +1,7 @@
 "use client";
 
 import { IconAlert, IconClipboard, IconCheckCircle, IconUsers } from "@/components/dashboard/icons";
-import { LAB_TEST_CATEGORIES } from "@/lib/patients/lab-test-catalog";
+import { useLabCatalog } from "@/lib/patients/lab-catalog-api";
 
 export function LabsStep({
   labsOrdered,
@@ -22,6 +22,8 @@ export function LabsStep({
   labNotes: string;
   onLabNotesChange: (value: string) => void;
 }) {
+  const labCategories = useLabCatalog().categories;
+
   function toggleTest(test: string) {
     onTestsChange(
       selectedTests.includes(test)
@@ -101,7 +103,7 @@ export function LabsStep({
             </p>
           </div>
 
-          {LAB_TEST_CATEGORIES.map((group) => (
+          {labCategories.map((group) => (
             <div key={group.category}>
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 {group.category}

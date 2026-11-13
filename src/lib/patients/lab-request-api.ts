@@ -108,7 +108,6 @@ const TEST_FIELD_MAP: [string, keyof BackendLabResult, string][] = [
   ["Syphilis (VDRL/RPR)", "syphilisStatus", ""],
   ["Malaria (Blood Smear)", "malariaTest", ""],
 ];
-const TEST_FIELD_NAMES = new Set(TEST_FIELD_MAP.map(([name]) => name));
 
 function computeAge(dateOfBirth: string): number {
   const ageMs = Date.now() - new Date(dateOfBirth).getTime();
@@ -237,7 +236,6 @@ export async function acceptLabRequestApi(id: string): Promise<LabRequest> {
   return toFrontendLabRequest(r);
 }
 
-const NUMERIC_RESULT_FIELDS = new Set<keyof BackendLabResult>(["hemoglobin", "platelets", "bloodSugar"]);
 const INTERPRETATION_TO_BACKEND: Record<LabTestResult["interpretation"], "NORMAL" | "ABNORMAL" | "CRITICAL"> = {
   Normal: "NORMAL",
   Abnormal: "ABNORMAL",
@@ -250,39 +248,16 @@ export async function submitLabResultsApi(
   labNotes?: string,
 ): Promise<LabRequest> {
   const token = getStoredAccessToken();
-  const resultByTestName = new Map(results.map((res) => [res.testName, res]));
-  const body: Record<string, unknown> = {};
-  for (const [testName, field] of TEST_FIELD_MAP) {
-    const res = resultByTestName.get(testName);
-    if (!res || res.result === "") continue;
-    if (NUMERIC_RESULT_FIELDS.has(field)) {
-      const num = parseFloat(res.result);
-      if (!isNaN(num)) body[field] = num;
-    } else {
-      body[field] = res.result;
-    }
-  }
-
-  // Any requested test outside the fixed structured fields goes through the
-  // generic entries array instead of being silently dropped.
-  const entries = results
-    .filter((res) => !TEST_FIELD_NAMES.has(res.testName) && res.result !== "")
-    .map((res) => ({
+  // The API decides where each answer is stored and the overall verdict.
+  const body = {
+    results: results.map((res) => ({
       testName: res.testName,
       result: res.result,
       unit: res.unit || undefined,
       interpretation: INTERPRETATION_TO_BACKEND[res.interpretation],
-    }));
-  if (entries.length > 0) body.entries = entries;
-
-  const hasCritical = results.some((res) => res.interpretation === "Critical");
-  body.isCritical = hasCritical;
-  body.interpretation = hasCritical
-    ? "CRITICAL"
-    : results.some((res) => res.interpretation === "Abnormal")
-      ? "ABNORMAL"
-      : "NORMAL";
-  if (labNotes) body.labNotes = labNotes;
+    })),
+    labNotes: labNotes || undefined,
+  };
 
   const r = await apiFetch<BackendLabRequest>(`/lab-requests/${id}/submit`, {
     method: "PATCH",
