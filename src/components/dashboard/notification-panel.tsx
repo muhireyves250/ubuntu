@@ -102,6 +102,7 @@ const TYPE_CATEGORY: Record<NotificationAlert["type"], Category> = {
   referral_activity: "referral",
   community_visit_emergency: "urgent",
   comment_reply: "referral",
+  drug_request: "lab",
 };
 
 export function NotificationPanel({
@@ -131,6 +132,8 @@ export function NotificationPanel({
       router.push(`/dashboard/lab/requests/${targetId}`);
     } else if (type === "lab_request" || type === "lab_result_comment") {
       router.push("/dashboard/lab/requests");
+    } else if (type === "drug_request" && targetId) {
+      router.push(`/dashboard/pharmacy/requests/${targetId}`);
     } else if (type === "facility_full") {
       router.push("/dashboard/hospital-admin");
     } else if (

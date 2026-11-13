@@ -1335,7 +1335,8 @@ export interface NotificationAlert {
     | "red_risk_escalation"
     | "referral_activity"
     | "community_visit_emergency"
-    | "comment_reply";
+    | "comment_reply"
+    | "drug_request";
   patientId: string;
   patientName: string;
   title: string;
