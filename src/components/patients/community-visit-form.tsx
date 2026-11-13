@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { submitCommunityVisitApi } from "@/lib/patients/community-visit-api";
-import { CHW_SYMPTOM_CHECKLIST } from "@/lib/patients/chw-symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import type { Pregnancy } from "@/lib/patients/types";
 
 // The home visit whose window is open today, as computed by the API.
@@ -17,6 +17,7 @@ export function CommunityVisitForm({
   pregnancy: Pregnancy;
   onSubmitted: () => void;
 }) {
+  const { chwSigns: CHW_SYMPTOM_CHECKLIST } = useClinicalReference();
   const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10));
   const [systolic, setSystolic] = useState("");
   const [diastolic, setDiastolic] = useState("");

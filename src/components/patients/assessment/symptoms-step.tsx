@@ -1,6 +1,6 @@
 "use client";
 
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import type { RiskLevel } from "@/lib/patients/types";
 
 const SEVERITY_ORDER: RiskLevel[] = ["red", "orange", "yellow"];
@@ -18,6 +18,7 @@ export function SymptomsStep({
   selectedIds: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const { symptoms: SYMPTOM_CHECKLIST } = useClinicalReference();
   const hasRedSymptom = selectedIds.some(
     (id) => SYMPTOM_CHECKLIST.find((s) => s.id === id)?.severity === "red",
   );

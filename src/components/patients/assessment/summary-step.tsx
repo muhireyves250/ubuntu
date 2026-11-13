@@ -6,7 +6,7 @@ import {
   type VitalSigns,
 } from "@/components/patients/assessment/vital-signs-step";
 import { recordVisit, usePregnanciesForPatient } from "@/lib/patients/use-patients";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import type { Visit, VisitLabs, PregnancyMedicalHistory } from "@/lib/patients/types";
 
 const HISTORY_REVIEW_LABELS: { key: keyof PregnancyMedicalHistory; label: string }[] = [
@@ -30,7 +30,6 @@ const HISTORY_REVIEW_LABELS: { key: keyof PregnancyMedicalHistory; label: string
   { key: "historyLowBirthWeightDelivery", label: "History of delivery with birth weight < 2.5kg" },
 ];
 
-const SYMPTOM_MAP = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s]));
 
 const SEVERITY_COLORS: Record<string, string> = {
   red: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
@@ -67,6 +66,7 @@ export function SummaryStep({
   ancNumber?: number;
   onRecorded: (visit: Visit) => void;
 }) {
+  const SYMPTOM_MAP = new Map(useClinicalReference().symptoms.map((s) => [s.id, s]));
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

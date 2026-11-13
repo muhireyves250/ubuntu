@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { computePrediction, computePredictionHistory } from "@/lib/patients/ai-prediction";
+import { useState } from "react";
+import { useRiskPredictions, type VisitPrediction } from "@/lib/patients/risk-predictions-api";
 import { IconActivity } from "@/components/dashboard/icons";
-import type { Visit } from "@/lib/patients/types";
 
 function riskColor(value: number) {
   if (value >= 0.8) return { bar: "bg-red-500", text: "text-red-700", bg: "bg-red-50" };
@@ -47,7 +46,7 @@ function ProbabilityBar({ label, value, tooltip }: { label: string; value: numbe
   );
 }
 
-function RadarChart({ prediction }: { prediction: ReturnType<typeof computePrediction> }) {
+function RadarChart({ prediction }: { prediction: VisitPrediction }) {
   const size = 180;
   const cx = size / 2;
   const cy = size / 2;
@@ -142,7 +141,7 @@ function RadarChart({ prediction }: { prediction: ReturnType<typeof computePredi
   );
 }
 
-function LineChart({ history }: { history: ReturnType<typeof computePrediction>[] }) {
+function LineChart({ history }: { history: VisitPrediction[] }) {
   if (history.length < 2) return null;
   const w = 380;
   const h = 100;
@@ -218,11 +217,12 @@ function LineChart({ history }: { history: ReturnType<typeof computePrediction>[
   );
 }
 
-export function AiPredictionTab({ visits }: { visits: Visit[] }) {
-  const history = useMemo(() => computePredictionHistory(visits), [visits]);
+// One prediction per visit, newest first, computed by the API.
+export function AiPredictionTab({ patientId }: { patientId: string }) {
+  const history = useRiskPredictions(patientId);
   const latest = history[0] ?? null;
 
-  if (!latest || visits.length === 0) {
+  if (!latest) {
     return (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">

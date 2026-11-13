@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { SupportButton } from "@/components/dashboard/support-button";
 import { RedCaseAlertPanel } from "@/components/dashboard/red-case-alert";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { useIdleSignOut } from "@/lib/auth/use-idle-sign-out";
 
@@ -39,6 +40,13 @@ const FIXED_HEIGHT_ROUTES = [
   "/dashboard/nurse/patients",
   "/dashboard/nurse/risk-classification",
 ];
+
+// Loads the clinical reference lists once, as soon as someone is signed in,
+// so forms and labels never wait for them.
+function ClinicalReferencePrefetch() {
+  useClinicalReference();
+  return null;
+}
 
 export default function DashboardLayout({
   children,
@@ -89,6 +97,7 @@ export default function DashboardLayout({
                 the screen, so pinning it would cover the content scrolling
                 beneath it. On mobile it scrolls away with the page. */}
             <div className="shrink-0 bg-white dark:bg-zinc-900 lg:sticky lg:top-0 lg:z-20 [&:has(>*)]:mb-6">
+              <ClinicalReferencePrefetch />
               <RedCaseAlertPanel />
             </div>
             {fitToScreen ? (

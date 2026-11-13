@@ -1,7 +1,7 @@
 "use client";
 
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import type { RiskLevel, Visit } from "@/lib/patients/types";
 
 const LEGEND: { level: RiskLevel; description: string }[] = [
@@ -11,7 +11,6 @@ const LEGEND: { level: RiskLevel; description: string }[] = [
   { level: "red", description: "Obstetric emergency — active emergent management" },
 ];
 
-const SYMPTOM_BY_ID = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s]));
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -28,6 +27,7 @@ export function ClassificationTab({
   currentRisk: RiskLevel;
   visits?: Visit[];
 }) {
+  const SYMPTOM_BY_ID = new Map(useClinicalReference().symptoms.map((s) => [s.id, s]));
   const latestVisit = visits[0];
   const triggeredSymptoms = latestVisit
     ? latestVisit.symptomIds

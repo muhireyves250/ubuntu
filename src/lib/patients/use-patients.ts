@@ -827,13 +827,13 @@ export async function updatePregnancy(
 
 export async function createEmergencyVisit(
   patientId: string,
-  dangerSignIds: string[],
-  summary: string,
+  checkedDangerSignIds: string[],
+  vitals: { bpSystolic: string; bpDiastolic: string; temperature: string },
 ): Promise<{ pregnancy: Pregnancy; visit: Visit; referral: Referral }> {
-  // Single backend call — see createEmergencyVisitApi. Collapses what used
-  // to be up to 4 sequential round trips (find/create pregnancy, create
-  // visit, force-RED classify, find/create+accept referral) into one.
-  const result = await createEmergencyVisitApi(patientId, dangerSignIds, summary);
+  // Single backend call: it flags very high BP / high fever from the
+  // readings, writes the summary, opens the visit (RED) and the emergency
+  // referral.
+  const result = await createEmergencyVisitApi(patientId, checkedDangerSignIds, vitals);
 
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["visits"] }),

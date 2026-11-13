@@ -5,7 +5,7 @@ import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { usePatients } from "@/lib/patients/use-patients";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import type { Patient, RiskLevel } from "@/lib/patients/types";
 import { getInitials, shortId, fullName } from "@/lib/format";
 
@@ -56,6 +56,7 @@ const RISK_LEVEL_META: Record<
 
 function RiskClassificationContent() {
   const patients = usePatients();
+  const { symptoms: SYMPTOM_CHECKLIST } = useClinicalReference();
   const [expandedLevels, setExpandedLevels] = useState<Set<RiskLevel>>(new Set());
 
   function toggleLevel(level: RiskLevel) {
@@ -75,7 +76,7 @@ function RiskClassificationContent() {
       map.set(symptom.severity, list);
     }
     return map;
-  }, []);
+  }, [SYMPTOM_CHECKLIST]);
 
   const patientsByLevel = useMemo(() => {
     const map = new Map<RiskLevel, Patient[]>();

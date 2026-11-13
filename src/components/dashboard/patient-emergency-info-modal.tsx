@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import type { Patient, Referral, Visit } from "@/lib/patients/types";
 import { fullName, computeAge, formatExactDateTime } from "@/lib/format";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { IconClose, IconAlert, IconClock, IconBuilding, IconUsers, IconActivity } from "./icons";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -41,6 +41,7 @@ export function PatientEmergencyInfoModal({
   onClose: () => void;
   onAccept: () => void;
 }) {
+  const { symptoms: SYMPTOM_CHECKLIST } = useClinicalReference();
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();

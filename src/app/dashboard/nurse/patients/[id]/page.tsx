@@ -507,7 +507,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "AI Prediction" && (
           <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
-            <AiPredictionTab visits={allVisits} />
+            <AiPredictionTab patientId={patientId} />
           </div>
         )}
         {activeTab === "Specialist Notes" && (

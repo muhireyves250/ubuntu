@@ -5,11 +5,10 @@ import { RiskBadge } from "@/components/patients/risk-badge";
 import { VisitDiagnosisSection } from "@/components/patients/visit-diagnosis-section";
 import { VisitPharmacySection } from "@/components/patients/visit-pharmacy-section";
 import { VisitInvoiceSection } from "@/components/patients/visit-invoice-section";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import { useRiskPredictionForVisit } from "@/lib/patients/use-patients";
 import type { Visit } from "@/lib/patients/types";
 
-const SYMPTOM_MAP = new Map(SYMPTOM_CHECKLIST.map((s) => [s.id, s]));
 
 const SEVERITY_COLORS: Record<string, string> = {
   red: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
@@ -70,6 +69,7 @@ function RiskMeter({ pct, label }: { pct: number; label: string }) {
 }
 
 export function VisitDetailTabs({ visit }: { visit: Visit }) {
+  const SYMPTOM_MAP = new Map(useClinicalReference().symptoms.map((s) => [s.id, s]));
   const [tab, setTab] = useState<Tab>("Vitals");
   const prediction = useRiskPredictionForVisit(visit.id);
   const riskConfig = prediction ? RISK_BANNER_CONFIG[prediction.predictedRiskLevel] : null;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { reviewCommunityVisitApi } from "@/lib/patients/community-visit-api";
 import { queryClient } from "@/lib/query-client";
 import { formatExactDateTime } from "@/lib/format";
-import { CHW_SYMPTOM_CHECKLIST } from "@/lib/patients/chw-symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import { IconChevronRight, IconUsers } from "@/components/dashboard/icons";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 import type { CommunityVisit } from "@/lib/patients/types";
@@ -15,7 +15,6 @@ const RISK_COLOR_CLASSES: Record<string, string> = {
   red: "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400",
 };
 
-const CHW_SIGN_LABEL = new Map(CHW_SYMPTOM_CHECKLIST.map((s) => [s.id, s.label]));
 
 function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
   if (value == null || value === "") return null;
@@ -36,6 +35,7 @@ export function ChwReportsTab({
   communityVisits: CommunityVisit[];
   canReview: boolean;
 }) {
+  const CHW_SIGN_LABEL = new Map(useClinicalReference().chwSigns.map((s) => [s.id, s.label]));
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

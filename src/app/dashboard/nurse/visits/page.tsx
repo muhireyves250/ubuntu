@@ -6,14 +6,11 @@ import { RoleGuard } from "@/components/role-guard";
 import { useAuth } from "@/lib/auth/auth-context";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import type { RiskLevel } from "@/lib/patients/types";
 import { formatLabs, getInitials, shortId, fullName } from "@/lib/format";
 import { IconSearch } from "@/components/dashboard/icons";
 
-const SYMPTOM_LABEL = new Map(
-  SYMPTOM_CHECKLIST.map((symptom) => [symptom.id, symptom.label]),
-);
 
 const RISK_FILTERS: { value: "all" | RiskLevel; label: string }[] = [
   { value: "all", label: "All risk levels" },
@@ -29,6 +26,7 @@ const DATE_FILTERS: { value: "today" | "all"; label: string }[] = [
 ];
 
 function VisitsPageContent() {
+  const SYMPTOM_LABEL = new Map(useClinicalReference().symptoms.map((symptom) => [symptom.id, symptom.label]));
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();

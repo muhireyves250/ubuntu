@@ -1,17 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  DANGER_SIGNS,
-  VERY_HIGH_BP_SYSTOLIC,
-  VERY_HIGH_BP_DIASTOLIC,
-  HIGH_FEVER_CELSIUS,
-} from "@/lib/patients/danger-signs";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import { createEmergencyVisit } from "@/lib/patients/use-patients";
 import { IconAlert } from "@/components/dashboard/icons";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
-
-const DANGER_SIGN_LABEL = new Map(DANGER_SIGNS.map((s) => [s.id, s.label]));
 
 export function SignsSymptomsTab({
   patientId,
@@ -27,9 +20,12 @@ export function SignsSymptomsTab({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isVeryHighBp =
-    Number(bpSystolic) >= VERY_HIGH_BP_SYSTOLIC || Number(bpDiastolic) >= VERY_HIGH_BP_DIASTOLIC;
-  const isHighFever = Number(temperature) >= HIGH_FEVER_CELSIUS;
+  const { dangerSigns: DANGER_SIGNS, dangerSignThresholds: limits } = useClinicalReference();
+
+  // Live ticks while typing, using the API's thresholds; the API re-checks
+  // the readings and writes the summary when the case is flagged.
+  const isVeryHighBp = Number(bpSystolic) >= limits.bpSystolic || Number(bpDiastolic) >= limits.bpDiastolic;
+  const isHighFever = Number(temperature) >= limits.temperatureCelsius;
 
   const activeDangerSignIds = [
     ...manualCheckedIds,
@@ -48,17 +44,7 @@ export function SignsSymptomsTab({
     setError(null);
     setIsSubmitting(true);
     try {
-      const summaryParts = activeDangerSignIds.map((id) => {
-        if (id === "very-high-bp") {
-          return `Very high blood pressure (${bpSystolic}/${bpDiastolic})`;
-        }
-        if (id === "high-fever") {
-          return `High fever (${temperature}°C)`;
-        }
-        return DANGER_SIGN_LABEL.get(id) ?? id;
-      });
-      const summary = summaryParts.join("; ");
-      const result = await createEmergencyVisit(patientId, activeDangerSignIds, summary);
+      const result = await createEmergencyVisit(patientId, manualCheckedIds, { bpSystolic, bpDiastolic, temperature });
       onFlagged(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to flag emergency. Please try again.");

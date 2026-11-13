@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 import { IconActivity, IconAlert } from "@/components/dashboard/icons";
 import type { Patient, Visit, LabTestResult } from "@/lib/patients/types";
 import type { RiskPrediction } from "@/lib/patients/risk-prediction-api";
-import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import { runAiPrediction, useRiskPredictionForVisit } from "@/lib/patients/use-patients";
 import { queryClient } from "@/lib/query-client";
 import { LabResultCommentBox } from "@/components/patients/lab-result-comment-box";
@@ -79,6 +79,7 @@ export function AiReviewStep({
   onConfirm: (prediction: RiskPrediction, confirmed: boolean) => void;
 }) {
   const labResults: LabTestResult[] = visit.labResults ?? [];
+  const { symptoms: SYMPTOM_CHECKLIST } = useClinicalReference();
   const existingPrediction = useRiskPredictionForVisit(visit.id);
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
   const shownPrediction = prediction ?? existingPrediction;

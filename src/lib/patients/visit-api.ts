@@ -276,8 +276,8 @@ const RISK_LEVEL_TO_BACKEND: Record<"green" | "yellow" | "orange" | "red", strin
 // replaces what used to be up to 4 sequential client-side round trips.
 export async function createEmergencyVisitApi(
   patientId: string,
-  dangerSignIds: string[],
-  summary: string,
+  dangerSigns: string[],
+  vitals: { bpSystolic: string; bpDiastolic: string; temperature: string },
 ): Promise<{ pregnancy: Pregnancy; visit: Visit; referral: Referral }> {
   const token = getStoredAccessToken();
   const result = await apiFetch<{
@@ -287,8 +287,8 @@ export async function createEmergencyVisitApi(
   }>(`/patients/${patientId}/emergency-visit`, {
     method: "POST",
     body: {
-      symptoms: symptomIdsToBackend(dangerSignIds, true),
-      summary,
+      dangerSigns,
+      vitals,
     },
     token: token ?? undefined,
   });
