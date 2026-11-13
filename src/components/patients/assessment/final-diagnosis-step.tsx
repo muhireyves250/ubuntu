@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useDiagnosesForVisit, createDiagnosis, useRiskPredictionForVisit } from "@/lib/patients/use-patients";
-import { DIAGNOSIS_CATEGORIES, ALL_DIAGNOSES } from "@/lib/patients/diagnosis-catalog";
+import { useReferenceLists } from "@/lib/patients/reference-lists-api";
 import { AiSuggestionCard } from "@/components/patients/assessment/ai-suggestion-card";
 
 export function FinalDiagnosisStep({ visitId, onContinue }: { visitId: string; onContinue: () => void }) {
   const diagnoses = useDiagnosesForVisit(visitId);
   const prediction = useRiskPredictionForVisit(visitId);
+  const DIAGNOSIS_CATEGORIES = useReferenceLists()?.diagnosisCategories ?? [];
+  const ALL_DIAGNOSES = DIAGNOSIS_CATEGORIES.flatMap((c) => c.diagnoses);
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
   const [diagnosisType, setDiagnosisType] = useState("Principal");

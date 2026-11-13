@@ -5,25 +5,39 @@ import { createPortal } from "react-dom";
 import { updatePatient, updatePregnancy } from "@/lib/patients/use-patients";
 import { IconClose } from "@/components/dashboard/icons";
 import type { Patient, Pregnancy } from "@/lib/patients/types";
-import {
-  GENDER_OPTIONS,
-  MARITAL_STATUS_OPTIONS,
-  RELATIONSHIP_OPTIONS,
-  BLOOD_GROUP_OPTIONS,
-  RELIGION_OPTIONS,
-  INSURANCE_TYPE_OPTIONS,
-  CHRONIC_CONDITION_OPTIONS,
-} from "@/lib/patients/form-options";
+import { useReferenceLists, type PatientFormOptions } from "@/lib/patients/reference-lists-api";
 
-export function EditPatientModal({
-  patient,
-  pregnancy,
-  onClose,
-}: {
+// Waits for the dropdown lists (from the API) before showing the form.
+export function EditPatientModal(props: {
   patient: Patient;
   pregnancy?: Pregnancy | null;
   onClose: () => void;
 }) {
+  const lists = useReferenceLists();
+  if (!lists) return null;
+  return <EditPatientModalForm {...props} options={lists.patientForm} />;
+}
+
+function EditPatientModalForm({
+  patient,
+  pregnancy,
+  onClose,
+  options,
+}: {
+  patient: Patient;
+  pregnancy?: Pregnancy | null;
+  onClose: () => void;
+  options: PatientFormOptions;
+}) {
+  const {
+    genders: GENDER_OPTIONS,
+    maritalStatuses: MARITAL_STATUS_OPTIONS,
+    relationships: RELATIONSHIP_OPTIONS,
+    bloodGroups: BLOOD_GROUP_OPTIONS,
+    religions: RELIGION_OPTIONS,
+    insuranceTypes: INSURANCE_TYPE_OPTIONS,
+    chronicConditions: CHRONIC_CONDITION_OPTIONS,
+  } = options;
   const [firstName, setFirstName] = useState(patient.firstName);
   const [lastName, setLastName] = useState(patient.lastName);
   const [dateOfBirth, setDateOfBirth] = useState(patient.dateOfBirth);

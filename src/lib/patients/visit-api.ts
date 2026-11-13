@@ -36,30 +36,8 @@ export interface BackendVisit {
   labRequests: { status: "PENDING" | "IN_PROGRESS" | "COMPLETED" }[];
 }
 
-// Slice 5 (Antenatal-api, Risk Classification Unification) mapping, reused
-// as-is — see docs/superpowers/specs/2026-07-21-risk-classification-unification-design.md.
-// 4 checklist tags are deliberately absent: `severe-anemia` (lab-domain,
-// deferred), `prev-pph`/`prev-cs-2x`'s history component (already sent as
-// Pregnancy fields at pregnancy-create time, not per-visit), `teenage`/
-// `advanced-age` (computed backend-side from Patient.dateOfBirth).
-const CHECKLIST_TAG_TO_SYMPTOM: Record<string, string> = {
-  convulsions: "CONVULSION",
-  bleeding: "BLEEDING",
-  headache: "HEADACHE",
-  fever: "FEVER",
-  "chest-pain": "CHEST_PAIN",
-  "abdominal-pain": "ABDOMINAL_PAIN",
-  "difficulty-breathing": "DIFFICULTY_BREATHING",
-  "reduced-fetal-movement": "REDUCED_FETAL_MOVEMENT",
-  "uncontrolled-htn": "CHRONIC_HTN_UNCONTROLLED",
-  "controlled-htn": "CHRONIC_HTN_CONTROLLED",
-  preeclampsia: "PREECLAMPSIA",
-  pph: "ACTIVE_PPH",
-  "multiple-gestation": "MULTIPLE_GESTATION",
-  "preterm-labor": "PRETERM_LABOR",
-  "prev-cs-2x": "IN_LABOR",
-  "teenage-labor": "IN_LABOR",
-};
+// Stored symptom → checklist tag, for showing a saved visit's symptoms
+// ticked on the checklist. (Saving goes the other way on the API.)
 const SYMPTOM_TO_CHECKLIST_TAG: Record<string, string> = {
   CONVULSION: "convulsions",
   BLEEDING: "bleeding",
@@ -80,25 +58,6 @@ const SYMPTOM_TO_CHECKLIST_TAG: Record<string, string> = {
   // can't round-trip to a single tag on the way out. Dropped on read.
 };
 
-// New to this slice — danger-sign IDs (Emergency panel) that have a genuine
-// clinical SymptomName equivalent. `very-high-bp`/`high-fever` need no entry
-// (they're carried by real vitals, which the backend's rule engine reads
-// directly). `loss-of-consciousness`/`ruptured-uterus` have no backend
-// equivalent and are dropped, same as the checklist's own unmapped tags.
-const DANGER_SIGN_TO_SYMPTOM: Record<string, string> = {
-  "severe-bleeding": "BLEEDING",
-  convulsions: "CONVULSION",
-  "severe-headache-blurred-vision": "HEADACHE",
-  "difficulty-breathing": "DIFFICULTY_BREATHING",
-  "severe-abdominal-pain": "ABDOMINAL_PAIN",
-  "reduced-fetal-movement": "REDUCED_FETAL_MOVEMENT",
-};
-
-function symptomIdsToBackend(symptomIds: string[], isEmergency: boolean): string[] {
-  const table = isEmergency ? DANGER_SIGN_TO_SYMPTOM : CHECKLIST_TAG_TO_SYMPTOM;
-  const mapped = symptomIds.map((id) => table[id]).filter((v): v is string => v !== undefined);
-  return Array.from(new Set(mapped));
-}
 
 function backendSymptomsToIds(symptoms: { name: string }[]): string[] {
   return symptoms
@@ -215,7 +174,8 @@ export async function createVisitApi(
       visitType: VISIT_TYPE_TO_BACKEND[data.type],
       gestationalWeek: data.scheduledWeek,
       ancNumber: data.ancNumber,
-      symptoms: symptomIdsToBackend(data.symptomIds, data.type === "emergency"),
+      // The API stores the matching symptoms (and drops tags with none).
+      symptomTags: data.symptomIds,
       notes: data.notes,
       emergencySummary: data.emergencySummary,
       treatment: data.treatment,

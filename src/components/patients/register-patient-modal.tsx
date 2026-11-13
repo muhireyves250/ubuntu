@@ -4,26 +4,39 @@ import { useEffect, useState } from "react";
 import { registerPatient } from "@/lib/patients/use-patients";
 import { IconClose } from "@/components/dashboard/icons";
 import type { Patient } from "@/lib/patients/types";
-import {
-  GENDER_OPTIONS,
-  MARITAL_STATUS_OPTIONS,
-  RELATIONSHIP_OPTIONS,
-  BLOOD_GROUP_OPTIONS,
-  RELIGION_OPTIONS,
-  INSURANCE_TYPE_OPTIONS,
-  CHRONIC_CONDITION_OPTIONS,
-} from "@/lib/patients/form-options";
+import { useReferenceLists, type PatientFormOptions } from "@/lib/patients/reference-lists-api";
 
 const inputCls =
   "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50";
 
-export function RegisterPatientModal({
-  onClose,
-  onRegistered,
-}: {
+// Waits for the dropdown lists (from the API) before showing the form.
+export function RegisterPatientModal(props: {
   onClose: () => void;
   onRegistered: (patient: Patient) => void;
 }) {
+  const lists = useReferenceLists();
+  if (!lists) return null;
+  return <RegisterPatientModalForm {...props} options={lists.patientForm} />;
+}
+
+function RegisterPatientModalForm({
+  onClose,
+  onRegistered,
+  options,
+}: {
+  onClose: () => void;
+  onRegistered: (patient: Patient) => void;
+  options: PatientFormOptions;
+}) {
+  const {
+    genders: GENDER_OPTIONS,
+    maritalStatuses: MARITAL_STATUS_OPTIONS,
+    relationships: RELATIONSHIP_OPTIONS,
+    bloodGroups: BLOOD_GROUP_OPTIONS,
+    religions: RELIGION_OPTIONS,
+    insuranceTypes: INSURANCE_TYPE_OPTIONS,
+    chronicConditions: CHRONIC_CONDITION_OPTIONS,
+  } = options;
   // Personal Information
   const [nationalId, setNationalId] = useState("");
   const [firstName, setFirstName] = useState("");

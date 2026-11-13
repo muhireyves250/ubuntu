@@ -8,6 +8,7 @@ import { Topbar } from "@/components/dashboard/topbar";
 import { SupportButton } from "@/components/dashboard/support-button";
 import { RedCaseAlertPanel } from "@/components/dashboard/red-case-alert";
 import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
+import { useReferenceLists } from "@/lib/patients/reference-lists-api";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { useIdleSignOut } from "@/lib/auth/use-idle-sign-out";
 
@@ -41,10 +42,11 @@ const FIXED_HEIGHT_ROUTES = [
   "/dashboard/nurse/risk-classification",
 ];
 
-// Loads the clinical reference lists once, as soon as someone is signed in,
-// so forms and labels never wait for them.
+// Loads the reference lists once, as soon as someone is signed in, so forms
+// and labels never wait for them.
 function ClinicalReferencePrefetch() {
   useClinicalReference();
+  useReferenceLists();
   return null;
 }
 
