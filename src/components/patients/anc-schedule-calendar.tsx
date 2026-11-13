@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { chwVisitSchedule, type ChwVisitScheduleEntry } from "@/lib/patients/pregnancy";
-import { useCommunityVisitsForPregnancy, useVisitsForPregnancy } from "@/lib/patients/use-patients";
-import type { Pregnancy } from "@/lib/patients/types";
+import { useVisitsForPregnancy } from "@/lib/patients/use-patients";
+import type { ChwScheduleEntry, Pregnancy } from "@/lib/patients/types";
 
 const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -25,75 +24,26 @@ export function AncScheduleCalendar({
   // act on, so they're hidden entirely rather than just de-emphasized.
   homeVisitsOnly?: boolean;
 }) {
-  const schedule = useMemo(() => chwVisitSchedule(pregnancy), [pregnancy]);
-  const communityVisits = useCommunityVisitsForPregnancy(pregnancy.id);
+  // Statuses (done / missed / next home visit; attended / due / missed
+  // hospital checkpoint) come from the API's schedule for this pregnancy.
+  const schedule = pregnancy.schedule.chwSchedule;
   const hospitalVisits = useVisitsForPregnancy(pregnancy.id);
   const today = new Date().toISOString().slice(0, 10);
 
   const doneVisitNumbers = useMemo(
-    () => new Set(communityVisits.map((v) => v.ancVisitNumber).filter((n): n is number => n != null)),
-    [communityVisits],
+    () => new Set(schedule.filter((s) => s.homeVisitStatus === "done").map((s) => s.visitNumber)),
+    [schedule],
   );
-  // A hospital checkpoint counts as attended once any real scheduled (non-emergency)
-  // visit was logged against that week — mirrors missedVisits()'s own logged-week check.
-  const attendedWeeks = useMemo(
-    () =>
-      new Set(
-        hospitalVisits
-          .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
-          .map((v) => v.scheduledWeek as number),
-      ),
-    [hospitalVisits],
-  );
-
-  // A checkpoint is missed the moment its due date has passed with nothing
-  // recorded against it — no extra day of grace, and independent of whether
-  // it happens to be the single "next due" one.
   const chwMissed = useMemo(
-    () =>
-      new Set(
-        schedule
-          .filter((s) => !doneVisitNumbers.has(s.visitNumber) && s.chwDueDate < today)
-          .map((s) => s.visitNumber),
-      ),
-    [schedule, doneVisitNumbers, today],
+    () => new Set(schedule.filter((s) => s.homeVisitStatus === "missed").map((s) => s.visitNumber)),
+    [schedule],
   );
-  // Two chw schedule entries share the same hospital checkpoint (its two
-  // home visits) — dedupe on dueByWeek (unique per checkpoint), not the chw
-  // entries' own per-home-visit visitNumber, so each hospital checkpoint is
-  // only considered missed once.
   const hospitalMissed = useMemo(
-    () =>
-      new Set(
-        schedule
-          .filter((s) => !attendedWeeks.has(s.dueByWeek) && s.ancDueDate < today)
-          .map((s) => s.dueByWeek),
-      ),
-    [schedule, attendedWeeks, today],
+    () => new Set(schedule.filter((s) => s.checkpointMissed).map((s) => s.dueByWeek)),
+    [schedule],
   );
-  // The single, currently-actionable hospital checkpoint — the most recent
-  // arrived-unattended one — same "latest arrived" rule visit-history-tab
-  // uses for its own chip row, so the two views always agree on which
-  // checkpoint reads as "due" versus already "missed".
-  const hospitalDueWeek = useMemo(() => {
-    const arrived = schedule.filter(
-      (s) => !attendedWeeks.has(s.dueByWeek) && s.ancDueDate <= today,
-    );
-    return arrived.reduce<typeof arrived[0] | null>(
-      (latest, s) => (!latest || s.ancDueDate > latest.ancDueDate ? s : latest),
-      null,
-    )?.dueByWeek ?? null;
-  }, [schedule, attendedWeeks, today]);
-
-  // The next due home visit skips any checkpoint a CHW has already visited,
-  // even an overdue one that was completed late — otherwise a done visit
-  // would keep being highlighted as still due. It only gets the solid
-  // "next due" treatment when it isn't already overdue — an overdue
-  // checkpoint reads as missed instead (see chwMissed above).
-  const nextDue =
-    [...schedule]
-      .filter((s) => !doneVisitNumbers.has(s.visitNumber) && !chwMissed.has(s.visitNumber))
-      .sort((a, b) => a.chwDueDate.localeCompare(b.chwDueDate))[0] ?? null;
+  const hospitalDueWeek = schedule.find((s) => s.checkpointDue)?.dueByWeek ?? null;
+  const nextDue = schedule.find((s) => s.homeVisitStatus === "next") ?? null;
 
   const [viewDate, setViewDate] = useState(() => {
     const anchor = nextDue ? new Date(`${nextDue.chwDueDate}T00:00:00`) : new Date();
@@ -123,7 +73,7 @@ export function AncScheduleCalendar({
     return map;
   }, [schedule, homeVisitsOnly]);
   const chwEntryByDay = useMemo(() => {
-    const map = new Map<string, ChwVisitScheduleEntry>();
+    const map = new Map<string, ChwScheduleEntry>();
     for (const entry of schedule) map.set(entry.chwDueDate, entry);
     return map;
   }, [schedule]);

@@ -8,7 +8,6 @@ import {
   IconGrid,
 } from "@/components/dashboard/icons";
 import { usePregnanciesForPatient } from "@/lib/patients/use-patients";
-import { effectiveLmpDate, gestationalAgeWeeksAndDays } from "@/lib/patients/pregnancy";
 import type { Patient } from "@/lib/patients/types";
 
 export function Field({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
@@ -69,7 +68,7 @@ function PregnancySummarySection({ patientId }: { patientId: string }) {
   const openPregnancy = pregnancies.find((p) => p.status === "open");
   if (!openPregnancy) return null;
 
-  const { weeks, days } = gestationalAgeWeeksAndDays(effectiveLmpDate(openPregnancy));
+  const { weeks, days } = openPregnancy.schedule.gestationalAge ?? { weeks: 0, days: 0 };
 
   return (
     <Section icon={<IconReport className="h-4 w-4" />} title="Pregnancy Summary" className="lg:col-span-2">

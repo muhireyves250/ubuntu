@@ -1,10 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
-import { computeEdd } from "./pregnancy";
-import type { Pregnancy, ScreeningResult, PregnancyMedicalHistory } from "./types";
+import type { Pregnancy, PregnancySchedule, ScreeningResult, PregnancyMedicalHistory } from "./types";
 
 export interface BackendPregnancy {
   id: string;
+  schedule: PregnancySchedule;
   patientId: string;
   gravidity: number;
   parity: number;
@@ -118,6 +119,7 @@ export function toFrontendPregnancy(p: BackendPregnancy): Pregnancy {
     previousPPH: p.previousPPH,
     previousEclampsia: p.previousEclampsia,
     previousStillbirth: p.previousStillbirth,
+    schedule: p.schedule,
     lmpDate: p.lmp?.slice(0, 10) ?? "",
     eddDate: p.edd.slice(0, 10),
     startDate: p.startDate.slice(0, 10),
@@ -202,7 +204,7 @@ export async function fetchAllPregnancies(): Promise<Pregnancy[]> {
 export async function createPregnancyApi(
   data: Omit<
     Pregnancy,
-    "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "delivery" | "numberOfBabies" | "hadHypertensionDisorder"
+    "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "schedule" | "delivery" | "numberOfBabies" | "hadHypertensionDisorder"
   >,
 ): Promise<Pregnancy> {
   const token = getStoredAccessToken();
@@ -221,7 +223,7 @@ export async function createPregnancyApi(
       previousPPH: data.previousPPH,
       previousEclampsia: data.previousEclampsia,
       previousStillbirth: data.previousStillbirth,
-      edd: computeEdd(data.lmpDate),
+      // The API computes the EDD from the LMP.
       lmp: data.lmpDate,
       startDate: data.startDate,
       historySurgicalOrCervicalTrauma: data.historySurgicalOrCervicalTrauma,
@@ -310,4 +312,20 @@ export async function updatePregnancyApi(
     token: token ?? undefined,
   });
   return toFrontendPregnancy(p);
+}
+
+// EDD and gestational age for an LMP being typed, by the same rule the API
+// applies when the pregnancy is saved.
+export function usePregnancyDatePreview(lmpDate: string): { edd: string; gestationalWeeks: number } | undefined {
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(lmpDate);
+  const { data } = useQuery({
+    queryKey: ["pregnancy-dates", lmpDate],
+    queryFn: () =>
+      apiFetch<{ edd: string; gestationalWeeks: number }>(`/pregnancies/dates?lmp=${lmpDate}`, {
+        token: getStoredAccessToken() ?? undefined,
+      }),
+    enabled: valid,
+    staleTime: 60 * 60_000,
+  });
+  return valid ? data : undefined;
 }

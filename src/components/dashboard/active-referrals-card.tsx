@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { getInitials, formatExactDateTime, fullName } from "@/lib/format";
 import { useActiveReferrals, usePatients, usePregnancies } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { IconReport } from "./icons";
 import type { Referral } from "@/lib/patients/types";
 
@@ -52,7 +51,7 @@ export function ActiveReferralsCard() {
             const openPregnancy = pregnancies.find(
               (p) => p.patientId === patient.id && p.status === "open",
             );
-            const gaWeeks = openPregnancy ? gestationalAgeWeeks(effectiveLmpDate(openPregnancy)) : null;
+            const gaWeeks = openPregnancy?.schedule.gestationalAge?.weeks ?? null;
             return (
               <Link
                 key={referral.id}

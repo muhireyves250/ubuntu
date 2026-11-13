@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPregnancy } from "@/lib/patients/use-patients";
-import { computeEdd, gestationalAgeWeeks } from "@/lib/patients/pregnancy";
+import { usePregnancyDatePreview } from "@/lib/patients/pregnancy-api";
 import { IconClose } from "@/components/dashboard/icons";
 import type { Pregnancy, PregnancyMedicalHistory, ScreeningResult } from "@/lib/patients/types";
 
@@ -97,8 +97,9 @@ export function NewPregnancyModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const edd = lmpDate ? computeEdd(lmpDate) : null;
-  const weeks = lmpDate ? gestationalAgeWeeks(lmpDate) : null;
+  const datePreview = usePregnancyDatePreview(lmpDate);
+  const edd = datePreview?.edd ?? null;
+  const weeks = datePreview?.gestationalWeeks ?? null;
 
   function handleLmpChange(value: string) {
     setLmpDate(value);

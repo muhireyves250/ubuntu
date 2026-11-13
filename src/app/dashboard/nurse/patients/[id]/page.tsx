@@ -38,7 +38,6 @@ import {
   useVaccinationsForPregnancy,
 } from "@/lib/patients/use-patients";
 import { usePatientAccess } from "@/lib/patients/patient-access-api";
-import { gestationalAgeWeeks, matchScheduledVisit, effectiveLmpDate, chwVisitSchedule } from "@/lib/patients/pregnancy";
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
@@ -117,10 +116,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
     return activeReferral ? <ActiveReferralBlocker patient={patient} referral={activeReferral} /> : null;
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todayScheduledMatch = openPregnancy
-    ? matchScheduledVisit(openPregnancy, pregnancyVisits, today)
-    : null;
+  const todayScheduledMatch = openPregnancy?.schedule.todaysScheduledVisit ?? null;
 
   // Each hospital checkpoint is preceded by two CHW home visits (see
   // chwVisitSchedule), not one — so surface whichever of that pair's
@@ -128,7 +124,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const matchingChwReport = todayScheduledMatch
     ? (() => {
         const checkpointVisitNumbers = new Set(
-          (openPregnancy ? chwVisitSchedule(openPregnancy) : [])
+          (openPregnancy?.schedule.chwSchedule ?? [])
             .filter((s) => s.dueByWeek === todayScheduledMatch.dueByWeek)
             .map((s) => s.visitNumber),
         );
@@ -197,7 +193,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
           <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
             {computeAge(patient.dateOfBirth)} years •{" "}
             {openPregnancy
-              ? `${gestationalAgeWeeks(effectiveLmpDate(openPregnancy))} weeks gestation`
+              ? `${openPregnancy.schedule.gestationalAge?.weeks ?? 0} weeks gestation`
               : "no active pregnancy"}
           </p>
           <span className="mt-1.5 inline-flex rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-800 dark:bg-teal-950 dark:text-teal-300">

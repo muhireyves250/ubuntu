@@ -952,7 +952,7 @@ export async function recordVisit(data: {
 export async function createPregnancy(
   data: Omit<
     Pregnancy,
-    "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "delivery" | "numberOfBabies" | "hadHypertensionDisorder"
+    "id" | "pregnancyNumber" | "eddDate" | "status" | "createdAt" | "schedule" | "delivery" | "numberOfBabies" | "hadHypertensionDisorder"
   >,
 ): Promise<Pregnancy> {
   const pregnancy = await createPregnancyApi(data);

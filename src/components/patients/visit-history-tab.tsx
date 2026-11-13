@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { AncScheduleCalendar } from "@/components/patients/anc-schedule-calendar";
-import { nextDueVisit, missedVisits, ancCalendar, gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { formatLabs } from "@/lib/format";
 import { IconCalendar } from "@/components/dashboard/icons";
 import type { Pregnancy, Visit } from "@/lib/patients/types";
@@ -23,53 +22,21 @@ export function VisitHistoryTab({
   const [expandedScheduleWeek, setExpandedScheduleWeek] = useState<number | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
 
-  // For a closed pregnancy, "today" is meaningless — measure against the
-  // delivery date instead, so an archived record never shows a visit as
-  // "due"/"overdue" for a pregnancy that already ended.
-  const asOf = readOnly ? pregnancy.delivery?.date : undefined;
-
-  const due = nextDueVisit(pregnancy, visits, asOf);
-  const missed = missedVisits(pregnancy, visits, asOf);
+  // The schedule — each checkpoint's status, next due, missed, current
+  // week — is computed by the API, measured to the delivery date for a
+  // pregnancy that has ended.
+  const { schedule } = pregnancy;
+  const due = schedule.nextDue;
+  const missed = schedule.missedWeeks;
   const unscheduledCount = visits.filter((v) => v.type === "unscheduled").length;
   const emergencyCount = visits.filter((v) => v.type === "emergency").length;
-  const completedCount = visits.filter(
-    (v) => v.type !== "emergency" && v.scheduledWeek != null,
-  ).length;
-
-  const currentWeeks = gestationalAgeWeeks(effectiveLmpDate(pregnancy), asOf);
-  const loggedWeeks = new Set(
-    visits
-      .filter((v) => v.type !== "emergency" && v.scheduledWeek != null)
-      .map((v) => v.scheduledWeek as number),
+  const completedCount = schedule.completedCount;
+  const currentWeeks = schedule.currentWeek ?? 0;
+  const calendar = schedule.ancCalendar;
+  // A concluded (read-only) record has no actionable "due" visit left.
+  const scheduleRows = calendar.map((row) =>
+    readOnly && row.status === "due" ? { ...row, status: "missed" as const } : row,
   );
-  const calendar = ancCalendar(pregnancy);
-
-  // Status must follow the real calendar date, not the gestational week
-  // number — week granularity rounds down, so a visit a few days past its
-  // due date can still land on "the current week" and read as merely due
-  // instead of missed. Everything with a due date on or before today (and
-  // not logged) has arrived; the single most recent arrived-unlogged entry
-  // is the one actionable "due" visit, and every earlier arrived-unlogged
-  // entry is missed.
-  const today = asOf ?? new Date().toISOString().slice(0, 10);
-  const arrivedUnlogged = calendar.filter(
-    (s) => s.dueDate <= today && !loggedWeeks.has(s.dueByWeek),
-  );
-  const currentDueEntry =
-    !readOnly && arrivedUnlogged.length > 0
-      ? arrivedUnlogged.reduce((latest, s) => (s.dueDate > latest.dueDate ? s : latest))
-      : null;
-
-  const scheduleRows = calendar.map((s) => {
-    const status: "completed" | "due" | "missed" | "upcoming" = loggedWeeks.has(s.dueByWeek)
-      ? "completed"
-      : s.dueDate > today
-        ? "upcoming"
-        : currentDueEntry && s.visitNumber === currentDueEntry.visitNumber
-          ? "due"
-          : "missed";
-    return { ...s, status };
-  });
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">

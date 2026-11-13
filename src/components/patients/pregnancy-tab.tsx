@@ -6,7 +6,6 @@ import {
   useVisitsForPregnancy,
   useReferrals,
 } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { NewPregnancyModal } from "@/components/patients/pregnancy/new-pregnancy-modal";
 import { ClosePregnancyModal } from "@/components/patients/pregnancy/close-pregnancy-modal";
 import { PregnancyTimeline } from "@/components/patients/pregnancy/pregnancy-timeline";
@@ -59,7 +58,7 @@ export function PregnancySummaryCard({
   onClosePregnancy?: () => void;
   readOnly?: boolean;
 }) {
-  const weeks = gestationalAgeWeeks(effectiveLmpDate(pregnancy));
+  const weeks = pregnancy.schedule.gestationalAge?.weeks ?? 0;
   const progressPct = Math.min(100, Math.round((weeks / FULL_TERM_WEEKS) * 100));
   const riskFlags = [
     pregnancy.previousPPH && "Previous PPH",

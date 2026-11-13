@@ -3,8 +3,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { usePatientsForChw, useFollowUpAssignmentsForChw, usePregnanciesForPatient, useCommunityVisitsForPregnancy } from "@/lib/patients/use-patients";
-import { chwVisitSchedule } from "@/lib/patients/pregnancy";
+import { usePatientsForChw, useFollowUpAssignmentsForChw, usePregnanciesForPatient } from "@/lib/patients/use-patients";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { IconClipboard, IconClock, IconUsers } from "@/components/dashboard/icons";
 import type { Patient } from "@/lib/patients/types";
@@ -65,19 +64,10 @@ function PatientRowWithSchedule({ patient }: { patient: Patient }) {
   const pregnancies = usePregnanciesForPatient(patient.id);
   const openPregnancy = pregnancies.find((p) => p.status === "open") ?? null;
   const assignments = useFollowUpAssignmentsForChw();
-  const communityVisits = useCommunityVisitsForPregnancy(openPregnancy?.id ?? "");
 
   const { nextDueDate, source, allHomeVisitsDone } = useMemo(() => {
-    const doneVisitNumbers = new Set(
-      communityVisits.map((v) => v.ancVisitNumber).filter((n): n is number => n != null),
-    );
-    // A completed checkpoint stops counting as "due" regardless of its date,
-    // so a home visit already submitted for it never keeps showing up here.
-    const automatic = openPregnancy
-      ? [...chwVisitSchedule(openPregnancy)]
-          .filter((s) => !doneVisitNumbers.has(s.visitNumber))
-          .sort((a, b) => a.chwDueDate.localeCompare(b.chwDueDate))[0]?.chwDueDate ?? null
-      : null;
+    // The API skips home visits already done when picking the next date.
+    const automatic = openPregnancy?.schedule.nextUndoneHomeVisitDate ?? null;
     const manual = assignments
       .filter((a) => a.patientId === patient.id && a.status === "pending")
       .map((a) => a.dueDate)
@@ -86,7 +76,7 @@ function PatientRowWithSchedule({ patient }: { patient: Patient }) {
     const src: "automatic" | "manual" | null = next === automatic ? (automatic ? "automatic" : null) : next ? "manual" : null;
     const done = !!openPregnancy && !automatic && !manual;
     return { nextDueDate: next, source: src, allHomeVisitsDone: done };
-  }, [openPregnancy, assignments, communityVisits, patient.id]);
+  }, [openPregnancy, assignments, patient.id]);
 
   return <PatientRow patientDue={{ patient, nextDueDate, source, allHomeVisitsDone }} />;
 }

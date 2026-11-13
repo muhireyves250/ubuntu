@@ -2,17 +2,12 @@
 
 import { useState } from "react";
 import { submitCommunityVisitApi } from "@/lib/patients/community-visit-api";
-import { chwVisitSchedule } from "@/lib/patients/pregnancy";
 import { CHW_SYMPTOM_CHECKLIST } from "@/lib/patients/chw-symptom-checklist";
 import type { Pregnancy } from "@/lib/patients/types";
 
+// The home visit whose window is open today, as computed by the API.
 function currentlyDueAncVisitNumber(pregnancy: Pregnancy): number | undefined {
-  const today = new Date().toISOString().slice(0, 10);
-  const schedule = chwVisitSchedule(pregnancy);
-  // The checkpoint whose CHW-due date is on or before today, and whose
-  // hospital date hasn't passed yet — the currently "open" home-visit window.
-  const due = schedule.find((s) => s.chwDueDate <= today && today <= s.ancDueDate);
-  return due?.visitNumber;
+  return pregnancy.schedule.currentHomeVisitNumber ?? undefined;
 }
 
 export function CommunityVisitForm({

@@ -16,7 +16,6 @@ import {
   useIsPatientsListLoading,
 } from "@/lib/patients/use-patients";
 import { PatientsListSkeleton } from "@/components/patients/patients-list-skeleton";
-import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import type { RiskLevel } from "@/lib/patients/types";
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import {
@@ -99,7 +98,7 @@ function PatientsPageContent() {
         latestRisk: patient.currentRisk,
         lastVisitDate: latestVisit?.date,
         hospital: latestVisit?.hospital,
-        gaWeeks: openPregnancy ? gestationalAgeWeeks(effectiveLmpDate(openPregnancy)) : null,
+        gaWeeks: openPregnancy?.schedule.gestationalAge?.weeks ?? null,
       };
     });
   }, [patients, visits, pregnancies, patientIdByPregnancyId]);

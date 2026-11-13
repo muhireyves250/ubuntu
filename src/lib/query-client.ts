@@ -20,12 +20,13 @@ export const queryClient = new QueryClient({
 });
 
 // Some answers are derived by the API from other data — notifications, each
-// patient's current risk colour (on the patient list/detail), what a facility
+// patient's current risk colour (on the patient list/detail), pregnancy
+// schedules (which depend on visits and home visits), what a facility
 // may do with a patient, and emergency capacity. Whenever the app
 // invalidates anything else (i.e. after the user changes something), those
 // are refreshed too, so they stay as current as when the browser derived
 // them itself.
-const SERVER_DERIVED_KEYS = ["notification-feed", "patients", "patient-access", "facility-capacity"];
+const SERVER_DERIVED_KEYS = ["notification-feed", "patients", "patient-access", "facility-capacity", "pregnancies"];
 
 queryClient.getQueryCache().subscribe((event) => {
   if (

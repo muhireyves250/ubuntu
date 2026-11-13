@@ -13,7 +13,6 @@ import {
   useTodaysVisits,
   type RiskSummaryScope,
 } from "@/lib/patients/use-patients";
-import { gestationalAgeWeeks, effectiveLmpDate } from "@/lib/patients/pregnancy";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { IconChevronRight } from "./icons";
 import type { Referral, RiskLevel } from "@/lib/patients/types";
@@ -250,7 +249,7 @@ export function MobileOverview({
                 const openPregnancy = pregnancies.find(
                   (p) => p.patientId === patient.id && p.status === "open",
                 );
-                const gaWeeks = openPregnancy ? gestationalAgeWeeks(effectiveLmpDate(openPregnancy)) : null;
+                const gaWeeks = openPregnancy?.schedule.gestationalAge?.weeks ?? null;
                 const urgency = URGENCY_PILL[referral.urgency];
                 return (
                   <li key={referral.id}>

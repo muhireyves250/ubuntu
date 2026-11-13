@@ -1,6 +1,5 @@
 "use client";
 
-import { gestationalAgeWeeks } from "@/lib/patients/pregnancy";
 import type { Pregnancy } from "@/lib/patients/types";
 
 // A structured table of every pregnancy on record (open and closed) —
@@ -40,10 +39,7 @@ export function ObstetricHistoryTable({
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {rows.map((p, index) => {
-              const gaAtBirth =
-                p.lmpDate && p.delivery
-                  ? gestationalAgeWeeks(p.lmpDate, p.delivery.date)
-                  : null;
+              const gaAtBirth = p.schedule.gestationalAgeAtDelivery;
               const selected = selectedId === p.id;
               return (
                 <tr

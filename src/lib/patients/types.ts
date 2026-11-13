@@ -293,8 +293,46 @@ export interface PregnancyMedicalHistory {
   disabilitiesNotes?: string;
 }
 
+export interface AncCalendarEntry {
+  visitNumber: number;
+  dueByWeek: number;
+  dueDate: string;
+}
+
+export interface ChwScheduleEntry {
+  visitNumber: number; // unique across the pregnancy (1..20) — what CommunityVisit.ancVisitNumber stores
+  checkpointNumber: number; // the hospital ANC checkpoint (1..10) this home visit leads up to
+  weekNumber: number; // this home visit's own gestational week (rounded)
+  dueByWeek: number; // the hospital checkpoint's week
+  ancDueDate: string; // the hospital checkpoint's date
+  chwDueDate: string; // this home visit's date
+  homeVisitStatus: "done" | "missed" | "next" | "upcoming";
+  checkpointAttended: boolean;
+  checkpointDue: boolean;
+  checkpointMissed: boolean;
+}
+
+// Computed by the API for every pregnancy it returns.
+export interface PregnancySchedule {
+  effectiveLmpDate: string;
+  /** Today, or the delivery date for a pregnancy that has ended. */
+  asOf: string;
+  gestationalAge: { weeks: number; days: number } | null;
+  currentWeek: number | null;
+  gestationalAgeAtDelivery: number | null;
+  ancCalendar: (AncCalendarEntry & { status: "completed" | "due" | "missed" | "upcoming" })[];
+  nextDue: { week: number; overdue: boolean } | null;
+  missedWeeks: number[];
+  completedCount: number;
+  todaysScheduledVisit: AncCalendarEntry | null;
+  nextUndoneHomeVisitDate: string | null;
+  currentHomeVisitNumber: number | null;
+  chwSchedule: ChwScheduleEntry[];
+}
+
 export interface Pregnancy extends PregnancyMedicalHistory {
   id: string;
+  schedule: PregnancySchedule;
   patientId: string;
   pregnancyNumber: number;
   gravidity: number;
