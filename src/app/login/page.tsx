@@ -5,8 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { DEMO_USERS } from "@/lib/auth/demo-users";
-import { usernameToEmail } from "@/lib/auth/role-mapping";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api/client";
+import { mapBackendRole } from "@/lib/auth/role-mapping";
 import { dashboardPathForRole } from "@/lib/auth/role-routes";
 import type { Role } from "@/lib/auth/types";
 
@@ -121,7 +122,13 @@ export default function LoginPage() {
     }
   }, [isHydrated, user, router]);
 
-  const emailsForRole = DEMO_USERS.filter((u) => u.role === selectedRole).map((u) => usernameToEmail(u.username));
+  // Demo account hints come from the API (emails only).
+  const { data: demoAccounts = [] } = useQuery({
+    queryKey: ["demo-accounts"],
+    queryFn: () => apiFetch<{ email: string; role: string }[]>("/auth/demo-accounts"),
+    staleTime: Infinity,
+  });
+  const emailsForRole = demoAccounts.filter((a) => mapBackendRole(a.role) === selectedRole).map((a) => a.email);
 
   function chooseRole(role: Role) {
     setSelectedRole(role);
