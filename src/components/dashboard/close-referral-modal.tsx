@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { closeReferral, createReferral } from "@/lib/patients/use-patients";
-import { fetchFacilities } from "@/lib/patients/referral-api";
+import { useQuery } from "@tanstack/react-query";
+import { closeReferral } from "@/lib/patients/use-patients";
+import { fetchOnwardFacilities } from "@/lib/patients/referral-api";
 import { IconClose, IconAlert } from "./icons";
-import { RECEIVING_FACILITIES } from "@/components/patients/create-referral-modal";
 import type { Referral, ReferralOutcome, RiskLevel } from "@/lib/patients/types";
 
 const RISK_OPTIONS: { value: RiskLevel; label: string }[] = [
@@ -44,6 +44,11 @@ export function CloseReferralModal({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isReferringOnward = outcome === "referred";
+  const { data: onwardFacilities = [] } = useQuery({
+    queryKey: ["onward-facilities"],
+    queryFn: fetchOnwardFacilities,
+    staleTime: Infinity,
+  });
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -59,19 +64,12 @@ export function CloseReferralModal({
     setError(null);
     setIsSubmitting(true);
     try {
-      await closeReferral(referral.id, { outcome, outcomeStatement, riskLevel });
-      if (isReferringOnward && nextFacility) {
-        const facility = (await fetchFacilities()).find((f) => f.name === nextFacility);
-        if (!facility) {
-          throw new Error(`Unknown receiving facility: ${nextFacility}`);
-        }
-        await createReferral({
-          patientId: referral.patientId,
-          receivingFacilityId: facility.id,
-          reason: outcomeStatement.trim() || "Condition did not improve — escalating to a higher-level facility.",
-          urgency: "emergency",
-        });
-      }
+      await closeReferral(referral.id, {
+        outcome,
+        outcomeStatement,
+        riskLevel,
+        referOnwardToFacilityId: isReferringOnward && nextFacility ? nextFacility : undefined,
+      });
       onClosed();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to close referral. Please try again.");
@@ -136,8 +134,8 @@ export function CloseReferralModal({
                   className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                 >
                   <option value="">Select facility…</option>
-                  {RECEIVING_FACILITIES.map((f) => (
-                    <option key={f} value={f}>{f}</option>
+                  {onwardFacilities.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
                   ))}
                 </select>
               </label>

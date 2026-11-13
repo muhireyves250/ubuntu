@@ -104,6 +104,12 @@ export async function fetchReferrals(): Promise<Referral[]> {
   return result.data.map(toFrontendReferral);
 }
 
+// Hospitals a closed case can be referred on to (from the API).
+export async function fetchOnwardFacilities(): Promise<{ id: string; name: string }[]> {
+  const token = getStoredAccessToken();
+  return apiFetch<{ id: string; name: string }[]>("/referrals/onward-facilities", { token: token ?? undefined });
+}
+
 export async function fetchFacilities(opts: { excludePrimary?: boolean; nearFacilityId?: string } = {}): Promise<BackendFacility[]> {
   const token = getStoredAccessToken();
   const params = new URLSearchParams();
@@ -163,6 +169,7 @@ export async function closeReferralApi(
   outcome: ReferralOutcome,
   outcomeStatement: string,
   riskLevel: "green" | "yellow" | "orange" | "red",
+  referOnwardToFacilityId?: string,
 ): Promise<Referral> {
   const token = getStoredAccessToken();
   const RISK_TO_BACKEND: Record<string, string> = {
@@ -177,6 +184,7 @@ export async function closeReferralApi(
       outcome: OUTCOME_TO_BACKEND[outcome],
       outcomeStatement,
       riskLevel: RISK_TO_BACKEND[riskLevel],
+      referOnwardToFacilityId,
     },
     token: token ?? undefined,
   });

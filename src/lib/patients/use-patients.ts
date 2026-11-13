@@ -677,11 +677,24 @@ export async function acceptReferral(referralId: string): Promise<Referral> {
   return accepted;
 }
 
+// Closing with outcome "referred" also opens the onward emergency referral
+// (the API does both in one call).
 export async function closeReferral(
   referralId: string,
-  data: { outcome: ReferralOutcome; outcomeStatement: string; riskLevel: RiskLevel },
+  data: {
+    outcome: ReferralOutcome;
+    outcomeStatement: string;
+    riskLevel: RiskLevel;
+    referOnwardToFacilityId?: string;
+  },
 ): Promise<Referral> {
-  const closed = await closeReferralApi(referralId, data.outcome, data.outcomeStatement, data.riskLevel);
+  const closed = await closeReferralApi(
+    referralId,
+    data.outcome,
+    data.outcomeStatement,
+    data.riskLevel,
+    data.referOnwardToFacilityId,
+  );
   await queryClient.invalidateQueries({ queryKey: ["referrals"] });
   return closed;
 }

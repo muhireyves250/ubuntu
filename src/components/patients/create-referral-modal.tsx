@@ -10,21 +10,6 @@ import { RiskBadge } from "@/components/patients/risk-badge";
 import { fullName } from "@/lib/format";
 import type { Patient, RiskLevel } from "@/lib/patients/types";
 
-// Kept for close-referral-modal.tsx's separate onward-referral dropdown —
-// this file's own dropdown below uses live, distance-sorted facilities
-// instead.
-export const RECEIVING_FACILITIES = [
-  "Nyanza District Hospital",
-  "CHB",
-  "King Faisal Hospital",
-  "Rwanda Military Hospital",
-  "Butaro District Hospital",
-  "Kibagabaga District Hospital",
-  "Muhima District Hospital",
-  "Rwamagana Provincial Hospital",
-  "Kabgayi District Hospital",
-];
-
 const URGENCY_LABELS: Record<string, string> = {
   routine: "Routine",
   urgent: "Urgent",
