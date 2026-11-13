@@ -18,3 +18,17 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Notifications are built by the API from all the other data, so whenever
+// the app invalidates anything (i.e. after the user changes something), the
+// feed is refreshed too — the same freshness it had when it was computed
+// in the browser from those queries.
+queryClient.getQueryCache().subscribe((event) => {
+  if (
+    event.type === "updated" &&
+    event.action.type === "invalidate" &&
+    event.query.queryKey[0] !== "notification-feed"
+  ) {
+    void queryClient.invalidateQueries({ queryKey: ["notification-feed"] });
+  }
+});

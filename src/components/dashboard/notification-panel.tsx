@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/lib/auth/auth-context";
 import {
   useNotificationAlerts,
   useReadNotificationIds,
@@ -110,9 +109,8 @@ export function NotificationPanel({
 }: {
   onClose: () => void;
 }) {
-  const { user } = useAuth();
   const router = useRouter();
-  const alerts = useNotificationAlerts(user?.role ?? "");
+  const alerts = useNotificationAlerts();
   const readIds = useReadNotificationIds();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 

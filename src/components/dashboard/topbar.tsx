@@ -16,7 +16,7 @@ export function Topbar() {
   const { user } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const alerts = useNotificationAlerts(user?.role ?? "");
+  const alerts = useNotificationAlerts();
   const readIds = useReadNotificationIds();
   const unreadCount = alerts.filter((a) => !readIds.has(a.id)).length;
 
