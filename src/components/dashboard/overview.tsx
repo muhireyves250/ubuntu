@@ -6,7 +6,6 @@ import { ROLE_OVERVIEW_COPY } from "@/lib/dashboard/role-copy";
 import {
   useRiskSummary,
   useFacilityCapacity,
-  DEFAULT_CAPACITY,
   setFacilityMaxCapacity,
   useReferrals,
   useIsOverviewDataLoading,
@@ -35,7 +34,7 @@ export function DashboardOverview() {
   const [riskScope, setRiskScope] = useState<RiskSummaryScope>("all");
   const selectedDays = RANGE_OPTIONS.find((r) => r.value === range)?.days;
   const summary = useRiskSummary(selectedDays, riskScope);
-  const capacity = useFacilityCapacity(user?.facility ?? "");
+  const capacity = useFacilityCapacity();
   const referrals = useReferrals();
   const [capacityDraft, setCapacityDraft] = useState<string>("");
   const [isEditingCapacity, setIsEditingCapacity] = useState(false);
@@ -43,7 +42,7 @@ export function DashboardOverview() {
   if (!user) return null;
   if (isLoading) return <OverviewSkeleton />;
 
-  const hasCapacityConfig = capacity.max !== DEFAULT_CAPACITY;
+  const hasCapacityConfig = capacity.configured;
   const isHospitalAdmin = user.role === "hospital_admin";
 
   const referralCounts = {

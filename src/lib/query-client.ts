@@ -19,16 +19,22 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Notifications are built by the API from all the other data, so whenever
-// the app invalidates anything (i.e. after the user changes something), the
-// feed is refreshed too — the same freshness it had when it was computed
-// in the browser from those queries.
+// Some answers are derived by the API from other data — notifications, each
+// patient's current risk colour (on the patient list/detail), what a facility
+// may do with a patient, and emergency capacity. Whenever the app
+// invalidates anything else (i.e. after the user changes something), those
+// are refreshed too, so they stay as current as when the browser derived
+// them itself.
+const SERVER_DERIVED_KEYS = ["notification-feed", "patients", "patient-access", "facility-capacity"];
+
 queryClient.getQueryCache().subscribe((event) => {
   if (
     event.type === "updated" &&
     event.action.type === "invalidate" &&
-    event.query.queryKey[0] !== "notification-feed"
+    !SERVER_DERIVED_KEYS.includes(String(event.query.queryKey[0]))
   ) {
-    void queryClient.invalidateQueries({ queryKey: ["notification-feed"] });
+    for (const key of SERVER_DERIVED_KEYS) {
+      void queryClient.invalidateQueries({ queryKey: [key] });
+    }
   }
 });

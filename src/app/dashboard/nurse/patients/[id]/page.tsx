@@ -30,14 +30,14 @@ import {
   useAllVisitsForPatient,
   useVisitsForPregnancy,
   finalizeAssessment,
-  useActiveEmergencyReferral,
   useReferralsForPatient,
-  usePatientLock,
+  useReferrals,
   useCommunityVisitsForPregnancy,
   useAllCommunityVisitsForPatient,
   useRecommendationsForPatient,
   useVaccinationsForPregnancy,
 } from "@/lib/patients/use-patients";
+import { usePatientAccess } from "@/lib/patients/patient-access-api";
 import { gestationalAgeWeeks, matchScheduledVisit, effectiveLmpDate, chwVisitSchedule } from "@/lib/patients/pregnancy";
 import { getInitials, fullName, computeAge } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
@@ -93,30 +93,28 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [assessmentContext, setAssessmentContext] = useState<AssessmentContext | null>(null);
   const [emergencyResult, setEmergencyResult] = useState<EmergencyResult | null>(null);
-  const activeReferral = useActiveEmergencyReferral(patientId);
-  const lock = usePatientLock(patientId);
+  // What this facility may do with the record is decided by the API — the
+  // same rule it enforces on every change.
+  const { access, isLoading: accessLoading } = usePatientAccess(patientId);
+  const referrals = useReferrals();
+  const activeReferral = access?.activeReferralId
+    ? (referrals.find((r) => r.id === access.activeReferralId) ?? null)
+    : null;
   const { user } = useAuth();
-  const isReadOnlyAdmin = user?.role === "hospital_admin";
-  // Once another facility has accepted the emergency, the referring facility
-  // can follow the case but not change it until it's closed (the API
-  // enforces the same rule).
-  const isReferrerViewOnly =
-    activeReferral?.status === "accepted" &&
-    activeReferral.acceptedByFacility !== user?.facility;
-  const isReadOnly = isReadOnlyAdmin || isReferrerViewOnly;
-  const readOnlyReason = isReadOnlyAdmin
-    ? "Hospital Administrators can review clinical records but cannot change them."
-    : `This emergency case is managed by ${activeReferral?.acceptedByFacility}. You can follow it here but not change the record until the case is closed.`;
-  const isManagingReferral =
-    !!activeReferral &&
-    (activeReferral.referredByFacility === user?.facility ||
-      activeReferral.acceptedByFacility === user?.facility);
+  const isReadOnly = access?.mode === "view_only";
+  const readOnlyReason =
+    access?.reason === "administrator"
+      ? "Hospital Administrators can review clinical records but cannot change them."
+      : `This emergency case is managed by ${access?.facilityName}. You can follow it here but not change the record until the case is closed.`;
 
-  if (patientLoading) return null;
+  if (patientLoading || accessLoading) return null;
   if (!patient) return notFound();
-  if (lock.locked) return <PatientLockedBlocker patient={patient} lockedByFacility={lock.lockedByFacility!} />;
-  if (activeReferral && !isManagingReferral) {
-    return <ActiveReferralBlocker patient={patient} referral={activeReferral} />;
+  if (access?.mode === "locked") {
+    return <PatientLockedBlocker patient={patient} lockedByFacility={access.facilityName ?? ""} />;
+  }
+  if (access?.mode === "referral_preview") {
+    // The referral list may still be loading; show nothing until it lands.
+    return activeReferral ? <ActiveReferralBlocker patient={patient} referral={activeReferral} /> : null;
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -143,16 +141,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
     : null;
 
   const latestVisit = allVisits[0];
-  const hasNewerTreatmentVisit =
-    !!activeReferral &&
-    !!latestVisit &&
-    (latestVisit.createdAt ?? latestVisit.date) > activeReferral.createdAt;
-  const currentRisk =
-    activeReferral && !hasNewerTreatmentVisit
-      ? "red"
-      : patient.riskOverrideLevel
-        ? patient.riskOverrideLevel
-        : (latestVisit?.riskLevel ?? "green");
+  const currentRisk = patient.currentRisk;
   const isWaitingForLabs = latestVisit?.labStatus === "pending" || latestVisit?.labStatus === "in_progress";
   const needsFinalization = latestVisit?.labStatus === "completed" && latestVisit?.assessmentFinalized === false;
 
@@ -372,16 +361,6 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                 </p>
                 <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">{readOnlyReason}</p>
               </div>
-            ) : activeReferral && !isManagingReferral ? (
-              <div className="flex flex-col items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center dark:border-red-900/50 dark:bg-red-950/30">
-                <p className="text-sm font-semibold text-red-800 dark:text-red-300">
-                  Close the active emergency case first
-                </p>
-                <p className="max-w-sm text-xs text-red-700/80 dark:text-red-400/80">
-                  A new visit can&apos;t be started while this patient has an unresolved red case. Use
-                  the banner above to close it with an outcome statement.
-                </p>
-              </div>
             ) : openPregnancy && assessmentContext ? (
               <AssessmentWizard
                 patient={patient}
@@ -502,7 +481,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                 pregnancy={openPregnancy}
                 visits={pregnancyVisits}
                 onLogScheduledVisit={
-                  (activeReferral && !isManagingReferral) || isReadOnly
+                  isReadOnly
                     ? undefined
                     : (week) => {
                         setAssessmentContext({ type: "scheduled", scheduledWeek: week });
@@ -510,7 +489,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                       }
                 }
                 onLogUnscheduledVisit={
-                  (activeReferral && !isManagingReferral) || isReadOnly
+                  isReadOnly
                     ? undefined
                     : () => {
                         setAssessmentContext({ type: "unscheduled" });

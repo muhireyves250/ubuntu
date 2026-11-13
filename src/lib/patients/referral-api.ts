@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
-import type { Referral, ReferralOutcome } from "./types";
+import type { FacilityCapacity, Referral, ReferralOutcome } from "./types";
 
 export interface BackendFacility {
   id: string;
@@ -111,6 +111,11 @@ export async function fetchFacilities(opts: { excludePrimary?: boolean; nearFaci
   if (opts.nearFacilityId) params.set("nearFacilityId", opts.nearFacilityId);
   const qs = params.toString();
   return apiFetch<BackendFacility[]>(`/facilities${qs ? `?${qs}` : ""}`, { token: token ?? undefined });
+}
+
+export async function fetchMyFacilityCapacity(): Promise<FacilityCapacity> {
+  const token = getStoredAccessToken();
+  return apiFetch<FacilityCapacity>("/facilities/me/capacity", { token: token ?? undefined });
 }
 
 export async function updateFacilityCapacityApi(capacity: number): Promise<BackendFacility> {

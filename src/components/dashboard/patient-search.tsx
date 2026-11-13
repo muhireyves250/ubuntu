@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePatients, useVisits, usePregnancies, useActiveEmergencyPatientIds } from "@/lib/patients/use-patients";
+import { usePatients } from "@/lib/patients/use-patients";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { getInitials, shortId, fullName } from "@/lib/format";
 import { IconSearch, IconClose } from "./icons";
@@ -15,18 +15,10 @@ const MAX_RESULTS = 6;
 export function PatientSearch({ variant }: { variant: "bar" | "icon" }) {
   const router = useRouter();
   const patients = usePatients();
-  const visits = useVisits();
-  const pregnancies = usePregnancies();
-  const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const patientIdByPregnancyId = useMemo(
-    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
-    [pregnancies],
-  );
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -40,21 +32,9 @@ export function PatientSearch({ variant }: { variant: "bar" | "icon" }) {
       )
       .slice(0, MAX_RESULTS)
       .map((patient) => {
-        const latestVisit = visits
-          .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
-          .sort((a, b) => {
-            const dateCompare = b.date.localeCompare(a.date);
-            if (dateCompare !== 0) return dateCompare;
-            return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
-          })[0];
-        const emergencySince = activeEmergencyPatientIds.get(patient.id);
-        const hasNewerTreatmentVisit =
-          !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
-        const latestRisk =
-          emergencySince && !hasNewerTreatmentVisit ? "red" : (latestVisit?.riskLevel ?? "green");
-        return { patient, latestRisk };
+        return { patient, latestRisk: patient.currentRisk };
       });
-  }, [patients, visits, patientIdByPregnancyId, query, activeEmergencyPatientIds]);
+  }, [patients, query]);
 
   function goToPatient(id: string) {
     setQuery("");

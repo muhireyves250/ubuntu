@@ -14,7 +14,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { formatExactDateTime, relativeTime } from "@/lib/format";
 import { setPreference, usePreferences, type Preferences } from "@/lib/preferences";
-import { useFacilityCapacity, setFacilityMaxCapacity, DEFAULT_CAPACITY } from "@/lib/patients/use-patients";
+import { useFacilityCapacity, setFacilityMaxCapacity } from "@/lib/patients/use-patients";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 import { FACILITY_LEVEL_LABEL } from "@/components/dashboard/profile-panel";
 import { Field } from "@/components/patients/patient-details-tab";
@@ -114,7 +114,7 @@ function SettingsContent() {
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const preferences = usePreferences();
-  const capacity = useFacilityCapacity(user?.facility ?? "");
+  const capacity = useFacilityCapacity();
 
   const profileQuery = useMyProfile();
   const activityQuery = useQuery({ queryKey: ["account", "activity"], queryFn: fetchMyActivity, retry: false });
@@ -415,7 +415,7 @@ function SettingsContent() {
                         type="number"
                         min={0}
                         step={1}
-                        value={capacityDraft ?? (capacity.max === DEFAULT_CAPACITY ? "" : String(capacity.max))}
+                        value={capacityDraft ?? (capacity.configured ? String(capacity.max) : "")}
                         placeholder="Not set"
                         onChange={(e) => {
                           setCapacityDraft(e.target.value);

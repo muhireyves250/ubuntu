@@ -59,7 +59,7 @@ export function PatientEmergencyInfoModal({
     vitals && (vitals.bpSystolic != null || vitals.bpDiastolic != null || vitals.temperature != null);
 
   const { user } = useAuth();
-  const capacity = useFacilityCapacity(user?.facility ?? "");
+  const capacity = useFacilityCapacity();
   const readinessPct = Math.max(0, Math.min(100, Math.round((capacity.remaining / capacity.max) * 100)));
   const STATUS_LABEL: Record<typeof capacity.status, string> = {
     available: "Available",

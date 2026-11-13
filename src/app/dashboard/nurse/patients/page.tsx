@@ -13,7 +13,6 @@ import {
   usePatients,
   useVisits,
   usePregnancies,
-  useActiveEmergencyPatientIds,
   useIsPatientsListLoading,
 } from "@/lib/patients/use-patients";
 import { PatientsListSkeleton } from "@/components/patients/patients-list-skeleton";
@@ -51,7 +50,6 @@ function PatientsPageContent() {
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
-  const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const isLoading = useIsPatientsListLoading();
   const searchParams = useSearchParams();
   const [nameFilter, setNameFilter] = useState(() => searchParams.get("q") ?? "");
@@ -96,23 +94,15 @@ function PatientsPageContent() {
       const openPregnancy = pregnancies.find(
         (p) => p.patientId === patient.id && p.status === "open",
       );
-      const emergencySince = activeEmergencyPatientIds.get(patient.id);
-      const hasNewerTreatmentVisit =
-        !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
       return {
         patient,
-        latestRisk:
-          emergencySince && !hasNewerTreatmentVisit
-            ? ("red" as RiskLevel)
-            : patient.riskOverrideLevel
-              ? patient.riskOverrideLevel
-              : (latestVisit?.riskLevel ?? ("green" as RiskLevel)),
+        latestRisk: patient.currentRisk,
         lastVisitDate: latestVisit?.date,
         hospital: latestVisit?.hospital,
         gaWeeks: openPregnancy ? gestationalAgeWeeks(effectiveLmpDate(openPregnancy)) : null,
       };
     });
-  }, [patients, visits, pregnancies, patientIdByPregnancyId, activeEmergencyPatientIds]);
+  }, [patients, visits, pregnancies, patientIdByPregnancyId]);
 
   const rows = useMemo(() => {
     return allRows

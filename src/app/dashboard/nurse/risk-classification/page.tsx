@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { usePatients, useVisits, usePregnancies, useActiveEmergencyPatientIds } from "@/lib/patients/use-patients";
+import { usePatients } from "@/lib/patients/use-patients";
 import { SYMPTOM_CHECKLIST } from "@/lib/patients/symptom-checklist";
 import type { Patient, RiskLevel } from "@/lib/patients/types";
 import { getInitials, shortId, fullName } from "@/lib/format";
@@ -56,9 +56,6 @@ const RISK_LEVEL_META: Record<
 
 function RiskClassificationContent() {
   const patients = usePatients();
-  const visits = useVisits();
-  const pregnancies = usePregnancies();
-  const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const [expandedLevels, setExpandedLevels] = useState<Set<RiskLevel>>(new Set());
 
   function toggleLevel(level: RiskLevel) {
@@ -69,11 +66,6 @@ function RiskClassificationContent() {
       return next;
     });
   }
-
-  const patientIdByPregnancyId = useMemo(
-    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
-    [pregnancies],
-  );
 
   const symptomsByLevel = useMemo(() => {
     const map = new Map<RiskLevel, string[]>();
@@ -90,21 +82,10 @@ function RiskClassificationContent() {
     for (const level of RISK_LEVEL_ORDER) map.set(level, []);
 
     for (const patient of patients) {
-      const latestVisit = visits
-        .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
-        .sort((a, b) => {
-          const dateCompare = b.date.localeCompare(a.date);
-          if (dateCompare !== 0) return dateCompare;
-          return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
-        })[0];
-      const emergencySince = activeEmergencyPatientIds.get(patient.id);
-      const hasNewerTreatmentVisit =
-        !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
-      const level = emergencySince && !hasNewerTreatmentVisit ? "red" : (latestVisit?.riskLevel ?? "green");
-      map.get(level)!.push(patient);
+      map.get(patient.currentRisk)!.push(patient);
     }
     return map;
-  }, [patients, visits, patientIdByPregnancyId, activeEmergencyPatientIds]);
+  }, [patients]);
 
   return (
     // Header stays put and only the level cards scroll — same as the

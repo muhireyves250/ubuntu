@@ -162,7 +162,7 @@ export function RedCaseAlertPanel() {
   // Lets staff collapse the panel to its header row (title + count) to get
   // at the rest of the page; the alert itself never disappears.
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const capacity = useFacilityCapacity(user?.facility ?? "");
+  const capacity = useFacilityCapacity();
 
   const patientById = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
   const patientIdByPregnancyId = useMemo(

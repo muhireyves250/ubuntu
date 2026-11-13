@@ -37,6 +37,8 @@ export interface Patient {
   assignedChwId?: string;
   assignedChwAt?: string; // ISO datetime — when assignedChwId was last set
   riskOverrideLevel?: RiskLevel;
+  /** Current risk colour, computed by the API — the one every screen shows. */
+  currentRisk: RiskLevel;
   riskOverrideSourceVisitId?: string;
 }
 
@@ -144,6 +146,8 @@ export interface FacilityCapacity {
   active: number;
   remaining: number;
   status: FacilityCapacityStatus;
+  /** False when the facility has no capacity set (no limit). */
+  configured: boolean;
 }
 
 export interface Referral {

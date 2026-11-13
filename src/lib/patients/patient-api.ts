@@ -34,6 +34,7 @@ interface BackendPatient {
   assignedChwId: string | null;
   assignedChwAt: string | null;
   riskOverrideLevel: "GREEN" | "YELLOW" | "ORANGE" | "RED" | null;
+  currentRisk: "green" | "yellow" | "orange" | "red";
   riskOverrideSourceVisitId: string | null;
 }
 
@@ -75,11 +76,12 @@ function toFrontendPatient(p: BackendPatient): Patient {
     assignedChwId: p.assignedChwId ?? undefined,
     assignedChwAt: p.assignedChwAt ?? undefined,
     riskOverrideLevel: p.riskOverrideLevel ? RISK_LEVEL_TO_FRONTEND[p.riskOverrideLevel] : undefined,
+    currentRisk: p.currentRisk,
     riskOverrideSourceVisitId: p.riskOverrideSourceVisitId ?? undefined,
   };
 }
 
-function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">) {
+function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk">) {
   return {
     nationalId: data.nationalId,
     firstName: data.firstName,
@@ -128,7 +130,7 @@ export async function fetchPatient(id: string): Promise<Patient> {
 }
 
 export async function createPatientApi(
-  data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">,
+  data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk">,
 ): Promise<Patient> {
   const token = getStoredAccessToken();
   const p = await apiFetch<BackendPatient>("/patients", {
@@ -141,7 +143,7 @@ export async function createPatientApi(
 
 export async function updatePatientApi(
   patientId: string,
-  updates: Partial<Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">>,
+  updates: Partial<Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk">>,
 ): Promise<Patient> {
   const token = getStoredAccessToken();
   const body: Record<string, unknown> = { ...updates };

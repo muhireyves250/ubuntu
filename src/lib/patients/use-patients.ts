@@ -40,7 +40,7 @@ import {
   closeReferralApi,
   fetchFacilities,
   updateFacilityCapacityApi,
-  type BackendFacility,
+  fetchMyFacilityCapacity,
 } from "./referral-api";
 import { createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
 import {
@@ -74,7 +74,6 @@ import type {
   Pregnancy,
   Recommendation,
   FacilityCapacity,
-  FacilityCapacityStatus,
   FollowUpAssignment,
   FollowUpReason,
   FollowUpPriority,
@@ -240,85 +239,6 @@ export function useAllCommunityVisitsForPatient(patientId: string): CommunityVis
   }, [results]);
 }
 
-export interface PatientLock {
-  locked: boolean;
-  lockedByFacility: string | null;
-}
-
-// While a visit is still in progress (labs pending/in-progress, or completed
-// but not yet finalized) at the facility handling it, every other facility is
-// locked out of the patient's record until that visit is completed — UNLESS
-// an emergency referral is open for this patient and the current facility is
-// a party to it (the referrer, the one it was routed to, the one that
-// accepted it, or any capable facility while it's still pending and
-// broadcast for acceptance). Otherwise a facility could never review or
-// accept a case it was just referred, since the referring facility's visit
-// is still unfinalized by definition.
-export function usePatientLock(patientId: string): PatientLock {
-  const visits = useAllVisitsForPatient(patientId);
-  const referrals = useReferrals();
-  const currentUser = getCurrentUserSnapshot();
-  return useMemo(() => {
-    // Any facility that was ever a party to one of this patient's emergency
-    // referrals — referred it, was addressed by it, or accepted it — keeps
-    // full record access, regardless of whether that referral is still
-    // pending/accepted or has since been closed. Closing a case is the
-    // natural conclusion of having treated it, not a reason to lose access
-    // to the record you were just working in — the underlying visit still
-    // belongs to whichever facility originally opened it, so without this,
-    // the facility that accepted and closed the referral would find
-    // themselves locked out the moment they finished. Any OTHER capable
-    // facility (never a party to any of this patient's referrals) still
-    // only sees the broadcast preview and must accept before opening the
-    // full record.
-    const everInvolved = referrals.some(
-      (r) =>
-        r.patientId === patientId &&
-        r.urgency === "emergency" &&
-        (r.referredByFacility === currentUser.facility ||
-          r.receivingFacility === currentUser.facility ||
-          r.acceptedByFacility === currentUser.facility),
-    );
-    if (everInvolved) return { locked: false, lockedByFacility: null };
-
-    const latest = visits[0];
-    if (!latest) return { locked: false, lockedByFacility: null };
-    // A visit not yet finalized already covers the lab-pending case (a visit
-    // with an outstanding lab can never be finalized — see
-    // FinalizeAssessmentBlocker) as a strict subset, so this single check is
-    // both simpler and equivalent to the old three-way labStatus condition.
-    if (!latest.assessmentFinalized && latest.hospital !== currentUser.facility) {
-      return { locked: true, lockedByFacility: latest.hospital };
-    }
-    return { locked: false, lockedByFacility: null };
-  }, [visits, referrals, patientId, currentUser.facility]);
-}
-
-export function useLatestRiskLevel(patientId: string): RiskLevel {
-  const visits = useAllVisitsForPatient(patientId);
-  const activeEmergency = useActiveEmergencyReferral(patientId);
-  const patient = usePatient(patientId);
-  const latestVisit = visits[0];
-  // A referral being open no longer pins the badge to red forever — once
-  // the managing facility has logged a newer visit (treating the patient
-  // during the emergency), that visit's own outcome takes over, so the
-  // badge reflects how treatment is actually going instead of staying
-  // stuck on red until someone formally closes the case.
-  const hasNewerTreatmentVisit =
-    !!activeEmergency &&
-    !!latestVisit &&
-    (latestVisit.createdAt ?? latestVisit.date) > activeEmergency.createdAt;
-  if (activeEmergency && !hasNewerTreatmentVisit) return "red";
-  if (patient?.riskOverrideLevel) return patient.riskOverrideLevel;
-  return latestVisit?.riskLevel ?? "green";
-}
-
-// Referrals are visible system-wide, same as patients and visits — a
-// facility with no involvement in a case still needs to be able to see
-// that an active referral exists so it can be correctly locked out of the
-// record. Consumers that need to narrow this down to "what's actionable
-// for me" (the broadcast panel, notification alerts) already apply their
-// own facility/urgency filtering on top of this.
 export function useReferrals(): Referral[] {
   const { data } = useQuery({ queryKey: ["referrals"], queryFn: fetchReferrals });
   return data ?? [];
@@ -583,28 +503,6 @@ export function useActiveReferrals(): Referral[] {
   );
 }
 
-// Every patient with an unresolved (pending or accepted) emergency referral
-// must display as red everywhere in the app, no matter what a raw "latest
-// visit" lookup would otherwise show — the case only stops being red once
-// the managing facility closes it and records a new color.
-// Maps patientId -> the active emergency referral's createdAt, not just a
-// Set, so callers can tell whether a newer visit has since been logged
-// (the managing facility treating the patient) and should override the
-// "pin to red" default — Map.has() stays a drop-in replacement for the
-// old Set.has() callers that only care whether one exists at all.
-export function useActiveEmergencyPatientIds(): Map<string, string> {
-  const referrals = useReferrals();
-  return useMemo(
-    () =>
-      new Map(
-        referrals
-          .filter((r) => r.urgency === "emergency" && (r.status === "pending" || r.status === "accepted"))
-          .map((r) => [r.patientId, r.createdAt] as const),
-      ),
-    [referrals],
-  );
-}
-
 export function useRecommendationsForPatient(patientId: string): Recommendation[] {
   const { data } = useQuery({
     queryKey: ["recommendations", "patient", patientId],
@@ -722,68 +620,16 @@ export function useReferralsForPatient(patientId: string): Referral[] {
   );
 }
 
-export function useActiveEmergencyReferral(patientId: string): Referral | null {
-  const referrals = useReferrals();
-  return useMemo(
-    () =>
-      referrals
-        .filter(
-          (r) =>
-            r.patientId === patientId &&
-            r.urgency === "emergency" &&
-            (r.status === "pending" || r.status === "accepted"),
-        )
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null,
-    [referrals, patientId],
-  );
-}
-
 const REFERRAL_ROUTING: Record<string, string> = {
   "Kabusunzu Health Centre": "Bugesera District Hospital",
 };
 const DEFAULT_RECEIVING_FACILITY = "Bugesera District Hospital";
 
-// Maximum active (accepted, unclosed) Red emergency cases a facility can
-// safely manage at once. Facilities not listed here (including every
-// external hospital in RECEIVING_FACILITIES, which have no real accounts)
-// default to DEFAULT_CAPACITY — effectively unlimited, since capacity can't
-// be tracked for a facility nobody can log into.
-export const FACILITY_CAPACITY: Record<string, number> = {
-  "Bugesera District Hospital": 3,
-  "Nyanza District Hospital": 10,
-};
-export const DEFAULT_CAPACITY = 999;
-
-function getFacilityCapacitySnapshot(
-  facility: string,
-  referrals: Referral[],
-  facilities: BackendFacility[],
-): FacilityCapacity {
-  const max = facilities.find((f) => f.name === facility)?.capacity ?? FACILITY_CAPACITY[facility] ?? DEFAULT_CAPACITY;
-  const active = referrals.filter(
-    (r) => r.status === "accepted" && r.acceptedByFacility === facility && r.urgency === "emergency",
-  ).length;
-  const remaining = max - active;
-  const status: FacilityCapacityStatus =
-    remaining <= 0 ? "full" : remaining <= 2 ? "nearly_full" : "available";
-  return { max, active, remaining, status };
-}
-
-function useFacilities(): BackendFacility[] {
-  // Facility roster barely ever changes — this is pulled unconditionally by
-  // useNotificationAlerts (mounted in the topbar on every dashboard route),
-  // so a longer staleTime meaningfully cuts refetches across the whole app.
-  const { data } = useQuery({ queryKey: ["facilities"], queryFn: () => fetchFacilities(), staleTime: 120_000 });
-  return data ?? [];
-}
-
-export function useFacilityCapacity(facility: string): FacilityCapacity {
-  const referrals = useReferrals();
-  const facilities = useFacilities();
-  return useMemo(
-    () => getFacilityCapacitySnapshot(facility, referrals, facilities),
-    [referrals, facility, facilities],
-  );
+// Emergency capacity of the signed-in user's facility, computed by the API
+// (the same numbers it uses to refuse a new emergency once full).
+export function useFacilityCapacity(): FacilityCapacity {
+  const { data } = useQuery({ queryKey: ["facility-capacity"], queryFn: fetchMyFacilityCapacity });
+  return data ?? { max: 0, active: 0, remaining: 0, status: "available", configured: false };
 }
 
 export async function setFacilityMaxCapacity(capacity: number): Promise<void> {
@@ -880,15 +726,7 @@ export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel
 }
 
 export async function acceptReferral(referralId: string): Promise<Referral> {
-  const { facility } = getCurrentUserSnapshot();
-  const referrals = await fetchReferrals();
-  const referral = referrals.find((r) => r.id === referralId);
-  if (
-    referral?.urgency === "emergency" &&
-    getFacilityCapacitySnapshot(facility, referrals, await fetchFacilities()).status === "full"
-  ) {
-    throw new Error("This facility has reached its emergency capacity. Choose another facility.");
-  }
+  // The API refuses an emergency once this facility is at capacity.
   const accepted = await acceptReferralApi(referralId);
   await queryClient.invalidateQueries({ queryKey: ["referrals"] });
   return accepted;
@@ -951,7 +789,6 @@ export function useFollowUpPatients(): FollowUpPatient[] {
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
-  const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const currentUser = getCurrentUserSnapshot();
 
   return useMemo(() => {
@@ -968,11 +805,7 @@ export function useFollowUpPatients(): FollowUpPatient[] {
 
     for (const patient of scopedPatients) {
       const latestVisit = latestVisitFor(patient.id, pregnancies, visits);
-      const emergencySince = activeEmergencyPatientIds.get(patient.id);
-      const hasNewerTreatmentVisit =
-        !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
-      const latestRiskLevel: RiskLevel =
-        emergencySince && !hasNewerTreatmentVisit ? "red" : (latestVisit?.riskLevel ?? "green");
+      const latestRiskLevel = patient.currentRisk;
 
       if (latestRiskLevel === "yellow" || latestRiskLevel === "orange") {
         results.push({ patient, latestRiskLevel, reason: "high-risk" });
@@ -982,7 +815,7 @@ export function useFollowUpPatients(): FollowUpPatient[] {
     }
 
     return results;
-  }, [patients, visits, pregnancies, activeEmergencyPatientIds, currentUser.facility]);
+  }, [patients, visits, pregnancies, currentUser.facility]);
 }
 
 export interface TodaysVisit {
@@ -1087,7 +920,6 @@ export function useRiskSummary(days?: number, scope: RiskSummaryScope = "all"): 
   const patients = usePatients();
   const visits = useVisits();
   const pregnancies = usePregnancies();
-  const activeEmergencyPatientIds = useActiveEmergencyPatientIds();
   const currentUser = getCurrentUserSnapshot();
 
   return useMemo(() => {
@@ -1127,13 +959,7 @@ export function useRiskSummary(days?: number, scope: RiskSummaryScope = "all"): 
     };
 
     for (const patient of scopedPatients) {
-      const latestVisit = latestVisitFor(patient.id, pregnancies, scopedVisits);
-      const emergencySince = activeEmergencyPatientIds.get(patient.id);
-      const hasNewerTreatmentVisit =
-        !!emergencySince && !!latestVisit && (latestVisit.createdAt ?? latestVisit.date) > emergencySince;
-      const level: RiskLevel =
-        emergencySince && !hasNewerTreatmentVisit ? "red" : (latestVisit?.riskLevel ?? "green");
-      counts[level] += 1;
+      counts[patient.currentRisk] += 1;
     }
 
     const totalPatients = scopedPatients.length;
@@ -1143,11 +969,11 @@ export function useRiskSummary(days?: number, scope: RiskSummaryScope = "all"): 
         : Math.round(((counts.red + counts.orange) / totalPatients) * 100);
 
     return { totalPatients, totalVisits: scopedVisits.length, counts, highRiskRate };
-  }, [patients, visits, pregnancies, days, scope, activeEmergencyPatientIds, currentUser.facility]);
+  }, [patients, visits, pregnancies, days, scope, currentUser.facility]);
 }
 
 export async function registerPatient(
-  data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">,
+  data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk">,
 ): Promise<Patient> {
   const patient = await createPatientApi(data);
   await queryClient.invalidateQueries({ queryKey: ["patients"] });
@@ -1277,7 +1103,7 @@ export async function createEmergencyVisit(
 
 export async function updatePatient(
   patientId: string,
-  updates: Partial<Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility">>,
+  updates: Partial<Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk">>,
 ): Promise<void> {
   await updatePatientApi(patientId, updates);
   await queryClient.invalidateQueries({ queryKey: ["patients"] });
