@@ -201,6 +201,11 @@ export async function createVisitApi(
     notes: string;
     labs?: VisitLabs;
     emergencySummary?: string;
+    // The API finalizes the assessment straight away when it's complete
+    // without labs, or sends the patient to the lab when labRequest is set.
+    treatment?: string;
+    followUpPlan?: string;
+    labRequest?: { requestedTests?: string[]; notes?: string };
   },
 ): Promise<Visit> {
   const token = getStoredAccessToken();
@@ -213,6 +218,9 @@ export async function createVisitApi(
       symptoms: symptomIdsToBackend(data.symptomIds, data.type === "emergency"),
       notes: data.notes,
       emergencySummary: data.emergencySummary,
+      treatment: data.treatment,
+      followUpPlan: data.followUpPlan,
+      labRequest: data.labRequest,
       vitals: data.labs
         ? {
             systolic: data.labs.bpSystolic,
@@ -229,6 +237,17 @@ export async function createVisitApi(
     token: token ?? undefined,
   });
   return toFrontendVisit(v);
+}
+
+// Opens (or returns) the emergency referral for a RED visit; null when the
+// visit isn't RED. Routing to the right hospital is decided by the API.
+export async function escalateVisitApi(visitId: string): Promise<Referral | null> {
+  const token = getStoredAccessToken();
+  const r = await apiFetch<BackendReferral | null>(`/visits/${visitId}/escalate`, {
+    method: "POST",
+    token: token ?? undefined,
+  });
+  return r ? toFrontendReferral(r) : null;
 }
 
 export async function finalizeVisitApi(

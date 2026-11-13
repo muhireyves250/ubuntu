@@ -127,8 +127,10 @@ export async function updateFacilityCapacityApi(capacity: number): Promise<Backe
   });
 }
 
+// Refer a patient (her open pregnancy is used). For an emergency the API
+// returns her existing active case instead of opening a second one.
 export async function createReferralApi(
-  pregnancyId: string,
+  patientId: string,
   toFacilityId: string,
   reason: string,
   urgency: Referral["urgency"],
@@ -137,7 +139,7 @@ export async function createReferralApi(
   const r = await apiFetch<BackendReferral>("/referrals", {
     method: "POST",
     body: {
-      pregnancyId,
+      patientId,
       toFacilityId,
       reason,
       urgency: URGENCY_TO_BACKEND[urgency],

@@ -4,9 +4,8 @@ import { useMemo } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
-import { fetchPregnanciesForPatient, fetchAllPregnancies, fetchPregnancyById, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
-import { fetchVisitsForPregnancy, fetchVisitsForPatient, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi, createEmergencyVisitApi } from "./visit-api";
-import { createLabRequestApi } from "./lab-request-api";
+import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
+import { fetchVisitsForPregnancy, fetchVisitsForPatient, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi, createEmergencyVisitApi, escalateVisitApi } from "./visit-api";
 import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy, fetchMyCommunityVisits } from "./community-visit-api";
 import { fetchVaccinationsForPregnancy, recordVaccinationApi, type Vaccination } from "./vaccination-api";
 import { fetchDiagnosesForVisit, createDiagnosisApi, type VisitDiagnosis } from "./diagnosis-api";
@@ -38,7 +37,6 @@ import {
   createReferralApi,
   acceptReferralApi,
   closeReferralApi,
-  fetchFacilities,
   updateFacilityCapacityApi,
   fetchMyFacilityCapacity,
 } from "./referral-api";
@@ -60,7 +58,6 @@ import { type AcknowledgedAlert } from "./alerts-storage";
 import { useReadNotificationIdsQuery, markNotificationReadApi } from "./read-notifications-api";
 import { useNotificationFeed } from "./notification-feed-api";
 import { fetchAcknowledgments, acknowledgePatientApi } from "./patient-acknowledgment-api";
-import { classifyRiskLevel } from "./symptom-checklist";
 import { matchScheduledVisit, scheduledVisitsInRange } from "./pregnancy";
 import { getStoredAuthenticatedUser } from "../auth/auth-context";
 import type {
@@ -620,10 +617,6 @@ export function useReferralsForPatient(patientId: string): Referral[] {
   );
 }
 
-const REFERRAL_ROUTING: Record<string, string> = {
-  "Kabusunzu Health Centre": "Bugesera District Hospital",
-};
-const DEFAULT_RECEIVING_FACILITY = "Bugesera District Hospital";
 
 // Emergency capacity of the signed-in user's facility, computed by the API
 // (the same numbers it uses to refuse a new emergency once full).
@@ -663,66 +656,13 @@ export async function confirmAiRisk(
   await queryClient.invalidateQueries({ queryKey: ["visits"] });
 }
 
-// Takes pregnancyId directly (every caller already knows it — the visit's
-// own pregnancyId, or the pregnancy just created/resolved) instead of
-// re-deriving "the patient's currently open pregnancy" via its own fresh
-// fetch. Also reads referrals/facilities through the query cache
-// (queryClient.fetchQuery) instead of always hitting the network — a
-// same-request warm cache (e.g. the topbar's already-loaded facility
-// list) resolves instantly instead of adding another round trip.
-async function getOrCreateEmergencyReferral(
-  patientId: string,
-  pregnancyId: string,
-  reason: string,
-): Promise<Referral> {
-  const existingReferrals = await queryClient.fetchQuery({
-    queryKey: ["referrals"],
-    queryFn: fetchReferrals,
-  });
-  const existing = existingReferrals.find(
-    (r) => r.patientId === patientId && (r.status === "pending" || r.status === "accepted"),
-  );
-  if (existing) return existing;
-
-  const { facility, facilityLevel } = getCurrentUserSnapshot();
-  // A health center always escalates up. Anything already at district-hospital
-  // level or above already has the capability to manage an obstetric
-  // emergency, so it self-accepts immediately instead of sitting pending. The
-  // backend has no self-accept shortcut, so this is two real calls (create,
-  // then accept) rather than one local object construction — same net
-  // visible result (a referral that's already "accepted" by its own
-  // creating facility).
-  const canHandleLocally = facilityLevel !== "hc";
-  const toFacilityName = canHandleLocally ? facility : (REFERRAL_ROUTING[facility] ?? DEFAULT_RECEIVING_FACILITY);
-  const facilities = await queryClient.fetchQuery({
-    queryKey: ["facilities"],
-    queryFn: () => fetchFacilities(),
-    staleTime: 120_000,
-  });
-  const toFacility = facilities.find((f) => f.name === toFacilityName);
-  if (!toFacility) {
-    throw new Error(`Unknown receiving facility: ${toFacilityName}`);
-  }
-
-  let referral = await createReferralApi(pregnancyId, toFacility.id, reason, "emergency");
-  if (canHandleLocally) {
-    referral = await acceptReferralApi(referral.id);
-  }
-  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
-  return referral;
-}
-
+// After an AI-confirmed RED, the API opens (or returns) the patient's
+// emergency referral and routes it to the right hospital.
 export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Promise<Referral | null> {
   if (riskLevel !== "red") return null;
-
-  // Single-pregnancy lookup, not fetchAllPregnancies() (every pregnancy in
-  // the system) just to find this one visit's own pregnancy by id.
-  const pregnancy = await fetchPregnancyById(visit.pregnancyId);
-  if (!pregnancy) return null;
-
-  const reason =
-    visit.emergencySummary ?? "AI-confirmed critical case following laboratory review";
-  return getOrCreateEmergencyReferral(pregnancy.patientId, visit.pregnancyId, reason);
+  const referral = await escalateVisitApi(visit.id);
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
+  return referral;
 }
 
 export async function acceptReferral(referralId: string): Promise<Referral> {
@@ -741,27 +681,15 @@ export async function closeReferral(
   return closed;
 }
 
+// The API uses the patient's open pregnancy and keeps one active emergency
+// case per patient.
 export async function createReferral(data: {
   patientId: string;
   receivingFacilityId: string;
   reason: string;
   urgency: "routine" | "urgent" | "emergency";
 }): Promise<Referral> {
-  if (data.urgency === "emergency") {
-    // A patient can only have one active red case at a time.
-    const existing = (await fetchReferrals()).find(
-      (r) =>
-        r.patientId === data.patientId &&
-        r.urgency === "emergency" &&
-        (r.status === "pending" || r.status === "accepted"),
-    );
-    if (existing) return existing;
-  }
-  const openPregnancy = (await fetchPregnanciesForPatient(data.patientId)).find((p) => p.status === "open");
-  if (!openPregnancy) {
-    throw new Error("Cannot create a referral: patient has no open pregnancy");
-  }
-  const referral = await createReferralApi(openPregnancy.id, data.receivingFacilityId, data.reason, data.urgency);
+  const referral = await createReferralApi(data.patientId, data.receivingFacilityId, data.reason, data.urgency);
   await queryClient.invalidateQueries({ queryKey: ["referrals"] });
   return referral;
 }
@@ -980,6 +908,9 @@ export async function registerPatient(
   return patient;
 }
 
+// One API call: the server saves the visit, classifies it, finalizes it (or
+// sends the patient to the lab), and opens an emergency referral for an
+// emergency or RED visit.
 export async function recordVisit(data: {
   pregnancyId: string;
   type: VisitType;
@@ -994,17 +925,8 @@ export async function recordVisit(data: {
   emergencySummary?: string;
   treatment?: string;
   followUpPlan?: string;
-  // createEmergencyVisit already calls getOrCreateEmergencyReferral itself
-  // right after this — set true there so this function's own auto-escalate
-  // branch (below) doesn't redundantly repeat the same round trip.
-  skipEmergencyEscalation?: boolean;
 }): Promise<Visit> {
-  // Local classification, unchanged — used below to decide whether to
-  // attempt the (see KNOWN GAP comment below) referral escalation, and by
-  // the lab-push block's labStatus check.
-  const riskLevel = data.type === "emergency" ? "red" : classifyRiskLevel(data.symptomIds);
-
-  let visit = await createVisitApi(data.pregnancyId, {
+  const visit = await createVisitApi(data.pregnancyId, {
     type: data.type,
     ancNumber: data.ancNumber,
     scheduledWeek: data.scheduledWeek,
@@ -1012,45 +934,18 @@ export async function recordVisit(data: {
     notes: data.notes,
     labs: data.labs,
     emergencySummary: data.emergencySummary,
+    treatment: data.treatment,
+    followUpPlan: data.followUpPlan,
+    labRequest:
+      data.labStatus === "pending"
+        ? { requestedTests: data.requestedTests, notes: data.labNotes }
+        : undefined,
   });
-
-  // The backend only accepts treatment/followUpPlan via /finalize, not on
-  // create — the Assessment Wizard's non-lab path (labStatus undefined)
-  // collects them at create time, so finalize immediately to preserve that
-  // one-call UX. The lab-pending path never has them yet (finalize happens
-  // later, out of this slice's scope — see finalize-assessment-blocker.tsx).
-  if (data.labStatus !== "pending" && (data.treatment || data.followUpPlan)) {
-    visit = await finalizeVisitApi(visit.id, data.treatment ?? "", data.followUpPlan ?? "");
-  }
-
   // Broad ["visits"] prefix — also covers the single-request-per-patient
   // cache (["visits","patient",id]) used by useAllVisitsForPatient.
   await queryClient.invalidateQueries({ queryKey: ["visits"] });
-
-  if (data.labStatus === "pending") {
-    await createLabRequestApi(
-      visit.id,
-      data.type === "emergency" ? "Emergency" : "Normal",
-      data.labNotes || data.notes,
-      data.requestedTests,
-    );
-  }
-
-  if (riskLevel === "red" && !data.skipEmergencyEscalation) {
-    // Single-pregnancy lookup, not fetchAllPregnancies() (every pregnancy
-    // in the system) just to find this one visit's own pregnancy by id —
-    // this is the hot path for flagging an emergency, so every extra
-    // round trip here is directly felt.
-    const pregnancy = await fetchPregnancyById(data.pregnancyId);
-    if (pregnancy) {
-      const reason =
-        data.type === "emergency"
-          ? (data.emergencySummary ?? data.notes)
-          : `Classified RED during ${data.type} visit`;
-      await getOrCreateEmergencyReferral(pregnancy.patientId, data.pregnancyId, reason);
-    }
-  }
-
+  await queryClient.invalidateQueries({ queryKey: ["referrals"] });
+  await queryClient.invalidateQueries({ queryKey: ["lab-requests"] });
   return visit;
 }
 
