@@ -53,3 +53,20 @@ export async function apiFetch<T>(
   }
   return json.data;
 }
+
+// The API caps list pages at 100 rows, so "fetch all" walks the pages until
+// `totalPages` is reached. `path` may already carry a query string.
+const MAX_PAGE_SIZE = 100;
+
+export async function apiFetchAllPages<T>(path: string, token?: string): Promise<T[]> {
+  const sep = path.includes("?") ? "&" : "?";
+  const rows: T[] = [];
+  for (let page = 1; ; page++) {
+    const result = await apiFetch<{ data: T[]; meta: { totalPages: number } }>(
+      `${path}${sep}limit=${MAX_PAGE_SIZE}&page=${page}`,
+      { token },
+    );
+    rows.push(...result.data);
+    if (page >= result.meta.totalPages || result.data.length === 0) return rows;
+  }
+}

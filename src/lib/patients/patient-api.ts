@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchAllPages } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { Patient, RiskLevel } from "./types";
 
@@ -108,18 +108,17 @@ function toBackendCreatePayload(data: Omit<Patient, "id" | "registeredAt" | "reg
   };
 }
 
-// Large page size — no pagination UI exists yet, this approximates "fetch all"
-// for the current small seed dataset. Revisit if the patient count grows past
-// this limit.
+// No pagination UI exists yet — fetch every page.
 export async function fetchPatients(opts?: { assignedChwId?: string }): Promise<Patient[]> {
   const token = getStoredAccessToken();
-  const params = new URLSearchParams({ limit: "200" });
+  const params = new URLSearchParams();
   if (opts?.assignedChwId) params.set("assignedChwId", opts.assignedChwId);
-  const result = await apiFetch<{ data: BackendPatient[]; meta: unknown }>(
-    `/patients?${params.toString()}`,
-    { token: token ?? undefined },
+  const query = params.toString();
+  const patients = await apiFetchAllPages<BackendPatient>(
+    query ? `/patients?${query}` : "/patients",
+    token ?? undefined,
   );
-  return result.data.map(toFrontendPatient);
+  return patients.map(toFrontendPatient);
 }
 
 export async function fetchPatient(id: string): Promise<Patient> {

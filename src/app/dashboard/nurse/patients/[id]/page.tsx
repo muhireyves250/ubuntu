@@ -97,6 +97,16 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
   const lock = usePatientLock(patientId);
   const { user } = useAuth();
   const isReadOnlyAdmin = user?.role === "hospital_admin";
+  // Once another facility has accepted the emergency, the referring facility
+  // can follow the case but not change it until it's closed (the API
+  // enforces the same rule).
+  const isReferrerViewOnly =
+    activeReferral?.status === "accepted" &&
+    activeReferral.acceptedByFacility !== user?.facility;
+  const isReadOnly = isReadOnlyAdmin || isReferrerViewOnly;
+  const readOnlyReason = isReadOnlyAdmin
+    ? "Hospital Administrators can review clinical records but cannot change them."
+    : `This emergency case is managed by ${activeReferral?.acceptedByFacility}. You can follow it here but not change the record until the case is closed.`;
   const isManagingReferral =
     !!activeReferral &&
     (activeReferral.referredByFacility === user?.facility ||
@@ -208,7 +218,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
 
         <div className="flex flex-wrap items-center gap-2.5">
           <RiskBadge level={currentRisk} />
-          {!isReadOnlyAdmin && (
+          {!isReadOnly && (
             <button
               type="button"
               onClick={() => setActiveTab("Signs & Symptoms")}
@@ -219,7 +229,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               Emergency Triage
             </button>
           )}
-          {!isReadOnlyAdmin && (
+          {!isReadOnly && (
             <button
               type="button"
               onClick={() => setShowEditModal(true)}
@@ -229,7 +239,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
               Update details
             </button>
           )}
-          {!isReadOnlyAdmin && (
+          {!isReadOnly && (
             <div className="relative">
               <button
                 type="button"
@@ -266,13 +276,13 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
 
       {isWaitingForLabs ? (
         <AwaitingLabsBlocker patient={patient} visit={latestVisit!} />
-      ) : needsFinalization ? (
+      ) : needsFinalization && !isReadOnly ? (
         <FinalizeAssessmentBlocker patient={patient} visit={latestVisit!} onFinalized={finalizeAssessment} activeReferral={activeReferral} />
       ) : (
         <>
           {activeReferral && <ActiveReferralBanner patient={patient} referral={activeReferral} />}
           <div className="scrollbar-hidden flex max-w-full gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
-            {TABS.filter((tab) => tab !== "Signs & Symptoms" && !(isReadOnlyAdmin && tab === "New Assessment")).map((tab) => (
+            {TABS.filter((tab) => tab !== "Signs & Symptoms" && !(isReadOnly && tab === "New Assessment")).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -299,15 +309,12 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "Signs & Symptoms" && (
           <>
-            {isReadOnlyAdmin ? (
+            {isReadOnly ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
                 <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                   View-only access
                 </p>
-                <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
-                  Hospital Administrators can review clinical records but cannot flag emergencies
-                  or perform assessments.
-                </p>
+                <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">{readOnlyReason}</p>
               </div>
             ) : activeReferral ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center dark:border-red-900/50 dark:bg-red-950/30">
@@ -358,15 +365,12 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "New Assessment" && (
           <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
-            {isReadOnlyAdmin ? (
+            {isReadOnly ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
                 <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                   View-only access
                 </p>
-                <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
-                  Hospital Administrators can review clinical records but cannot start a new
-                  visit.
-                </p>
+                <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">{readOnlyReason}</p>
               </div>
             ) : activeReferral && !isManagingReferral ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center dark:border-red-900/50 dark:bg-red-950/30">
@@ -449,7 +453,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             <PregnancyTab
               patientId={patient.id}
               onGoToVisitHistory={() => setActiveTab("Visit")}
-              readOnly={isReadOnlyAdmin}
+              readOnly={isReadOnly}
             />
           </div>
         )}
@@ -483,7 +487,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         {activeTab === "Vaccination" && (
           <>
             {openPregnancy ? (
-              <VaccinationCard pregnancyId={openPregnancy.id} readOnly={isReadOnlyAdmin} />
+              <VaccinationCard pregnancyId={openPregnancy.id} readOnly={isReadOnly} />
             ) : (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 This patient has no active pregnancy on record.
@@ -498,7 +502,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                 pregnancy={openPregnancy}
                 visits={pregnancyVisits}
                 onLogScheduledVisit={
-                  (activeReferral && !isManagingReferral) || isReadOnlyAdmin
+                  (activeReferral && !isManagingReferral) || isReadOnly
                     ? undefined
                     : (week) => {
                         setAssessmentContext({ type: "scheduled", scheduledWeek: week });
@@ -506,7 +510,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
                       }
                 }
                 onLogUnscheduledVisit={
-                  (activeReferral && !isManagingReferral) || isReadOnlyAdmin
+                  (activeReferral && !isManagingReferral) || isReadOnly
                     ? undefined
                     : () => {
                         setAssessmentContext({ type: "unscheduled" });
@@ -523,7 +527,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
         )}
         {activeTab === "CHW Reports" && (
           <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
-            <ChwReportsTab communityVisits={allCommunityVisits} canReview={user?.role === "nurse"} />
+            <ChwReportsTab communityVisits={allCommunityVisits} canReview={user?.role === "nurse" && !isReadOnly} />
           </div>
         )}
         {activeTab === "AI Prediction" && (

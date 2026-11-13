@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { registerStaffAccount } from "@/lib/auth/managed-staff-storage";
-import { isUsernameTaken } from "@/lib/auth/user-directory";
-import type { Role } from "@/lib/auth/types";
-
-type AssignableRole = Extract<Role, "nurse" | "lab_nurse" | "gynecologist" | "pharmacist">;
+import { registerStaff, type AssignableRole } from "@/lib/auth/staff-api";
 
 const ASSIGNABLE_ROLES: { value: AssignableRole; label: string }[] = [
   { value: "nurse", label: "Nurse (ANC)" },
@@ -24,10 +20,11 @@ export function RegisterStaffForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!user) return null;
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSuccess(null);
@@ -40,28 +37,27 @@ export function RegisterStaffForm() {
       setError("All fields are required.");
       return;
     }
-    if (isUsernameTaken(trimmedUsername)) {
-      setError(`Username "${trimmedUsername}" is already in use.`);
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
 
-    registerStaffAccount({
-      username: trimmedUsername,
-      name: trimmedName,
-      title: trimmedTitle,
-      facility: user!.facility,
-      role,
-      facilityLevel: user!.facilityLevel,
-      password,
-      createdByAdminId: user!.id,
-    });
+    setIsSubmitting(true);
+    try {
+      await registerStaff({ username: trimmedUsername, name: trimmedName, title: trimmedTitle, role, password });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create the account.");
+      return;
+    } finally {
+      setIsSubmitting(false);
+    }
 
     setUsername("");
     setName("");
     setTitle("");
     setPassword("");
     setRole("nurse");
-    setSuccess(`Account created for ${trimmedName}.`);
+    setSuccess(`Account created for ${trimmedName}. They can now log in as ${trimmedUsername}.`);
   }
 
   return (
@@ -135,9 +131,10 @@ export function RegisterStaffForm() {
       )}
       <button
         type="submit"
-        className="self-start rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-600"
+        disabled={isSubmitting}
+        className="self-start rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-600 disabled:opacity-60"
       >
-        Register Staff
+        {isSubmitting ? "Registering…" : "Register Staff"}
       </button>
     </form>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
@@ -58,12 +58,7 @@ import {
   type CommentReply,
 } from "./patient-comment-api";
 import { type AcknowledgedAlert } from "./alerts-storage";
-import {
-  subscribeToReadNotifications,
-  getReadNotificationsSnapshot,
-  getServerReadNotificationsSnapshot,
-  markNotificationRead as markNotificationReadStorage,
-} from "./read-notifications-storage";
+import { useReadNotificationIdsQuery, markNotificationReadApi } from "./read-notifications-api";
 import { fetchAcknowledgments, acknowledgePatientApi } from "./patient-acknowledgment-api";
 import { classifyRiskLevel } from "./symptom-checklist";
 import { matchScheduledVisit, scheduledVisitsInRange, chwVisitSchedule } from "./pregnancy";
@@ -2081,18 +2076,13 @@ export function useNotificationAlerts(role: string): NotificationAlert[] {
   }, [visits, patients, pregnancies, referrals, recommendations, facilities, labRequests, followUpAssignments, communityVisits, myCommunityVisits, commentReplies, role, currentUser.facility, currentUser.facilityLevel, currentUser.name, currentUser.id]);
 }
 
-// Read state is per-browser (localStorage), not per-server-record — these
-// alert ids are synthesized client-side from live data, not stored rows, so
-// there's nothing on the backend to mark read against.
+// Alert ids are synthesized client-side from live data; the API stores which
+// of those ids each user has read, so read state follows them across devices.
 export function useReadNotificationIds(): Set<string> {
-  return useSyncExternalStore(
-    subscribeToReadNotifications,
-    getReadNotificationsSnapshot,
-    getServerReadNotificationsSnapshot,
-  );
+  return useReadNotificationIdsQuery();
 }
 
 export function markNotificationRead(id: string): void {
-  markNotificationReadStorage(id);
+  void markNotificationReadApi(id);
 }
 

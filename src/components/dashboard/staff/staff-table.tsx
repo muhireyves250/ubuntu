@@ -2,30 +2,27 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useFacilityStaff, type DirectoryUser } from "@/lib/auth/user-directory";
-import { setManagedStaffStatus, resetManagedStaffPassword } from "@/lib/auth/managed-staff-storage";
-import { setStaffOverrideStatus, setStaffOverridePassword } from "@/lib/auth/staff-overrides-storage";
+import { useFacilityStaff, setStaffStatus, resetStaffPassword, type StaffMember } from "@/lib/auth/staff-api";
 import { ROLE_LABEL } from "@/lib/auth/role-routes";
 
-function setStaffStatus(staffUser: DirectoryUser, status: "active" | "suspended") {
-  if (staffUser.source === "managed") {
-    setManagedStaffStatus(staffUser.id, status);
-  } else {
-    setStaffOverrideStatus(staffUser.id, status);
-  }
-}
-
-function resetStaffPassword(staffUser: DirectoryUser, newPassword: string) {
-  if (staffUser.source === "managed") {
-    resetManagedStaffPassword(staffUser.id, newPassword);
-  } else {
-    setStaffOverridePassword(staffUser.id, newPassword);
-  }
-}
-
-function StaffRow({ staffUser }: { staffUser: DirectoryUser }) {
+function StaffRow({ staffUser }: { staffUser: StaffMember }) {
   const [resetting, setResetting] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function run(action: () => Promise<void>, done?: string) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await action();
+      if (done) setMessage(done);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <tr className="border-t border-zinc-200 dark:border-zinc-800">
@@ -49,8 +46,9 @@ function StaffRow({ staffUser }: { staffUser: DirectoryUser }) {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setStaffStatus(staffUser, staffUser.status === "active" ? "suspended" : "active")}
-            className="rounded-md border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            disabled={busy}
+            onClick={() => run(() => setStaffStatus(staffUser.id, staffUser.status === "active" ? "suspended" : "active"))}
+            className="rounded-md disabled:opacity-50 border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             {staffUser.status === "active" ? "Suspend" : "Activate"}
           </button>
@@ -65,13 +63,19 @@ function StaffRow({ staffUser }: { staffUser: DirectoryUser }) {
               />
               <button
                 type="button"
+                disabled={busy}
                 onClick={() => {
-                  if (!newPassword) return;
-                  resetStaffPassword(staffUser, newPassword);
-                  setNewPassword("");
-                  setResetting(false);
+                  if (newPassword.length < 6) {
+                    setMessage("Password must be at least 6 characters.");
+                    return;
+                  }
+                  void run(async () => {
+                    await resetStaffPassword(staffUser.id, newPassword);
+                    setNewPassword("");
+                    setResetting(false);
+                  }, "Password reset.");
                 }}
-                className="rounded-md bg-teal-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-600"
+                className="rounded-md bg-teal-700 disabled:opacity-50 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-600"
               >
                 Save
               </button>
@@ -96,6 +100,7 @@ function StaffRow({ staffUser }: { staffUser: DirectoryUser }) {
             </button>
           )}
         </div>
+        {message && <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{message}</p>}
       </td>
     </tr>
   );
@@ -103,7 +108,7 @@ function StaffRow({ staffUser }: { staffUser: DirectoryUser }) {
 
 export function StaffTable() {
   const { user } = useAuth();
-  const staff = useFacilityStaff(user?.facility ?? "");
+  const staff = useFacilityStaff();
 
   if (!user) return null;
 

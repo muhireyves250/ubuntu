@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchAllPages } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { Visit, VisitLabs, VisitType, Pregnancy, Referral } from "./types";
 import { toFrontendPregnancy, type BackendPregnancy } from "./pregnancy-api";
@@ -184,15 +184,11 @@ export async function fetchVisitsForPatient(patientId: string): Promise<Visit[]>
   return visits.map(toFrontendVisit);
 }
 
-// Large page size — no pagination UI exists yet, this approximates "fetch
-// all" for the current small seed dataset, matching fetchPatients()'s exact
-// convention. Revisit if the visit count grows past this limit.
+// No pagination UI exists yet — fetch every page, like fetchPatients().
 export async function fetchAllVisits(): Promise<Visit[]> {
   const token = getStoredAccessToken();
-  const result = await apiFetch<{ data: BackendVisit[]; meta: unknown }>("/visits?limit=200", {
-    token: token ?? undefined,
-  });
-  return result.data.map(toFrontendVisit);
+  const visits = await apiFetchAllPages<BackendVisit>("/visits", token ?? undefined);
+  return visits.map(toFrontendVisit);
 }
 
 export async function createVisitApi(
