@@ -2,7 +2,7 @@ import { apiFetch, apiFetchAllPages } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { Patient, RiskLevel } from "./types";
 
-interface BackendPatient {
+export interface BackendPatient {
   id: string;
   nationalId: string;
   firstName: string;
@@ -45,7 +45,7 @@ const RISK_LEVEL_TO_FRONTEND: Record<string, RiskLevel> = {
   RED: "red",
 };
 
-function toFrontendPatient(p: BackendPatient): Patient {
+export function toFrontendPatient(p: BackendPatient): Patient {
   return {
     id: p.id,
     nationalId: p.nationalId,

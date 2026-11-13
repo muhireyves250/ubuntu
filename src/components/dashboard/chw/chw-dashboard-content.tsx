@@ -1,21 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { usePatientsForChw, useFollowUpAssignmentsForChw, usePregnanciesForPatient } from "@/lib/patients/use-patients";
+import { useChwPatientsDue, type ChwPatientDue } from "@/lib/patients/use-patients";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { IconClipboard, IconClock, IconUsers } from "@/components/dashboard/icons";
-import type { Patient } from "@/lib/patients/types";
 
-interface PatientDue {
-  patient: Patient;
-  nextDueDate: string | null;
-  source: "automatic" | "manual" | null;
-  allHomeVisitsDone: boolean;
-}
-
-function PatientRow({ patientDue }: { patientDue: PatientDue }) {
+function PatientRow({ patientDue }: { patientDue: ChwPatientDue }) {
   const router = useRouter();
   const { patient, nextDueDate, source, allHomeVisitsDone } = patientDue;
   return (
@@ -48,47 +39,10 @@ function PatientRow({ patientDue }: { patientDue: PatientDue }) {
   );
 }
 
-function PregnancyAwarePatientList({ patients }: { patients: Patient[] }) {
-  // Each patient's automatic due date depends on their own active pregnancy,
-  // which must be fetched per-patient — this component resolves that per row.
-  return (
-    <div className="flex flex-col gap-2">
-      {patients.map((patient) => (
-        <PatientRowWithSchedule key={patient.id} patient={patient} />
-      ))}
-    </div>
-  );
-}
-
-function PatientRowWithSchedule({ patient }: { patient: Patient }) {
-  const pregnancies = usePregnanciesForPatient(patient.id);
-  const openPregnancy = pregnancies.find((p) => p.status === "open") ?? null;
-  const assignments = useFollowUpAssignmentsForChw();
-
-  const { nextDueDate, source, allHomeVisitsDone } = useMemo(() => {
-    // The API skips home visits already done when picking the next date.
-    const automatic = openPregnancy?.schedule.nextUndoneHomeVisitDate ?? null;
-    const manual = assignments
-      .filter((a) => a.patientId === patient.id && a.status === "pending")
-      .map((a) => a.dueDate)
-      .sort()[0] ?? null;
-    const next = automatic && manual ? (automatic < manual ? automatic : manual) : (automatic ?? manual);
-    const src: "automatic" | "manual" | null = next === automatic ? (automatic ? "automatic" : null) : next ? "manual" : null;
-    const done = !!openPregnancy && !automatic && !manual;
-    return { nextDueDate: next, source: src, allHomeVisitsDone: done };
-  }, [openPregnancy, assignments, patient.id]);
-
-  return <PatientRow patientDue={{ patient, nextDueDate, source, allHomeVisitsDone }} />;
-}
-
 export function ChwDashboardContent() {
   const { user } = useAuth();
-  const patients = usePatientsForChw();
-
-  const sorted = useMemo(
-    () => [...patients].sort((a, b) => a.firstName.localeCompare(b.firstName)),
-    [patients],
-  );
+  // Sorted by first name, each with the next home visit due (from the API).
+  const patients = useChwPatientsDue() ?? [];
 
   if (!user) return null;
 
@@ -106,12 +60,16 @@ export function ChwDashboardContent() {
 
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">My Patients</h3>
-        {sorted.length === 0 ? (
+        {patients.length === 0 ? (
           <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-4 text-center text-sm text-zinc-400 dark:border-zinc-800">
             No patients assigned yet.
           </p>
         ) : (
-          <PregnancyAwarePatientList patients={sorted} />
+          <div className="flex flex-col gap-2">
+            {patients.map((patientDue) => (
+              <PatientRow key={patientDue.patient.id} patientDue={patientDue} />
+            ))}
+          </div>
         )}
       </div>
     </div>

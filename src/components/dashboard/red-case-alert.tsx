@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  usePatients,
-  useVisits,
-  usePregnancies,
-  useReferrals,
-  acceptReferral,
-  useFacilityCapacity,
-} from "@/lib/patients/use-patients";
+import { acceptReferral, useEmergencyQueue } from "@/lib/patients/use-patients";
 import { useAuth } from "@/lib/auth/auth-context";
 import { fullName, formatExactDateTime } from "@/lib/format";
-import type { Patient, Visit } from "@/lib/patients/types";
+import type { Patient } from "@/lib/patients/types";
 import { ConfirmModal } from "./confirm-modal";
 import { PatientEmergencyInfoModal } from "./patient-emergency-info-modal";
 
@@ -144,15 +137,14 @@ function RedCaseCard({ rank, patient, sentAt, waitingMs, reason, referredFrom, g
 export function RedCaseAlertPanel() {
   const router = useRouter();
   const { user } = useAuth();
-  const patients = usePatients();
-  const visits = useVisits();
-  const pregnancies = usePregnancies();
-  const referrals = useReferrals();
+  // The API decides which emergencies this hospital is offered and ranks
+  // them (longest waiting first, by 15-minute window, then later gestation).
+  const pendingCases = useEmergencyQueue();
   const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
   const [viewInfoReferralId, setViewInfoReferralId] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
-  // Ticks every minute so the "Waiting …" times and their order stay current.
+  // Ticks every minute so the "Waiting …" times stay current.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -161,69 +153,14 @@ export function RedCaseAlertPanel() {
   // Lets staff collapse the panel to its header row (title + count) to get
   // at the rest of the page; the alert itself never disappears.
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const capacity = useFacilityCapacity();
-
-  const patientById = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
-  const patientIdByPregnancyId = useMemo(
-    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
-    [pregnancies],
-  );
-
-  const pendingCases = useMemo(() => {
-    if (!user) return [];
-    const results: {
-      referral: (typeof referrals)[number];
-      patient: Patient;
-      latestVisit: Visit | undefined;
-      gaWeeks: number | null;
-    }[] = [];
-
-    for (const referral of referrals) {
-      // Broadcast to every facility capable of handling an obstetric emergency
-      // (not just the one it was originally routed to) — whichever capable
-      // hospital sees it first can accept it. The facility that referred the
-      // case out never sees it as something to accept, even if it's capable.
-      if (
-        referral.status !== "pending" ||
-        referral.urgency !== "emergency" ||
-        user.facilityLevel === "hc" ||
-        referral.referredByFacility === user.facility ||
-        capacity.status === "full"
-      ) {
-        continue;
-      }
-      const patient = patientById.get(referral.patientId);
-      if (!patient) continue;
-      const latestVisit = visits
-        .filter((v) => patientIdByPregnancyId.get(v.pregnancyId) === referral.patientId)
-        .sort((a, b) => b.date.localeCompare(a.date))[0];
-      const openPregnancy = pregnancies.find(
-        (p) => p.patientId === referral.patientId && p.status === "open",
-      );
-      const gaWeeks = openPregnancy?.schedule.gestationalAge?.weeks ?? null;
-      results.push({ referral, patient, latestVisit, gaWeeks });
-    }
-
-    return results;
-  }, [referrals, patientById, visits, pregnancies, patientIdByPregnancyId, user, capacity]);
 
   if (user?.role === "hospital_admin" || user?.role === "chw") return null;
   if (pendingCases.length === 0) return null;
 
-  // Priority: longest waiting first. Cases sent in the same 15-minute clock
-  // window (fixed windows, so the order never shuffles as time passes) are
-  // ordered by gestational age (later pregnancy first), then by time sent.
-  const rankedCases = pendingCases
-    .map((c) => {
-      const sentMs = new Date(c.referral.createdAt).getTime();
-      return { ...c, sentWindow: Math.floor(sentMs / 900_000), waitingMs: now - sentMs };
-    })
-    .sort(
-      (a, b) =>
-        a.sentWindow - b.sentWindow ||
-        (b.gaWeeks ?? -1) - (a.gaWeeks ?? -1) ||
-        a.referral.createdAt.localeCompare(b.referral.createdAt),
-    );
+  const rankedCases = pendingCases.map((c) => ({
+    ...c,
+    waitingMs: now - new Date(c.referral.createdAt).getTime(),
+  }));
 
   const pendingAccept = pendingCases.find(({ referral }) => referral.id === pendingAcceptId);
   const viewInfo = pendingCases.find(({ referral }) => referral.id === viewInfoReferralId);

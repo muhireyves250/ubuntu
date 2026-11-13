@@ -7,7 +7,7 @@ import {
   useRiskSummary,
   useFacilityCapacity,
   setFacilityMaxCapacity,
-  useReferrals,
+  useReferralCounts,
   useIsOverviewDataLoading,
   type RiskSummaryScope,
 } from "@/lib/patients/use-patients";
@@ -35,25 +35,15 @@ export function DashboardOverview() {
   const selectedDays = RANGE_OPTIONS.find((r) => r.value === range)?.days;
   const summary = useRiskSummary(selectedDays, riskScope);
   const capacity = useFacilityCapacity();
-  const referrals = useReferrals();
+  const referralCounts = useReferralCounts();
   const [capacityDraft, setCapacityDraft] = useState<string>("");
   const [isEditingCapacity, setIsEditingCapacity] = useState(false);
-  const isLoading = useIsOverviewDataLoading();
+  const isLoading = useIsOverviewDataLoading(selectedDays, riskScope);
   if (!user) return null;
   if (isLoading) return <OverviewSkeleton />;
 
   const hasCapacityConfig = capacity.configured;
   const isHospitalAdmin = user.role === "hospital_admin";
-
-  const referralCounts = {
-    pending: referrals.filter(
-      (r) => r.status === "pending" && (r.referredByFacility === user.facility || r.receivingFacility === user.facility),
-    ).length,
-    accepted: referrals.filter((r) => r.status === "accepted" && r.acceptedByFacility === user.facility).length,
-    closed: referrals.filter(
-      (r) => r.status === "closed" && (r.referredByFacility === user.facility || r.acceptedByFacility === user.facility),
-    ).length,
-  };
 
   const copy = ROLE_OVERVIEW_COPY[user.role];
 

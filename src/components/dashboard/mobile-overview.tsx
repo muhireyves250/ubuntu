@@ -8,8 +8,6 @@ import { getInitials, fullName } from "@/lib/format";
 import {
   useActiveReferrals,
   useFollowUpPatients,
-  usePatients,
-  usePregnancies,
   useTodaysVisits,
   type RiskSummaryScope,
 } from "@/lib/patients/use-patients";
@@ -71,8 +69,6 @@ export function MobileOverview({
   const followUps = useFollowUpPatients();
   const todaysVisits = useTodaysVisits("today");
   const activeReferrals = useActiveReferrals();
-  const patients = usePatients();
-  const pregnancies = usePregnancies();
   const [tab, setTab] = useState<"visits" | "referrals">("visits");
   const seenCount = todaysVisits.filter((v) => v.kind === "logged").length;
 
@@ -244,12 +240,8 @@ export function MobileOverview({
           ) : (
             <ul className={LIST_CLASS}>
               {activeReferrals.map((referral) => {
-                const patient = patients.find((p) => p.id === referral.patientId);
+                const { patient, gestationalAgeWeeks: gaWeeks } = referral;
                 if (!patient) return null;
-                const openPregnancy = pregnancies.find(
-                  (p) => p.patientId === patient.id && p.status === "open",
-                );
-                const gaWeeks = openPregnancy?.schedule.gestationalAge?.weeks ?? null;
                 const urgency = URGENCY_PILL[referral.urgency];
                 return (
                   <li key={referral.id}>

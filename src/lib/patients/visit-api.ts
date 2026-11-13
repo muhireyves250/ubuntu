@@ -15,7 +15,7 @@ interface BackendVitalSigns {
   edema: string | null;
 }
 
-interface BackendVisit {
+export interface BackendVisit {
   id: string;
   pregnancyId: string;
   visitDate: string;

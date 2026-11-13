@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
@@ -40,7 +40,7 @@ import {
   updateFacilityCapacityApi,
   fetchMyFacilityCapacity,
 } from "./referral-api";
-import { createChwAssignmentApi, fetchAssignmentsForPatient, fetchMyAssignments } from "./chw-assignment-api";
+import { createChwAssignmentApi, fetchAssignmentsForPatient } from "./chw-assignment-api";
 import {
   fetchRecommendations,
   createRecommendationApi,
@@ -58,7 +58,25 @@ import { type AcknowledgedAlert } from "./alerts-storage";
 import { useReadNotificationIdsQuery, markNotificationReadApi } from "./read-notifications-api";
 import { useNotificationFeed } from "./notification-feed-api";
 import { fetchAcknowledgments, acknowledgePatientApi } from "./patient-acknowledgment-api";
-import { matchScheduledVisit, scheduledVisitsInRange } from "./pregnancy";
+import {
+  WORKLISTS_KEY,
+  fetchFollowUps,
+  fetchAncVisits,
+  fetchRiskSummary,
+  fetchActiveReferrals,
+  fetchReferralCounts,
+  fetchChwPatients,
+  fetchEmergencyQueue,
+  type EmergencyCase,
+  type FollowUpPatient,
+  type TodaysVisit,
+  type VisitsWorklistPeriod,
+  type RiskSummary,
+  type RiskSummaryScope,
+  type ActiveReferral,
+  type ReferralCounts,
+  type ChwPatientDue,
+} from "./worklists-api";
 import { getStoredAuthenticatedUser } from "../auth/auth-context";
 import type {
   Patient,
@@ -96,16 +114,6 @@ export function usePatients(): Patient[] {
   // from many widgets (dashboard cards, topbar search, patient lists) that
   // all mount/remount on ordinary navigation.
   const { data } = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients(), staleTime: 120_000 });
-  return data ?? [];
-}
-
-export function usePatientsForChw(): Patient[] {
-  const currentUser = getCurrentUserSnapshot();
-  const { data } = useQuery({
-    queryKey: ["patients", "assigned-chw", currentUser.id],
-    queryFn: () => fetchPatients({ assignedChwId: currentUser.id }),
-    enabled: currentUser.role === "chw" && !!currentUser.id,
-  });
   return data ?? [];
 }
 
@@ -151,25 +159,14 @@ export function usePregnancies(): Pregnancy[] {
   return data ?? [];
 }
 
-// The dashboard Overview page (stat cards, Risk Distribution, ANC Visits,
-// Active Referrals, Following Module) is built entirely from these four
-// collections — re-querying the same keys here is cache-shared with
-// usePatients/useVisits/usePregnancies/useReferrals (no extra network
-// request), just to read their initial-load state for the skeleton gate.
-export function useIsOverviewDataLoading(): boolean {
-  const patientsQ = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients(), staleTime: 120_000 });
-  const visitsQ = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits, staleTime: 60_000 });
-  const pregnanciesQ = useQuery({
-    queryKey: ["pregnancies", "all"],
-    queryFn: fetchAllPregnancies,
-    staleTime: 120_000,
-  });
-  const referralsQ = useQuery({ queryKey: ["referrals"], queryFn: fetchReferrals });
-  return patientsQ.isLoading || visitsQ.isLoading || pregnanciesQ.isLoading || referralsQ.isLoading;
+// The Overview skeleton shows until the API's summary for the chosen window
+// first arrives (same query as useRiskSummary, so no extra request).
+export function useIsOverviewDataLoading(days?: number, scope: RiskSummaryScope = "all"): boolean {
+  return useQuery(riskSummaryQuery(days, scope)).isLoading;
 }
 
-// Same cache-sharing trick as useIsOverviewDataLoading, scoped to the
-// Patient Registry list page's own data (no referrals needed there).
+// Initial-load state of the Patient Registry list page's data; re-querying
+// the same keys shares the cache (no extra request).
 export function useIsPatientsListLoading(): boolean {
   const patientsQ = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients(), staleTime: 120_000 });
   const visitsQ = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits, staleTime: 60_000 });
@@ -481,23 +478,41 @@ export function useMyCommunityVisits(): CommunityVisit[] {
   return data ?? [];
 }
 
-// Scoped to the current facility — this drives a dashboard widget, not the
-// lock/gate logic, so it should stay a "my active cases" view rather than
-// showing every facility's referrals.
-export function useActiveReferrals(): Referral[] {
-  const referrals = useReferrals();
-  const currentUser = getCurrentUserSnapshot();
-  return useMemo(
-    () =>
-      referrals.filter(
-        (r) =>
-          r.status === "accepted" &&
-          (r.referredByFacility === currentUser.facility ||
-            r.receivingFacility === currentUser.facility ||
-            r.acceptedByFacility === currentUser.facility),
-      ),
-    [referrals, currentUser.facility],
-  );
+// Accepted referrals this facility sent or is handling, each with its
+// patient and current gestation (GET /worklists/active-referrals).
+export function useActiveReferrals(): ActiveReferral[] {
+  const { data } = useQuery({ queryKey: [WORKLISTS_KEY, "active-referrals"], queryFn: fetchActiveReferrals });
+  return data ?? [];
+}
+
+export function useReferralCounts(): ReferralCounts {
+  const { data } = useQuery({ queryKey: [WORKLISTS_KEY, "referral-counts"], queryFn: fetchReferralCounts });
+  return data ?? { pending: 0, accepted: 0, closed: 0 };
+}
+
+// Pending emergency referrals this hospital can accept, most urgent first
+// (GET /worklists/emergency-queue). Only clinical staff are offered them.
+const EMERGENCY_QUEUE_ROLES = ["nurse", "gynecologist", "lab_nurse"];
+
+export function useEmergencyQueue(): EmergencyCase[] {
+  const { role } = getCurrentUserSnapshot();
+  const { data } = useQuery({
+    queryKey: [WORKLISTS_KEY, "emergency-queue"],
+    queryFn: fetchEmergencyQueue,
+    enabled: EMERGENCY_QUEUE_ROLES.includes(role),
+  });
+  return data ?? [];
+}
+
+// A CHW's patients with the next home visit due (GET /worklists/chw-patients).
+export function useChwPatientsDue(): ChwPatientDue[] | undefined {
+  const { role } = getCurrentUserSnapshot();
+  const { data } = useQuery({
+    queryKey: [WORKLISTS_KEY, "chw-patients"],
+    queryFn: fetchChwPatients,
+    enabled: role === "chw",
+  });
+  return data;
 }
 
 export function useRecommendationsForPatient(patientId: string): Recommendation[] {
@@ -569,16 +584,6 @@ export function useRepliesToMe(): CommentReply[] {
     queryKey: ["comments", "replies-to-me"],
     queryFn: fetchRepliesToMe,
     staleTime: 60_000,
-  });
-  return data ?? [];
-}
-
-export function useFollowUpAssignmentsForChw(): FollowUpAssignment[] {
-  const { role } = getCurrentUserSnapshot();
-  const { data } = useQuery({
-    queryKey: ["chw-assignments", "mine"],
-    queryFn: fetchMyAssignments,
-    enabled: role === "chw",
   });
   return data ?? [];
 }
@@ -694,210 +699,53 @@ export async function createReferral(data: {
   return referral;
 }
 
-export interface FollowUpPatient {
-  patient: Patient;
-  latestRiskLevel: RiskLevel;
-  reason: "high-risk" | "overdue";
-}
+export type {
+  FollowUpPatient,
+  TodaysVisit,
+  VisitsWorklistPeriod,
+  RiskSummary,
+  RiskSummaryScope,
+  ActiveReferral,
+  ReferralCounts,
+  ChwPatientDue,
+  EmergencyCase,
+};
 
-function latestVisitFor(patientId: string, pregnancies: Pregnancy[], visits: Visit[]): Visit | undefined {
-  const pregnancyIds = new Set(
-    pregnancies.filter((p) => p.patientId === patientId).map((p) => p.id),
-  );
-  return visits
-    .filter((v) => pregnancyIds.has(v.pregnancyId))
-    .sort((a, b) => {
-      const dateCompare = b.date.localeCompare(a.date);
-      if (dateCompare !== 0) return dateCompare;
-      return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
-    })[0];
-}
-
+// Yellow/orange patients and those not seen here for over 14 days
+// (GET /worklists/follow-ups).
 export function useFollowUpPatients(): FollowUpPatient[] {
-  const patients = usePatients();
-  const visits = useVisits();
-  const pregnancies = usePregnancies();
-  const currentUser = getCurrentUserSnapshot();
-
-  return useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 14);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-
-    // usePatients() is the shared, cross-facility registry — this widget is
-    // a facility-specific worklist, so it only considers patients
-    // registered at the viewer's own facility.
-    const scopedPatients = patients.filter((p) => p.registrationFacility === currentUser.facility);
-
-    const results: FollowUpPatient[] = [];
-
-    for (const patient of scopedPatients) {
-      const latestVisit = latestVisitFor(patient.id, pregnancies, visits);
-      const latestRiskLevel = patient.currentRisk;
-
-      if (latestRiskLevel === "yellow" || latestRiskLevel === "orange") {
-        results.push({ patient, latestRiskLevel, reason: "high-risk" });
-      } else if (latestVisit && latestVisit.date < cutoffStr) {
-        results.push({ patient, latestRiskLevel, reason: "overdue" });
-      }
-    }
-
-    return results;
-  }, [patients, visits, pregnancies, currentUser.facility]);
+  const { data } = useQuery({ queryKey: [WORKLISTS_KEY, "follow-ups"], queryFn: fetchFollowUps });
+  return data ?? [];
 }
 
-export interface TodaysVisit {
-  kind: "logged" | "due";
-  visit?: Visit;
-  patient: Patient | undefined;
-  dueWeek?: number;
-}
-
-export type VisitsWorklistPeriod = "today" | "week" | "month" | "year";
-
-// "today" keeps the tight ±3-day tolerance match (matchScheduledVisit) so
-// existing behavior is untouched; the wider periods switch to an inclusive
-// due-date range (scheduledVisitsInRange), since a whole week/month/year can
-// legitimately contain more than one unlogged checkpoint per pregnancy.
-function periodRange(period: VisitsWorklistPeriod, today: string): { start: string; end: string } {
-  const now = new Date(`${today}T00:00:00`);
-  if (period === "week") {
-    const day = now.getDay();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    return { start: monday.toISOString().slice(0, 10), end: sunday.toISOString().slice(0, 10) };
-  }
-  if (period === "month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
-  }
-  if (period === "year") {
-    return { start: `${now.getFullYear()}-01-01`, end: `${now.getFullYear()}-12-31` };
-  }
-  return { start: today, end: today };
-}
-
-// Shows both visits already logged (in the given period) AND mothers with an
-// open pregnancy whose ANC calendar puts them due in that period but who
-// haven't arrived/been logged yet — so the nurse can see everyone expected,
-// not just who already showed up. Defaults to "today" for the day-worklist
-// use case; "week"/"month"/"year" widen it into a longer-range view.
+// Mothers due an ANC checkpoint in the period who haven't arrived yet, then
+// the visits already logged in it (GET /worklists/anc-visits).
 export function useTodaysVisits(period: VisitsWorklistPeriod = "today"): TodaysVisit[] {
-  const visits = useVisits();
-  const patients = usePatients();
-  const pregnancies = usePregnancies();
-  const currentUser = getCurrentUserSnapshot();
-
-  return useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const { start, end } = periodRange(period, today);
-    // usePatients() is the shared, cross-facility registry — this widget is
-    // a facility-specific worklist, so it only considers patients
-    // registered at the viewer's own facility.
-    const scopedPatients = patients.filter((p) => p.registrationFacility === currentUser.facility);
-    const scopedPatientIds = new Set(scopedPatients.map((p) => p.id));
-    const patientIdByPregnancyId = new Map(pregnancies.map((p) => [p.id, p.patientId]));
-
-    const loggedVisitsInPeriod = visits.filter(
-      (v) => v.date >= start && v.date <= end && scopedPatientIds.has(patientIdByPregnancyId.get(v.pregnancyId) ?? ""),
-    );
-    const logged: TodaysVisit[] = loggedVisitsInPeriod.map((visit) => ({
-      kind: "logged",
-      visit,
-      patient: scopedPatients.find((p) => p.id === patientIdByPregnancyId.get(visit.pregnancyId)),
-    }));
-
-    const loggedPregnancyIdsInPeriod = new Set(loggedVisitsInPeriod.map((v) => v.pregnancyId));
-
-    const due: TodaysVisit[] = pregnancies
-      .filter(
-        (p) =>
-          p.status === "open" && !loggedPregnancyIdsInPeriod.has(p.id) && scopedPatientIds.has(p.patientId),
-      )
-      .flatMap((pregnancy): TodaysVisit[] => {
-        const pregnancyVisits = visits.filter((v) => v.pregnancyId === pregnancy.id);
-        const patient = scopedPatients.find((p) => p.id === pregnancy.patientId);
-        if (period === "today") {
-          const match = matchScheduledVisit(pregnancy, pregnancyVisits, today);
-          return match ? [{ kind: "due", patient, dueWeek: match.dueByWeek }] : [];
-        }
-        return scheduledVisitsInRange(pregnancy, pregnancyVisits, start, end).map((entry) => ({
-          kind: "due" as const,
-          patient,
-          dueWeek: entry.dueByWeek,
-        }));
-      });
-
-    return [...due, ...logged];
-  }, [visits, patients, pregnancies, currentUser.facility, period]);
+  const { data } = useQuery({ queryKey: [WORKLISTS_KEY, "anc-visits", period], queryFn: () => fetchAncVisits(period) });
+  return data ?? [];
 }
 
-export interface RiskSummary {
-  totalPatients: number;
-  totalVisits: number;
-  counts: Record<RiskLevel, number>;
-  highRiskRate: number; // percentage of patients currently red or orange
-}
+const EMPTY_RISK_SUMMARY: RiskSummary = {
+  totalPatients: 0,
+  totalVisits: 0,
+  counts: { green: 0, yellow: 0, orange: 0, red: 0 },
+  highRiskRate: 0,
+};
 
-export type RiskSummaryScope = "all" | "active_pregnancy";
+// Patient/visit counts and the risk-colour breakdown for a window
+// (GET /worklists/risk-summary).
+function riskSummaryQuery(days: number | undefined, scope: RiskSummaryScope) {
+  return {
+    queryKey: [WORKLISTS_KEY, "risk-summary", days ?? "all", scope],
+    queryFn: () => fetchRiskSummary(days, scope),
+    // Keep the last numbers on screen while another window loads.
+    placeholderData: keepPreviousData,
+  };
+}
 
 export function useRiskSummary(days?: number, scope: RiskSummaryScope = "all"): RiskSummary {
-  const patients = usePatients();
-  const visits = useVisits();
-  const pregnancies = usePregnancies();
-  const currentUser = getCurrentUserSnapshot();
-
-  return useMemo(() => {
-    const cutoff =
-      days != null
-        ? new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-        : null;
-
-    const scopedVisits = cutoff ? visits.filter((v) => v.date >= cutoff) : visits;
-    // "Active in this window" means registered in it OR had a visit in it —
-    // a patient registered months ago with a visit yesterday must still
-    // count, not just patients who happen to be newly registered.
-    const patientIdByPregnancyId = new Map(pregnancies.map((p) => [p.id, p.patientId]));
-    const activePatientIdsInWindow = new Set(
-      scopedVisits.map((v) => patientIdByPregnancyId.get(v.pregnancyId)).filter(Boolean),
-    );
-    // usePatients() is the shared, cross-facility registry — this is a
-    // facility-specific dashboard summary, so it only considers patients
-    // registered at the viewer's own facility.
-    const facilityPatients = patients.filter((p) => p.registrationFacility === currentUser.facility);
-    const windowPatients = cutoff
-      ? facilityPatients.filter((p) => p.registeredAt >= cutoff || activePatientIdsInWindow.has(p.id))
-      : facilityPatients;
-    const openPregnancyPatientIds = new Set(
-      pregnancies.filter((p) => p.status === "open").map((p) => p.patientId),
-    );
-    const scopedPatients =
-      scope === "active_pregnancy"
-        ? windowPatients.filter((p) => openPregnancyPatientIds.has(p.id))
-        : windowPatients;
-
-    const counts: Record<RiskLevel, number> = {
-      green: 0,
-      yellow: 0,
-      orange: 0,
-      red: 0,
-    };
-
-    for (const patient of scopedPatients) {
-      counts[patient.currentRisk] += 1;
-    }
-
-    const totalPatients = scopedPatients.length;
-    const highRiskRate =
-      totalPatients === 0
-        ? 0
-        : Math.round(((counts.red + counts.orange) / totalPatients) * 100);
-
-    return { totalPatients, totalVisits: scopedVisits.length, counts, highRiskRate };
-  }, [patients, visits, pregnancies, days, scope, currentUser.facility]);
+  const { data } = useQuery(riskSummaryQuery(days, scope));
+  return data ?? EMPTY_RISK_SUMMARY;
 }
 
 export async function registerPatient(

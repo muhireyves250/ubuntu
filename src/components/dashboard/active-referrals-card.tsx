@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { getInitials, formatExactDateTime, fullName } from "@/lib/format";
-import { useActiveReferrals, usePatients, usePregnancies } from "@/lib/patients/use-patients";
+import { useActiveReferrals } from "@/lib/patients/use-patients";
 import { IconReport } from "./icons";
 import type { Referral } from "@/lib/patients/types";
 
@@ -17,8 +17,6 @@ const URGENCY_ROW_BORDER: Record<Referral["urgency"], string> = {
 
 export function ActiveReferralsCard() {
   const activeReferrals = useActiveReferrals();
-  const patients = usePatients();
-  const pregnancies = usePregnancies();
   const [showAllReferrals, setShowAllReferrals] = useState(false);
 
   const visibleReferrals = showAllReferrals ? activeReferrals : activeReferrals.slice(0, REFERRALS_CAP);
@@ -46,12 +44,8 @@ export function ActiveReferralsCard() {
       ) : (
         <div className="scrollbar-hidden mt-3 flex flex-col gap-2 pr-1 ">
           {visibleReferrals.map((referral) => {
-            const patient = patients.find((p) => p.id === referral.patientId);
+            const { patient, gestationalAgeWeeks: gaWeeks } = referral;
             if (!patient) return null;
-            const openPregnancy = pregnancies.find(
-              (p) => p.patientId === patient.id && p.status === "open",
-            );
-            const gaWeeks = openPregnancy?.schedule.gestationalAge?.weeks ?? null;
             return (
               <Link
                 key={referral.id}
