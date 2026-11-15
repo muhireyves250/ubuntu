@@ -17,7 +17,7 @@ import {
 } from "@/lib/patients/use-patients";
 import { PatientsListSkeleton } from "@/components/patients/patients-list-skeleton";
 import type { RiskLevel } from "@/lib/patients/types";
-import { getInitials, fullName, computeAge } from "@/lib/format";
+import { getInitials, fullName } from "@/lib/format";
 import {
   IconChevronDown,
   IconRefresh,
@@ -318,7 +318,7 @@ function PatientsPageContent() {
                     <RiskBadge level={latestRisk} size="sm" />
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    <span>{computeAge(patient.dateOfBirth)} yrs</span>
+                    <span>{patient.age} yrs</span>
                     {gaWeeks !== null && <span>{gaWeeks} wks GA</span>}
                     {hospital && <span className="truncate">{hospital}</span>}
                     {lastVisitDate && (
@@ -378,7 +378,7 @@ function PatientsPageContent() {
                     {hospital ?? "—"}
                   </td>
                   <td className="border-y border-transparent bg-white px-4 py-3 text-zinc-700 group-hover:border-zinc-400 dark:bg-zinc-900 dark:text-zinc-300 dark:group-hover:border-zinc-600">
-                    {computeAge(patient.dateOfBirth)}
+                    {patient.age}
                   </td>
                   <td className="border-y border-transparent bg-white px-4 py-3 text-zinc-700 group-hover:border-zinc-400 dark:bg-zinc-900 dark:text-zinc-300 dark:group-hover:border-zinc-600">
                     {gaWeeks !== null ? `${gaWeeks} wks` : "—"}

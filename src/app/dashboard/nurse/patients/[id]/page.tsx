@@ -38,7 +38,7 @@ import {
   useVaccinationsForPregnancy,
 } from "@/lib/patients/use-patients";
 import { usePatientAccess } from "@/lib/patients/patient-access-api";
-import { getInitials, fullName, computeAge } from "@/lib/format";
+import { getInitials, fullName } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
 import { IconChevronDown, IconEdit, IconAlert, IconClipboard } from "@/components/dashboard/icons";
@@ -191,7 +191,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             </span>
           </div>
           <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-            {computeAge(patient.dateOfBirth)} years •{" "}
+            {patient.age} years •{" "}
             {openPregnancy
               ? `${openPregnancy.schedule.gestationalAge?.weeks ?? 0} weeks gestation`
               : "no active pregnancy"}

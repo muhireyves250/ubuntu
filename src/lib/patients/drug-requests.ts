@@ -63,6 +63,7 @@ interface BackendDrugRequest {
         lastName: string;
         nationalId: string;
         dateOfBirth: string;
+        age: number;
         phone: string;
       };
     };
@@ -92,10 +93,6 @@ const STATUS_TO_FRONTEND: Record<BackendDrugRequest["status"], DrugRequestStatus
   DISPENSED: "Dispensed",
 };
 
-function computeAge(dateOfBirth: string): number {
-  return Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / 31_557_600_000);
-}
-
 function toFrontendDrugRequest(r: BackendDrugRequest): DrugRequest {
   const { patient } = r.visit.pregnancy;
   return {
@@ -105,7 +102,7 @@ function toFrontendDrugRequest(r: BackendDrugRequest): DrugRequest {
     patientRecordId: patient.id,
     patientName: `${patient.firstName} ${patient.lastName}`,
     patientPhone: patient.phone,
-    patientAge: computeAge(patient.dateOfBirth),
+    patientAge: patient.age,
     gestationalWeek: r.visit.gestationalWeek ?? undefined,
     ancNumber: r.visit.ancNumber ?? undefined,
     visitId: r.visit.id,

@@ -762,7 +762,7 @@ export function useRiskSummary(days?: number, scope: RiskSummaryScope = "all"): 
 }
 
 export async function registerPatient(
-  data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk">,
+  data: Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk" | "age">,
 ): Promise<Patient> {
   const patient = await createPatientApi(data);
   await queryClient.invalidateQueries({ queryKey: ["patients"] });
@@ -859,7 +859,7 @@ export async function createEmergencyVisit(
 
 export async function updatePatient(
   patientId: string,
-  updates: Partial<Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk">>,
+  updates: Partial<Omit<Patient, "id" | "registeredAt" | "registeredBy" | "registrationFacility" | "currentRisk" | "age">>,
 ): Promise<void> {
   await updatePatientApi(patientId, updates);
   await queryClient.invalidateQueries({ queryKey: ["patients"] });

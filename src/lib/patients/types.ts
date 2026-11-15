@@ -39,6 +39,8 @@ export interface Patient {
   riskOverrideLevel?: RiskLevel;
   /** Current risk colour, computed by the API — the one every screen shows. */
   currentRisk: RiskLevel;
+  /** Whole years, from the API. */
+  age: number;
   riskOverrideSourceVisitId?: string;
 }
 

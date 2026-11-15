@@ -53,6 +53,7 @@ interface BackendLabRequest {
         lastName: string;
         nationalId: string;
         dateOfBirth: string;
+        age: number;
         phone: string;
       };
     };
@@ -108,11 +109,6 @@ const TEST_FIELD_MAP: [string, keyof BackendLabResult, string][] = [
   ["Syphilis (VDRL/RPR)", "syphilisStatus", ""],
   ["Malaria (Blood Smear)", "malariaTest", ""],
 ];
-
-function computeAge(dateOfBirth: string): number {
-  const ageMs = Date.now() - new Date(dateOfBirth).getTime();
-  return Math.floor(ageMs / 31_557_600_000);
-}
 
 function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
   const { patient } = r.visit.pregnancy;
@@ -170,7 +166,7 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
     patientId: patient.nationalId || patient.id,
     patientName: `${patient.firstName} ${patient.lastName}`,
     patientPhone: patient.phone,
-    patientAge: computeAge(patient.dateOfBirth),
+    patientAge: patient.age,
     pregnancyNumber: r.visit.pregnancy.pregnancyNumber,
     visitNumber: r.visit.ancNumber ?? 0,
     gestationalAge: r.visit.gestationalWeek ? `${r.visit.gestationalWeek} weeks` : "-",

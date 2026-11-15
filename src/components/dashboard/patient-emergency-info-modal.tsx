@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import type { Patient, Referral, Visit } from "@/lib/patients/types";
-import { fullName, computeAge, formatExactDateTime } from "@/lib/format";
+import { fullName, formatExactDateTime } from "@/lib/format";
 import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { IconClose, IconAlert, IconClock, IconBuilding, IconUsers, IconActivity } from "./icons";
@@ -96,7 +96,7 @@ export function PatientEmergencyInfoModal({
                 {fullName(patient)}
               </h2>
               <p className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-                {computeAge(patient.dateOfBirth)} years
+                {patient.age} years
                 {gaWeeks !== null ? ` · ${gaWeeks}w gestation` : ""}
                 {/* This card only ever shows an open emergency referral, so the
                     patient is red for as long as it's unresolved — regardless
