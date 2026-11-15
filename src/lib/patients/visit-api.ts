@@ -34,37 +34,10 @@ export interface BackendVisit {
   createdAt: string;
   vitalSigns: BackendVitalSigns | null;
   symptoms: { id: string; name: string; createdAt: string }[];
+  /** The symptoms as checklist tags (from the API). */
+  symptomTags: string[];
   riskAssessment: { riskLevel: "GREEN" | "YELLOW" | "ORANGE" | "RED" } | null;
   labRequests: { status: "PENDING" | "IN_PROGRESS" | "COMPLETED" }[];
-}
-
-// Stored symptom → checklist tag, for showing a saved visit's symptoms
-// ticked on the checklist. (Saving goes the other way on the API.)
-const SYMPTOM_TO_CHECKLIST_TAG: Record<string, string> = {
-  CONVULSION: "convulsions",
-  BLEEDING: "bleeding",
-  HEADACHE: "headache",
-  FEVER: "fever",
-  CHEST_PAIN: "chest-pain",
-  ABDOMINAL_PAIN: "abdominal-pain",
-  DIFFICULTY_BREATHING: "difficulty-breathing",
-  REDUCED_FETAL_MOVEMENT: "reduced-fetal-movement",
-  CHRONIC_HTN_UNCONTROLLED: "uncontrolled-htn",
-  CHRONIC_HTN_CONTROLLED: "controlled-htn",
-  PREECLAMPSIA: "preeclampsia",
-  ACTIVE_PPH: "pph",
-  MULTIPLE_GESTATION: "multiple-gestation",
-  PRETERM_LABOR: "preterm-labor",
-  // IN_LABOR intentionally has no reverse mapping — it's shared by two
-  // checklist tags (`prev-cs-2x`, `teenage-labor`) on the way in, so it
-  // can't round-trip to a single tag on the way out. Dropped on read.
-};
-
-
-function backendSymptomsToIds(symptoms: { name: string }[]): string[] {
-  return symptoms
-    .map((s) => SYMPTOM_TO_CHECKLIST_TAG[s.name])
-    .filter((v): v is string => v !== undefined);
 }
 
 const VISIT_TYPE_TO_BACKEND: Record<VisitType, "SCHEDULED" | "UNSCHEDULED" | "EMERGENCY"> = {
@@ -116,7 +89,7 @@ export function toFrontendVisit(v: BackendVisit): Visit {
     scheduledWeek: v.gestationalWeek ?? undefined,
     hospital: v.facility?.name ?? "",
     attendingNurse: v.attendedBy ? `${v.attendedBy.firstName} ${v.attendedBy.lastName}` : "",
-    symptomIds: backendSymptomsToIds(v.symptoms),
+    symptomIds: v.symptomTags,
     notes: v.notes ?? "",
     riskLevel: v.riskAssessment ? RISK_LEVEL_TO_FRONTEND[v.riskAssessment.riskLevel] : "green",
     labs,
