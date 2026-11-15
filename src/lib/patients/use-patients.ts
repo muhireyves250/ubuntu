@@ -67,6 +67,8 @@ import {
   fetchReferralCounts,
   fetchChwPatients,
   fetchEmergencyQueue,
+  fetchPatientRegistry,
+  type PatientRegistryRow,
   type EmergencyCase,
   type FollowUpPatient,
   type TodaysVisit,
@@ -165,17 +167,11 @@ export function useIsOverviewDataLoading(days?: number, scope: RiskSummaryScope 
   return useQuery(riskSummaryQuery(days, scope)).isLoading;
 }
 
-// Initial-load state of the Patient Registry list page's data; re-querying
-// the same keys shares the cache (no extra request).
-export function useIsPatientsListLoading(): boolean {
-  const patientsQ = useQuery({ queryKey: ["patients"], queryFn: () => fetchPatients(), staleTime: 120_000 });
-  const visitsQ = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits, staleTime: 60_000 });
-  const pregnanciesQ = useQuery({
-    queryKey: ["pregnancies", "all"],
-    queryFn: fetchAllPregnancies,
-    staleTime: 120_000,
-  });
-  return patientsQ.isLoading || visitsQ.isLoading || pregnanciesQ.isLoading;
+// The Patient Registry rows: each patient with her last visit at this
+// facility and current gestation, from the API.
+export function usePatientRegistry(): { rows: PatientRegistryRow[]; isLoading: boolean } {
+  const { data, isLoading } = useQuery({ queryKey: [WORKLISTS_KEY, "patient-registry"], queryFn: fetchPatientRegistry });
+  return { rows: data ?? [], isLoading };
 }
 
 export function usePregnanciesForPatient(patientId: string): Pregnancy[] {
@@ -722,6 +718,7 @@ export type {
   ReferralCounts,
   ChwPatientDue,
   EmergencyCase,
+  PatientRegistryRow,
 };
 
 // Yellow/orange patients and those not seen here for over 14 days

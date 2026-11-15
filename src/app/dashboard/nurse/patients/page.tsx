@@ -9,12 +9,7 @@ import { getPreferences } from "@/lib/preferences";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { RegisterPatientModal } from "@/components/patients/register-patient-modal";
 import { useAuth } from "@/lib/auth/auth-context";
-import {
-  usePatients,
-  useVisits,
-  usePregnancies,
-  useIsPatientsListLoading,
-} from "@/lib/patients/use-patients";
+import { usePatientRegistry } from "@/lib/patients/use-patients";
 import { PatientsListSkeleton } from "@/components/patients/patients-list-skeleton";
 import type { RiskLevel } from "@/lib/patients/types";
 import { getInitials, fullName } from "@/lib/format";
@@ -46,10 +41,8 @@ const RISK_RANK: Record<RiskLevel, number> = { red: 0, orange: 1, yellow: 2, gre
 function PatientsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
-  const patients = usePatients();
-  const visits = useVisits();
-  const pregnancies = usePregnancies();
-  const isLoading = useIsPatientsListLoading();
+  // Rows (with last visit and gestation) come ready from the API.
+  const { rows: allRows, isLoading } = usePatientRegistry();
   const searchParams = useSearchParams();
   const [nameFilter, setNameFilter] = useState(() => searchParams.get("q") ?? "");
   const [idFilter, setIdFilter] = useState("");
@@ -66,42 +59,13 @@ function PatientsPageContent() {
     try {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["patients"] }),
-        queryClient.invalidateQueries({ queryKey: ["visits", "all"] }),
-        queryClient.invalidateQueries({ queryKey: ["pregnancies", "all"] }),
-        queryClient.invalidateQueries({ queryKey: ["referrals"] }),
+        queryClient.invalidateQueries({ queryKey: ["worklists", "patient-registry"] }),
       ]);
     } finally {
       setIsRefreshing(false);
     }
   }
 
-  const patientIdByPregnancyId = useMemo(
-    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
-    [pregnancies],
-  );
-
-  const allRows = useMemo(() => {
-    return patients.map((patient) => {
-      const patientVisits = visits
-        .filter((visit) => patientIdByPregnancyId.get(visit.pregnancyId) === patient.id)
-        .sort((a, b) => {
-          const dateCompare = b.date.localeCompare(a.date);
-          if (dateCompare !== 0) return dateCompare;
-          return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
-        });
-      const latestVisit = patientVisits[0];
-      const openPregnancy = pregnancies.find(
-        (p) => p.patientId === patient.id && p.status === "open",
-      );
-      return {
-        patient,
-        latestRisk: patient.currentRisk,
-        lastVisitDate: latestVisit?.date,
-        hospital: latestVisit?.hospital,
-        gaWeeks: openPregnancy?.schedule.gestationalAge?.weeks ?? null,
-      };
-    });
-  }, [patients, visits, pregnancies, patientIdByPregnancyId]);
 
   const rows = useMemo(() => {
     return allRows
@@ -411,7 +375,7 @@ function PatientsPageContent() {
 
         <div className="flex shrink-0 items-center justify-between border-t border-zinc-300 px-4 py-2.5 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
           <span>
-            Showing {rows.length} of {patients.length} patients
+            Showing {rows.length} of {allRows.length} patients
           </span>
           <div className="flex items-center gap-1.5">
             <button

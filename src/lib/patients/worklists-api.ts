@@ -119,3 +119,29 @@ export async function fetchEmergencyQueue(): Promise<EmergencyCase[]> {
     latestVisit: r.latestVisit ? toFrontendVisit(r.latestVisit) : undefined,
   }));
 }
+
+export interface PatientRegistryRow {
+  patient: Patient;
+  latestRisk: RiskLevel;
+  /** Last visit recorded at this facility. */
+  lastVisitDate: string | undefined;
+  hospital: string | undefined;
+  gaWeeks: number | null;
+}
+
+// The patient registry rows (GET /worklists/patient-registry).
+export async function fetchPatientRegistry(): Promise<PatientRegistryRow[]> {
+  const rows = await get<
+    { patient: BackendPatient; lastVisitDate: string | null; hospital: string | null; gestationalAgeWeeks: number | null }[]
+  >("/worklists/patient-registry");
+  return rows.map((r) => {
+    const patient = toFrontendPatient(r.patient);
+    return {
+      patient,
+      latestRisk: patient.currentRisk,
+      lastVisitDate: r.lastVisitDate ?? undefined,
+      hospital: r.hospital ?? undefined,
+      gaWeeks: r.gestationalAgeWeeks,
+    };
+  });
+}
