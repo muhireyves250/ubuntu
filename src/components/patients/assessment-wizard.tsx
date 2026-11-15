@@ -15,6 +15,7 @@ import { FinalizeAssessmentBlocker } from "@/components/patients/finalize-assess
 import { AwaitingLabsBlocker } from "@/components/patients/awaiting-labs-blocker";
 import { finalizeAssessment } from "@/lib/patients/use-patients";
 import type { Patient, Visit, Referral } from "@/lib/patients/types";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 
 const STEPS = [
   { number: 1, label: "Vitals" },
@@ -55,7 +56,8 @@ export function AssessmentWizard({
   const [labNotes, setLabNotes] = useState("");
   const [savedVisit, setSavedVisit] = useState<Visit | null>(null);
 
-  const canAdvance = currentStep === 1 ? isVitalSignsComplete(vitals) : true;
+  const { requiredVitalSigns } = useClinicalReference();
+  const canAdvance = currentStep === 1 ? isVitalSignsComplete(vitals, requiredVitalSigns) : true;
 
   function handleVitalsChange(field: keyof VitalSigns, value: string) {
     setVitals((current) => ({ ...current, [field]: value }));

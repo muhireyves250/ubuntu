@@ -33,6 +33,12 @@ export interface ClinicalReference {
   dangerSigns: DangerSign[];
   dangerSignThresholds: { bpSystolic: number; bpDiastolic: number; temperatureCelsius: number };
   chwSigns: ChwSignDefinition[];
+  /** Vital signs every visit must record (stored field names); absent until loaded. */
+  requiredVitalSigns?: string[];
+  /** Normal ranges per vital (stored field names); outside one is flagged. */
+  vitalSignRanges?: Record<string, { min?: number; max?: number }>;
+  /** BMI bands, lowest first; `below: null` has no upper bound. */
+  bmiBands?: { below: number | null; label: string; flagged: boolean }[];
 }
 
 const EMPTY: ClinicalReference = {

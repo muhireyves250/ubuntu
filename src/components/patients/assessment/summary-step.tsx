@@ -90,7 +90,9 @@ export function SummaryStep({
         bpDiastolic: vitals.bpDiastolic ? Number(vitals.bpDiastolic) : undefined,
         temperature: vitals.temperature ? Number(vitals.temperature) : undefined,
         pulse: vitals.pulse ? Number(vitals.pulse) : undefined,
+        respiratoryRate: vitals.respiratoryRate ? Number(vitals.respiratoryRate) : undefined,
         weight: vitals.weight ? Number(vitals.weight) : undefined,
+        height: vitals.height ? Number(vitals.height) : undefined,
       };
       const hasVisitLabs = Object.values(visitLabs).some((v) => v !== undefined);
       const visit = await recordVisit({

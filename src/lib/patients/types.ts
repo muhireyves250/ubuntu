@@ -52,8 +52,10 @@ export interface VisitLabs {
   fetalHeartRate?: number;
   temperature?: number;
   pulse?: number;
+  respiratoryRate?: number;
   fundalHeight?: number;
   weight?: number;
+  height?: number;
   edema?: "none" | "mild" | "moderate" | "severe";
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { IconAlert } from "@/components/dashboard/icons";
+import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 
 export interface VitalSigns {
   bpSystolic: string;
@@ -11,16 +12,6 @@ export interface VitalSigns {
   weight: string;
   height: string;
 }
-
-const REQUIRED_VITAL_FIELDS: (keyof VitalSigns)[] = [
-  "bpSystolic",
-  "bpDiastolic",
-  "temperature",
-  "pulse",
-  "respiratoryRate",
-  "weight",
-  "height",
-];
 
 export function emptyVitalSigns(): VitalSigns {
   return {
@@ -34,8 +25,24 @@ export function emptyVitalSigns(): VitalSigns {
   };
 }
 
-export function isVitalSignsComplete(values: VitalSigns): boolean {
-  return REQUIRED_VITAL_FIELDS.every((field) => values[field].trim() !== "");
+// The API names the required vitals by their stored field names.
+const FORM_FIELD: Record<string, keyof VitalSigns> = {
+  systolic: "bpSystolic",
+  diastolic: "bpDiastolic",
+  temperature: "temperature",
+  pulse: "pulse",
+  respiratoryRate: "respiratoryRate",
+  weight: "weight",
+  height: "height",
+};
+
+/** Every vital the API requires is filled in (false until the list loads). */
+export function isVitalSignsComplete(values: VitalSigns, required: string[] | undefined): boolean {
+  if (!required) return false;
+  return required.every((field) => {
+    const key = FORM_FIELD[field];
+    return !key || values[key].trim() !== "";
+  });
 }
 
 export function computeBmi(values: VitalSigns): number | null {
@@ -48,11 +55,10 @@ export function computeBmi(values: VitalSigns): number | null {
   return weight / (heightMeters * heightMeters);
 }
 
-function bmiCategory(bmi: number): string {
-  if (bmi < 18.5) return "Underweight";
-  if (bmi < 25) return "Normal weight";
-  if (bmi < 30) return "Overweight";
-  return "Obese";
+type BmiBand = { below: number | null; label: string; flagged: boolean };
+
+function bmiBand(bmi: number, bands: BmiBand[]): BmiBand | undefined {
+  return bands.find((band) => band.below === null || bmi < band.below);
 }
 
 interface VitalFieldProps {
@@ -104,22 +110,24 @@ export function VitalSignsStep({
   values: VitalSigns;
   onChange: (field: keyof VitalSigns, value: string) => void;
 }) {
-  const bmi = computeBmi(values);
-  const bmiAbnormal = bmi !== null && (bmi < 18.5 || bmi >= 30);
+  // Normal ranges and BMI bands come from the API; outside a range is flagged.
+  const { vitalSignRanges = {}, bmiBands = [] } = useClinicalReference();
+  const outOfRange = (value: string, field: string) => {
+    const range = vitalSignRanges[field];
+    if (value === "" || !range) return false;
+    const n = Number(value);
+    return (range.min !== undefined && n < range.min) || (range.max !== undefined && n > range.max);
+  };
 
-  const bpSystolicAbnormal =
-    values.bpSystolic !== "" && Number(values.bpSystolic) > 140;
-  const bpDiastolicAbnormal =
-    values.bpDiastolic !== "" && Number(values.bpDiastolic) > 90;
-  const temperatureAbnormal =
-    values.temperature !== "" &&
-    (Number(values.temperature) < 36 || Number(values.temperature) > 37.5);
-  const pulseAbnormal =
-    values.pulse !== "" &&
-    (Number(values.pulse) < 60 || Number(values.pulse) > 100);
-  const respiratoryRateAbnormal =
-    values.respiratoryRate !== "" &&
-    (Number(values.respiratoryRate) < 12 || Number(values.respiratoryRate) > 20);
+  const bmi = computeBmi(values);
+  const band = bmi !== null ? bmiBand(bmi, bmiBands) : undefined;
+  const bmiAbnormal = !!band?.flagged;
+
+  const bpSystolicAbnormal = outOfRange(values.bpSystolic, "systolic");
+  const bpDiastolicAbnormal = outOfRange(values.bpDiastolic, "diastolic");
+  const temperatureAbnormal = outOfRange(values.temperature, "temperature");
+  const pulseAbnormal = outOfRange(values.pulse, "pulse");
+  const respiratoryRateAbnormal = outOfRange(values.respiratoryRate, "respiratoryRate");
 
   return (
     <div className="flex flex-col gap-3">
@@ -193,7 +201,7 @@ export function VitalSignsStep({
           {bmi !== null ? (
             <>
               {bmi.toFixed(1)}
-              <span className="ml-2 text-xs font-normal opacity-80">{bmiCategory(bmi)}</span>
+              <span className="ml-2 text-xs font-normal opacity-80">{band?.label}</span>
             </>
           ) : (
             "—"

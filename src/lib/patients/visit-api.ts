@@ -9,7 +9,9 @@ interface BackendVitalSigns {
   diastolic: number | null;
   temperature: number | null;
   pulse: number | null;
+  respiratoryRate: number | null;
   weight: number | null;
+  height: number | null;
   fetalHeartRate: number | null;
   fundalHeight: number | null;
   edema: string | null;
@@ -96,7 +98,9 @@ export function toFrontendVisit(v: BackendVisit): Visit {
         bpDiastolic: v.vitalSigns.diastolic ?? undefined,
         temperature: v.vitalSigns.temperature ?? undefined,
         pulse: v.vitalSigns.pulse ?? undefined,
+        respiratoryRate: v.vitalSigns.respiratoryRate ?? undefined,
         weight: v.vitalSigns.weight ?? undefined,
+        height: v.vitalSigns.height ?? undefined,
         fetalHeartRate: v.vitalSigns.fetalHeartRate ?? undefined,
         fundalHeight: v.vitalSigns.fundalHeight ?? undefined,
         edema: (v.vitalSigns.edema as VisitLabs["edema"]) ?? undefined,
@@ -187,7 +191,9 @@ export async function createVisitApi(
             diastolic: data.labs.bpDiastolic,
             temperature: data.labs.temperature,
             pulse: data.labs.pulse,
+            respiratoryRate: data.labs.respiratoryRate,
             weight: data.labs.weight,
+            height: data.labs.height,
             fetalHeartRate: data.labs.fetalHeartRate,
             fundalHeight: data.labs.fundalHeight,
             edema: data.labs.edema,
