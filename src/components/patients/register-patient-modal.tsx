@@ -5,6 +5,7 @@ import { registerPatient } from "@/lib/patients/use-patients";
 import { IconClose } from "@/components/dashboard/icons";
 import type { Patient } from "@/lib/patients/types";
 import { useReferenceLists, type PatientFormOptions } from "@/lib/patients/reference-lists-api";
+import { useLocationChildren } from "@/lib/locations/locations-api";
 
 const inputCls =
   "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-teal-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50";
@@ -57,20 +58,14 @@ function RegisterPatientModalForm({
   const [cell, setCell] = useState("");
   const [village, setVillage] = useState("");
   const [isibo, setIsibo] = useState("");
-  const [locations, setLocations] = useState<typeof import("@/lib/locations/rwanda") | null>(null);
-
-  useEffect(() => {
-    import("@/lib/locations/rwanda").then(setLocations);
-  }, []);
-
-  const provinces = locations?.getProvinces() ?? [];
-  const districts = province && locations ? locations.getDistricts(province) : [];
-  const sectors = province && district && locations ? locations.getSectors(province, district) : [];
-  const cells = province && district && sector && locations ? locations.getCells(province, district, sector) : [];
-  const villages =
-    province && district && sector && cell && locations
-      ? locations.getVillages(province, district, sector, cell)
-      : [];
+  // Address lists come from the API, one level at a time.
+  const provinces = useLocationChildren({});
+  const districts = useLocationChildren(province ? { province } : null);
+  const sectors = useLocationChildren(province && district ? { province, district } : null);
+  const cells = useLocationChildren(province && district && sector ? { province, district, sector } : null);
+  const villages = useLocationChildren(
+    province && district && sector && cell ? { province, district, sector, cell } : null,
+  );
 
   function handleProvinceChange(value: string) {
     setProvince(value);

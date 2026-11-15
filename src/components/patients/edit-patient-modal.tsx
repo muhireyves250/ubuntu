@@ -6,6 +6,7 @@ import { updatePatient, updatePregnancy } from "@/lib/patients/use-patients";
 import { IconClose } from "@/components/dashboard/icons";
 import type { Patient, Pregnancy } from "@/lib/patients/types";
 import { useReferenceLists, type PatientFormOptions } from "@/lib/patients/reference-lists-api";
+import { fetchProvinceOf, useLocationChildren } from "@/lib/locations/locations-api";
 
 // Waits for the dropdown lists (from the API) before showing the form.
 export function EditPatientModal(props: {
@@ -55,35 +56,31 @@ function EditPatientModalForm({
   const [cell, setCell] = useState(patient.address.cell);
   const [village, setVillage] = useState(patient.address.village);
   const [isibo, setIsibo] = useState(patient.address.isibo);
-  const [locations, setLocations] = useState<typeof import("@/lib/locations/rwanda") | null>(null);
-
   useEffect(() => {
-    import("@/lib/locations/rwanda").then((mod) => {
-      setLocations(mod);
-      // Patients created before this feature have no stored province and may
-      // have a district value that predates Rwanda's 2006 administrative
-      // reform — resolve what we can, but never overwrite a province the
-      // patient already has.
-      if (!province) {
-        const resolved = mod.findProvinceForDistrict(district);
+    // Patients created before this feature have no stored province and may
+    // have a district value that predates Rwanda's 2006 administrative
+    // reform — resolve what we can, but never overwrite a province the
+    // patient already has.
+    if (!province && district) {
+      void fetchProvinceOf(district).then((resolved) => {
         if (resolved) setProvince(resolved);
-      }
-    });
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const knownDistricts = province && locations ? locations.getDistricts(province) : [];
+  // Address lists come from the API, one level at a time.
+  const provinces = useLocationChildren({});
+  const knownDistricts = useLocationChildren(province ? { province } : null);
+  const knownSectors = useLocationChildren(province && district ? { province, district } : null);
+  const knownCells = useLocationChildren(province && district && sector ? { province, district, sector } : null);
+  const knownVillages = useLocationChildren(
+    province && district && sector && cell ? { province, district, sector, cell } : null,
+  );
   const districts = knownDistricts.includes(district) || !district ? knownDistricts : [district, ...knownDistricts];
-  const knownSectors = province && district && locations ? locations.getSectors(province, district) : [];
   const sectors = knownSectors.includes(sector) || !sector ? knownSectors : [sector, ...knownSectors];
-  const knownCells = province && district && sector && locations ? locations.getCells(province, district, sector) : [];
   const cells = knownCells.includes(cell) || !cell ? knownCells : [cell, ...knownCells];
-  const knownVillages =
-    province && district && sector && cell && locations
-      ? locations.getVillages(province, district, sector, cell)
-      : [];
   const villages = knownVillages.includes(village) || !village ? knownVillages : [village, ...knownVillages];
-  const provinces = locations?.getProvinces() ?? [];
 
   function handleProvinceChange(value: string) {
     setProvince(value);
