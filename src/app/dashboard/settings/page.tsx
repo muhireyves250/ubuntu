@@ -160,7 +160,6 @@ function SettingsContent() {
   async function savePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPasswordError(null);
-    if (newPassword.length < 8) return setPasswordError("New password must be at least 8 characters.");
     if (newPassword !== confirmPassword) return setPasswordError("New password and confirmation don't match.");
     setIsSavingPassword(true);
     try {

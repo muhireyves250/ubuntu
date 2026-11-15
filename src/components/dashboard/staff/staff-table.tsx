@@ -65,10 +65,6 @@ function StaffRow({ staffUser }: { staffUser: StaffMember }) {
                 type="button"
                 disabled={busy}
                 onClick={() => {
-                  if (newPassword.length < 6) {
-                    setMessage("Password must be at least 6 characters.");
-                    return;
-                  }
                   void run(async () => {
                     await resetStaffPassword(staffUser.id, newPassword);
                     setNewPassword("");
