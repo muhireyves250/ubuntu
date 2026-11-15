@@ -31,7 +31,22 @@ interface BackendLabResult {
   entries: BackendLabResultEntry[];
 }
 
+interface BackendLabResultRow {
+  id: string;
+  labResultId: string;
+  testName: string;
+  result: string;
+  unit: string;
+  referenceRange: string;
+  interpretation: "NORMAL" | "ABNORMAL" | "CRITICAL";
+  completedAt: string;
+  completedBy?: string;
+  comments: BackendLabResult["comments"];
+}
+
 interface BackendLabRequest {
+  /** The completed panel as display rows (from the API). */
+  results: BackendLabResultRow[];
   id: string;
   priority: "NORMAL" | "URGENT" | "EMERGENCY";
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
@@ -93,71 +108,29 @@ const INTERPRETATION_TO_FRONTEND: Record<string, LabTestResult["interpretation"]
   CRITICAL: "Critical",
 };
 
-// Fixed mapping for the tests that have dedicated structured columns on
-// LabResult (relied on directly by AI prediction and vitals highlighting —
-// see ai-prediction.service.ts). Every other requested test goes through
-// the generic `entries` array instead of being silently dropped. Each
-// entry: [frontend testName, backend field, display unit].
-const TEST_FIELD_MAP: [string, keyof BackendLabResult, string][] = [
-  ["Hemoglobin (Hb)", "hemoglobin", "g/dL"],
-  ["Platelets", "platelets", "x10³/µL"],
-  ["Blood Glucose", "bloodSugar", "mmol/L"],
-  ["Urine Protein (Dipstick)", "urineProtein", ""],
-  ["Blood Group", "bloodGroup", ""],
-  ["Rh Factor", "rhFactor", ""],
-  ["HIV Test", "hivStatus", ""],
-  ["Syphilis (VDRL/RPR)", "syphilisStatus", ""],
-  ["Malaria (Blood Smear)", "malariaTest", ""],
-];
-
 function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
   const { patient } = r.visit.pregnancy;
-  const labResult = r.labResults[0];
-
-  const fixedResults: Omit<LabTestResult, "id" | "resultComments">[] = labResult
-    ? TEST_FIELD_MAP.filter(([, field]) => labResult[field] != null).map(([testName, field, unit]) => ({
-        labResultId: labResult.id,
-        testName,
-        result: String(labResult[field]),
-        unit,
-        referenceRange: "Varies",
-        interpretation: INTERPRETATION_TO_FRONTEND[labResult.interpretation],
-        completedAt: labResult.createdAt,
-        completedBy: r.assignedTo ? `${r.assignedTo.firstName} ${r.assignedTo.lastName}` : undefined,
-      }))
-    : [];
-
-  const entryResults: Omit<LabTestResult, "id" | "resultComments">[] = labResult
-    ? labResult.entries.map((entry) => ({
-        labResultId: labResult.id,
-        testName: entry.testName,
-        result: entry.result,
-        unit: entry.unit ?? "",
-        referenceRange: "Varies",
-        interpretation: INTERPRETATION_TO_FRONTEND[entry.interpretation],
-        completedAt: entry.createdAt,
-        completedBy: r.assignedTo ? `${r.assignedTo.firstName} ${r.assignedTo.lastName}` : undefined,
-      }))
-    : [];
-
-  const results: LabTestResult[] = [...fixedResults, ...entryResults].map((res, idx) => ({
-    ...res,
-    id: `${res.labResultId}-${idx}`,
-    // The comment thread belongs to the whole lab panel (one LabResult row),
-    // not to any individual test field within it — attach it only to the
-    // first row so it renders/counts once instead of once per test.
-    resultComments:
-      idx === 0 && labResult
-        ? (labResult.comments || []).map((c) => ({
-            id: c.id,
-            labResultId: labResult.id,
-            authorId: c.author.id,
-            authorName: `${c.author.firstName} ${c.author.lastName}`,
-            authorRole: c.author.role,
-            body: c.body,
-            createdAt: c.createdAt,
-          }))
-        : [],
+  // The API sends the completed panel as display rows; the comment thread
+  // is on the first row only.
+  const results: LabTestResult[] = r.results.map((row) => ({
+    id: row.id,
+    labResultId: row.labResultId,
+    testName: row.testName,
+    result: row.result,
+    unit: row.unit,
+    referenceRange: row.referenceRange,
+    interpretation: INTERPRETATION_TO_FRONTEND[row.interpretation],
+    completedAt: row.completedAt,
+    completedBy: row.completedBy,
+    resultComments: row.comments.map((c) => ({
+      id: c.id,
+      labResultId: row.labResultId,
+      authorId: c.author.id,
+      authorName: `${c.author.firstName} ${c.author.lastName}`,
+      authorRole: c.author.role,
+      body: c.body,
+      createdAt: c.createdAt,
+    })),
   }));
 
   return {
