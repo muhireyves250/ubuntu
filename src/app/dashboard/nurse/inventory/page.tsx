@@ -4,17 +4,17 @@ import { useState } from "react";
 import { RoleGuard } from "@/components/role-guard";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useInventory, createInventoryItem, adjustStock } from "@/lib/patients/use-patients";
-import type { InventoryCategory } from "@/lib/patients/pharmacy-api";
+import type { InventoryCategory, StockStatus } from "@/lib/patients/pharmacy-api";
 
-function StockBadge({ quantityOnHand, reorderLevel }: { quantityOnHand: number; reorderLevel: number }) {
-  if (quantityOnHand === 0) {
+function StockBadge({ status }: { status: StockStatus }) {
+  if (status === "out_of_stock") {
     return (
       <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400">
         Out of Stock
       </span>
     );
   }
-  if (quantityOnHand <= reorderLevel) {
+  if (status === "low_stock") {
     return (
       <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
         Low Stock
@@ -232,7 +232,7 @@ function InventoryContent() {
                 <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{item.reorderLevel}</td>
                 <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">Fr {item.unitPrice.toFixed(2)}</td>
                 <td className="px-4 py-3">
-                  <StockBadge quantityOnHand={item.quantityOnHand} reorderLevel={item.reorderLevel} />
+                  <StockBadge status={item.stockStatus} />
                 </td>
                 <td className="px-4 py-3">{canManage && <AdjustStockControl id={item.id} />}</td>
               </tr>

@@ -11,7 +11,11 @@ export interface InventoryItem {
   quantityOnHand: number;
   reorderLevel: number;
   unitPrice: number;
+  /** Decided by the API: out of stock at 0, low at/below the reorder level. */
+  stockStatus: StockStatus;
 }
+
+export type StockStatus = "out_of_stock" | "low_stock" | "in_stock";
 
 export interface Prescription {
   id: string;
@@ -49,6 +53,7 @@ interface BackendInventoryItem {
   quantityOnHand: number;
   reorderLevel: number;
   unitPrice: number;
+  stockStatus: StockStatus;
 }
 interface BackendPrescription {
   id: string;
@@ -94,6 +99,7 @@ function toFrontendItem(i: BackendInventoryItem): InventoryItem {
     quantityOnHand: i.quantityOnHand,
     reorderLevel: i.reorderLevel,
     unitPrice: i.unitPrice,
+    stockStatus: i.stockStatus,
   };
 }
 function toFrontendPrescription(p: BackendPrescription): Prescription {

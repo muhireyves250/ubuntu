@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { RoleGuard } from "@/components/role-guard";
 import { useLabRequests } from "@/lib/patients/lab-requests";
+import { useLabSummary } from "@/lib/patients/use-patients";
 import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
 import { getInitials, relativeTime } from "@/lib/format";
 import Link from "next/link";
@@ -74,17 +75,8 @@ export default function LabNurseDashboard() {
     [],
   );
 
-  const stats = useMemo(() => {
-    return {
-      pending: requests.filter((r) => r.status === "Pending").length,
-      inProgress: requests.filter((r) => r.status === "In Progress").length,
-      completed: requests.filter((r) => r.status === "Completed").length,
-      emergencies: requests.filter((r) => r.priority === "Emergency").length,
-      critical: requests.filter(
-        (r) => r.results.some((res) => res.interpretation === "Critical")
-      ).length,
-    };
-  }, [requests]);
+  // Counters come from the API.
+  const stats = useLabSummary();
 
   const recentRequests = useMemo(
     () =>

@@ -68,6 +68,10 @@ import {
   fetchChwPatients,
   fetchEmergencyQueue,
   fetchPatientRegistry,
+  fetchLabSummary,
+  fetchPharmacySummary,
+  type LabSummary,
+  type PharmacySummary,
   type PatientRegistryRow,
   type EmergencyCase,
   type FollowUpPatient,
@@ -500,6 +504,17 @@ export function useEmergencyQueue(): EmergencyCase[] {
   return data ?? [];
 }
 
+// Lab / pharmacy home counters (GET /worklists/lab-summary, /pharmacy-summary).
+export function useLabSummary(): LabSummary {
+  const { data } = useQuery({ queryKey: [WORKLISTS_KEY, "lab-summary"], queryFn: fetchLabSummary });
+  return data ?? { pending: 0, inProgress: 0, completed: 0, emergencies: 0, critical: 0 };
+}
+
+export function usePharmacySummary(): PharmacySummary {
+  const { data } = useQuery({ queryKey: [WORKLISTS_KEY, "pharmacy-summary"], queryFn: fetchPharmacySummary });
+  return data ?? { pending: 0, inProgress: 0, dispensed: 0, lowStock: 0 };
+}
+
 // A CHW's patients with the next home visit due (GET /worklists/chw-patients).
 export function useChwPatientsDue(): ChwPatientDue[] | undefined {
   const { role } = getCurrentUserSnapshot();
@@ -719,6 +734,8 @@ export type {
   ChwPatientDue,
   EmergencyCase,
   PatientRegistryRow,
+  LabSummary,
+  PharmacySummary,
 };
 
 // Yellow/orange patients and those not seen here for over 14 days

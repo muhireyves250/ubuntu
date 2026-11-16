@@ -145,3 +145,21 @@ export async function fetchPatientRegistry(): Promise<PatientRegistryRow[]> {
     };
   });
 }
+
+export interface LabSummary {
+  pending: number;
+  inProgress: number;
+  completed: number;
+  emergencies: number;
+  critical: number;
+}
+
+export interface PharmacySummary {
+  pending: number;
+  inProgress: number;
+  dispensed: number;
+  lowStock: number;
+}
+
+export const fetchLabSummary = () => get<LabSummary>("/worklists/lab-summary");
+export const fetchPharmacySummary = () => get<PharmacySummary>("/worklists/pharmacy-summary");

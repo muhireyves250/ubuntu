@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { RoleGuard } from "@/components/role-guard";
 import { useDrugRequests } from "@/lib/patients/drug-requests";
-import { useInventory } from "@/lib/patients/use-patients";
+import { usePharmacySummary } from "@/lib/patients/use-patients";
 import { getStoredAuthenticatedUser } from "@/lib/auth/auth-context";
 import { getInitials, relativeTime } from "@/lib/format";
 import {
@@ -58,7 +58,6 @@ function StatCard({
 export default function PharmacistDashboard() {
   const [user] = useState(readSessionUser);
   const requests = useDrugRequests();
-  const inventory = useInventory();
   const userName = user?.name ?? "Pharmacist";
   const facility = user?.facility ?? "";
 
@@ -67,15 +66,8 @@ export default function PharmacistDashboard() {
     [],
   );
 
-  const stats = useMemo(
-    () => ({
-      pending: requests.filter((r) => r.status === "Pending").length,
-      inProgress: requests.filter((r) => r.status === "In Progress").length,
-      dispensed: requests.filter((r) => r.status === "Dispensed").length,
-      lowStock: inventory.filter((i) => i.quantityOnHand <= i.reorderLevel).length,
-    }),
-    [requests, inventory],
-  );
+  // Counters come from the API.
+  const stats = usePharmacySummary();
 
   const openRequests = useMemo(
     () =>
