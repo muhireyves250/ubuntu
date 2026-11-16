@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RoleGuard } from "@/components/role-guard";
-import { useAuth } from "@/lib/auth/auth-context";
 import { RiskBadge } from "@/components/patients/risk-badge";
-import { usePatients, useVisits, usePregnancies } from "@/lib/patients/use-patients";
+import { useVisitLog } from "@/lib/patients/use-patients";
 import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import type { RiskLevel } from "@/lib/patients/types";
 import { formatLabs, getInitials, shortId, fullName } from "@/lib/format";
@@ -27,42 +26,20 @@ const DATE_FILTERS: { value: "today" | "all"; label: string }[] = [
 
 function VisitsPageContent() {
   const SYMPTOM_LABEL = new Map(useClinicalReference().symptoms.map((symptom) => [symptom.id, symptom.label]));
-  const patients = usePatients();
-  const visits = useVisits();
-  const pregnancies = usePregnancies();
+  // Rows (visit + patient), "today" flags and counts come from the API.
+  const log = useVisitLog();
   const [nameFilter, setNameFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
   const [dateFilter, setDateFilter] = useState<"today" | "all">("today");
-
-  const today = new Date().toISOString().slice(0, 10);
-  const todaysCount = visits.filter((v) => v.date === today).length;
-
-  const patientById = useMemo(
-    () => new Map(patients.map((patient) => [patient.id, patient])),
-    [patients],
-  );
-  const patientIdByPregnancyId = useMemo(
-    () => new Map(pregnancies.map((p) => [p.id, p.patientId])),
-    [pregnancies],
-  );
-
-  const { user } = useAuth();
+  const todaysCount = log.todayCount;
 
   const rows = useMemo(() => {
-    return visits
-      .filter((visit) => visit.hospital === user?.facility)
-      .map((visit) => ({
-        visit,
-        patient: patientById.get(patientIdByPregnancyId.get(visit.pregnancyId) ?? ""),
-      }))
-      .filter((row) => row.patient)
-      .filter((row) => dateFilter === "all" || row.visit.date === today)
-      .filter((row) =>
-        fullName(row.patient!).toLowerCase().includes(nameFilter.toLowerCase()),
-      )
+    return log.rows
+      .filter((row) => dateFilter === "all" || row.isToday)
+      .filter((row) => fullName(row.patient).toLowerCase().includes(nameFilter.toLowerCase()))
       .filter((row) => riskFilter === "all" || row.visit.riskLevel === riskFilter)
       .sort((a, b) => b.visit.date.localeCompare(a.visit.date));
-  }, [visits, patientById, patientIdByPregnancyId, nameFilter, riskFilter, dateFilter, today, user]);
+  }, [log.rows, nameFilter, riskFilter, dateFilter]);
 
   const hasActiveFilters = nameFilter !== "" || riskFilter !== "all";
 
@@ -73,7 +50,7 @@ function VisitsPageContent() {
           ANC Visits
         </h2>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          {todaysCount} today · {visits.length} total
+          {todaysCount} today · {log.total} total
         </span>
       </div>
 
@@ -247,7 +224,7 @@ function VisitsPageContent() {
 
         <div className="flex items-center justify-between border-t border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
           <span>
-            Showing {rows.length} of {visits.length} visits
+            Showing {rows.length} of {log.total} visits
           </span>
         </div>
       </div>

@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { keepPreviousData, useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
-import { fetchPregnanciesForPatient, fetchAllPregnancies, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
-import { fetchVisitsForPregnancy, fetchVisitsForPatient, fetchAllVisits, createVisitApi, finalizeVisitApi, confirmAiRiskApi, createEmergencyVisitApi, escalateVisitApi } from "./visit-api";
+import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
+import { fetchVisitsForPregnancy, fetchVisitsForPatient, createVisitApi, finalizeVisitApi, confirmAiRiskApi, createEmergencyVisitApi, escalateVisitApi } from "./visit-api";
 import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy, fetchMyCommunityVisits } from "./community-visit-api";
 import { fetchVaccinationsForPregnancy, recordVaccinationApi, type Vaccination } from "./vaccination-api";
 import { fetchDiagnosesForVisit, createDiagnosisApi, type VisitDiagnosis } from "./diagnosis-api";
@@ -69,6 +69,8 @@ import {
   fetchEmergencyQueue,
   fetchPatientRegistry,
   fetchLabSummary,
+  fetchVisitLog,
+  type VisitLog,
   fetchPharmacySummary,
   type LabSummary,
   type PharmacySummary,
@@ -123,16 +125,6 @@ export function usePatients(): Patient[] {
   return data ?? [];
 }
 
-export function useVisits(): Visit[] {
-  // Unbounded "all visits" fetch backing patient-list risk badges — real
-  // freshness after any mutation already comes from each mutation's own
-  // explicit invalidateQueries(["visits"]) call, not from a short
-  // staleTime, so this can safely sit longer than the 30s global default.
-  const { data } = useQuery({ queryKey: ["visits", "all"], queryFn: fetchAllVisits, staleTime: 60_000 });
-  return data ?? [];
-}
-
-
 export function usePatient(patientId: string): Patient | undefined {
   const { data } = useQuery({
     queryKey: ["patients", patientId],
@@ -154,15 +146,6 @@ export function usePatientIsLoading(patientId: string): boolean {
     enabled: !!patientId,
   });
   return isLoading;
-}
-
-export function usePregnancies(): Pregnancy[] {
-  const { data } = useQuery({
-    queryKey: ["pregnancies", "all"],
-    queryFn: fetchAllPregnancies,
-    staleTime: 120_000,
-  });
-  return data ?? [];
 }
 
 // The Overview skeleton shows until the API's summary for the chosen window
@@ -504,6 +487,12 @@ export function useEmergencyQueue(): EmergencyCase[] {
   return data ?? [];
 }
 
+// The facility's visit log, joined to patients, with today's count.
+export function useVisitLog(): VisitLog {
+  const { data } = useQuery({ queryKey: [WORKLISTS_KEY, "visit-log"], queryFn: fetchVisitLog });
+  return data ?? { todayCount: 0, total: 0, rows: [] };
+}
+
 // Lab / pharmacy home counters (GET /worklists/lab-summary, /pharmacy-summary).
 export function useLabSummary(): LabSummary {
   const { data } = useQuery({ queryKey: [WORKLISTS_KEY, "lab-summary"], queryFn: fetchLabSummary });
@@ -736,6 +725,7 @@ export type {
   PatientRegistryRow,
   LabSummary,
   PharmacySummary,
+  VisitLog,
 };
 
 // Yellow/orange patients and those not seen here for over 14 days

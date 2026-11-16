@@ -163,3 +163,22 @@ export interface PharmacySummary {
 
 export const fetchLabSummary = () => get<LabSummary>("/worklists/lab-summary");
 export const fetchPharmacySummary = () => get<PharmacySummary>("/worklists/pharmacy-summary");
+
+export interface VisitLog {
+  todayCount: number;
+  total: number;
+  rows: { visit: Visit; patient: Patient; isToday: boolean }[];
+}
+
+// The facility's visits with their patients (GET /worklists/visit-log).
+export async function fetchVisitLog(): Promise<VisitLog> {
+  const log = await get<{
+    todayCount: number;
+    total: number;
+    rows: { visit: BackendVisit; patient: BackendPatient; isToday: boolean }[];
+  }>("/worklists/visit-log");
+  return {
+    ...log,
+    rows: log.rows.map((r) => ({ visit: toFrontendVisit(r.visit), patient: toFrontendPatient(r.patient), isToday: r.isToday })),
+  };
+}
