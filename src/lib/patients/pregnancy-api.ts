@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchAllPages } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { Pregnancy, PregnancySchedule, ScreeningResult, PregnancyMedicalHistory } from "./types";
 
@@ -195,10 +195,9 @@ export async function fetchPregnancyById(pregnancyId: string): Promise<Pregnancy
 // convention. Revisit if the pregnancy count grows past this limit.
 export async function fetchAllPregnancies(): Promise<Pregnancy[]> {
   const token = getStoredAccessToken();
-  const result = await apiFetch<{ data: BackendPregnancy[]; meta: unknown }>("/pregnancies?limit=200", {
-    token: token ?? undefined,
-  });
-  return result.data.map(toFrontendPregnancy);
+  // Every page, so older pregnancies never drop off the list.
+  const rows = await apiFetchAllPages<BackendPregnancy>("/pregnancies", token ?? undefined);
+  return rows.map(toFrontendPregnancy);
 }
 
 export async function createPregnancyApi(

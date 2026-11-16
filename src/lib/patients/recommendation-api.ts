@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchAllPages } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { Recommendation, RecommendationStatus, RiskLevel } from "./types";
 
@@ -54,11 +54,10 @@ function toFrontendRecommendation(r: BackendRecommendation): Recommendation {
 
 export async function fetchRecommendations(patientId?: string): Promise<Recommendation[]> {
   const token = getStoredAccessToken();
-  const path = patientId ? `/recommendations?patientId=${patientId}&limit=100` : "/recommendations?limit=100";
-  const result = await apiFetch<{ data: BackendRecommendation[]; meta: unknown }>(path, {
-    token: token ?? undefined,
-  });
-  return result.data.map(toFrontendRecommendation);
+  // Every page, so older recommendations never drop off the list.
+  const path = patientId ? `/recommendations?patientId=${patientId}` : "/recommendations";
+  const rows = await apiFetchAllPages<BackendRecommendation>(path, token ?? undefined);
+  return rows.map(toFrontendRecommendation);
 }
 
 export async function createRecommendationApi(

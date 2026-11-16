@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchAllPages } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { FacilityCapacity, Referral, ReferralOutcome } from "./types";
 
@@ -97,11 +97,9 @@ export function toFrontendReferral(r: BackendReferral): Referral {
 
 export async function fetchReferrals(): Promise<Referral[]> {
   const token = getStoredAccessToken();
-  const result = await apiFetch<{ data: BackendReferral[]; meta: unknown }>(
-    "/referrals?limit=100",
-    { token: token ?? undefined },
-  );
-  return result.data.map(toFrontendReferral);
+  // Every page, so older (still active) cases never drop off the list.
+  const rows = await apiFetchAllPages<BackendReferral>("/referrals", token ?? undefined);
+  return rows.map(toFrontendReferral);
 }
 
 // Hospitals a closed case can be referred on to (from the API).

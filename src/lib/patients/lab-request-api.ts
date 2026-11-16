@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchAllPages } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { LabPriority, LabRequest } from "./types";
 import type { LabTestResult } from "./types";
@@ -159,16 +159,12 @@ function toFrontendLabRequest(r: BackendLabRequest): LabRequest {
   };
 }
 
-// QueryLabRequestsDto caps limit at 100 (unlike QueryPatientDto's 200) — no
-// pagination UI exists yet, this approximates "fetch all" for the current
-// small seed dataset within that cap.
 export async function fetchLabRequests(): Promise<LabRequest[]> {
   const token = getStoredAccessToken();
-  const result = await apiFetch<{ data: BackendLabRequest[]; meta: unknown }>(
-    "/lab-requests?limit=100",
-    { token: token ?? undefined },
-  );
-  return result.data.map(toFrontendLabRequest);
+  // Every page — the list is ordered oldest first, so stopping at 100 would
+  // hide the newest requests.
+  const rows = await apiFetchAllPages<BackendLabRequest>("/lab-requests", token ?? undefined);
+  return rows.map(toFrontendLabRequest);
 }
 
 export async function fetchLabRequest(id: string): Promise<LabRequest> {
