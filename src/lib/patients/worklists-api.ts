@@ -182,3 +182,13 @@ export async function fetchVisitLog(): Promise<VisitLog> {
     rows: log.rows.map((r) => ({ visit: toFrontendVisit(r.visit), patient: toFrontendPatient(r.patient), isToday: r.isToday })),
   };
 }
+
+export interface ChwSummary {
+  assigned: number;
+  /** Next home visit due today, or overdue and not yet done. */
+  dueToday: number;
+  /** Due in the next 7 days. */
+  upcoming: number;
+}
+
+export const fetchChwSummary = () => get<ChwSummary>("/worklists/chw-summary");

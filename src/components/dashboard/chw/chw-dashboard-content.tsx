@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useChwPatientsDue, type ChwPatientDue } from "@/lib/patients/use-patients";
+import { useChwPatientsDue, useChwSummary, type ChwPatientDue } from "@/lib/patients/use-patients";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { IconClipboard, IconClock, IconUsers } from "@/components/dashboard/icons";
 
@@ -43,6 +43,9 @@ export function ChwDashboardContent() {
   const { user } = useAuth();
   // Sorted by first name, each with the next home visit due (from the API).
   const patients = useChwPatientsDue() ?? [];
+  // Counters come from the API ("—" until they load).
+  const summary = useChwSummary();
+  const count = (n: number | undefined) => (n === undefined ? "—" : String(n));
 
   if (!user) return null;
 
@@ -53,9 +56,9 @@ export function ChwDashboardContent() {
       </h1>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <StatCard icon={IconUsers} value={String(patients.length)} label="Assigned Patients" accentClass="bg-teal-100 text-teal-700" />
-        <StatCard icon={IconClipboard} value="—" label="Due Today" accentClass="bg-sky-100 text-sky-700" />
-        <StatCard icon={IconClock} value="—" label="Upcoming" accentClass="bg-violet-100 text-violet-700" />
+        <StatCard icon={IconUsers} value={count(summary?.assigned)} label="Assigned Patients" accentClass="bg-teal-100 text-teal-700" />
+        <StatCard icon={IconClipboard} value={count(summary?.dueToday)} label="Due Today" accentClass="bg-sky-100 text-sky-700" />
+        <StatCard icon={IconClock} value={count(summary?.upcoming)} label="Upcoming" accentClass="bg-violet-100 text-violet-700" />
       </div>
 
       <div className="flex flex-col gap-2">
