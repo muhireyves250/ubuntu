@@ -121,6 +121,53 @@ body {
   }
 }
 
+/* Signed-out pages: content rises in on first paint. Stagger it with an
+   `[animation-delay:…]` utility; `both` keeps it hidden until its turn. */
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-auth-rise {
+  animation: auth-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Draws an SVG stroke once, for the accent line in a slide's line art. The
+   element needs `pathLength={1}`. With the animation off the stroke is simply
+   there, complete. Opacity keeps a round line cap from showing as a dot
+   before its turn. */
+@keyframes auth-draw {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+.animate-auth-draw {
+  stroke-dasharray: 1;
+  animation: auth-draw 0.9s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-auth-rise,
+  .animate-auth-draw {
+    animation: none;
+  }
+}
+
 .scrollbar-hidden {
   scrollbar-width: none;
   -ms-overflow-style: none;
