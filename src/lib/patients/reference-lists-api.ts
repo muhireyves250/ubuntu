@@ -26,6 +26,8 @@ export interface PatientFormOptions {
 export interface ReferenceLists {
   diagnosisCategories: { category: string; diagnoses: DiagnosisCatalogEntry[] }[];
   patientForm: PatientFormOptions;
+  /** A CHW follow-up is due this many days after it is assigned. */
+  chwFollowUpDueDays: number;
 }
 
 /** undefined until loaded (the dashboard loads it as soon as you sign in). */

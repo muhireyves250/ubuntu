@@ -10,12 +10,14 @@ import { IconClose } from "@/components/dashboard/icons";
 import { fullName } from "@/lib/format";
 import { FOLLOW_UP_REASON_LABELS } from "@/lib/patients/types";
 import type { Patient, FollowUpReason, FollowUpPriority } from "@/lib/patients/types";
+import { useReferenceLists } from "@/lib/patients/reference-lists-api";
 
 const REASON_OPTIONS = Object.keys(FOLLOW_UP_REASON_LABELS) as FollowUpReason[];
 
-function defaultDueDate(): string {
+/** Today + N days, as YYYY-MM-DD. */
+function daysFromToday(days: number): string {
   const d = new Date();
-  d.setDate(d.getDate() + 7);
+  d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
@@ -30,7 +32,10 @@ export function AssignChwModal({
 }) {
   const [reason, setReason] = useState<FollowUpReason>(REASON_OPTIONS[0]);
   const [priority, setPriority] = useState<FollowUpPriority>("routine");
-  const [dueDate, setDueDate] = useState(defaultDueDate());
+  // Pre-filled with the API's follow-up window until the nurse picks a date.
+  const dueInDays = useReferenceLists()?.chwFollowUpDueDays;
+  const [pickedDueDate, setDueDate] = useState("");
+  const dueDate = pickedDueDate || (dueInDays != null ? daysFromToday(dueInDays) : "");
   const [match, setMatch] = useState<{ id: string; name: string; matchedTier: "isibo" | "village" } | null>(null);
   const [matchLoading, setMatchLoading] = useState(true);
   const [matchError, setMatchError] = useState<string | null>(null);
