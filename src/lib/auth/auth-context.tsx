@@ -119,7 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       emitSessionChange();
       return "ok";
     } catch (err) {
-      if (err instanceof ApiError && err.statusCode === 401) return "invalid";
+      // 400 is the API refusing the shape of the input (a password under its
+      // minimum length, say). To the person typing, that is a wrong password
+      // too, not an unreachable server.
+      if (err instanceof ApiError && (err.statusCode === 401 || err.statusCode === 400)) return "invalid";
       return "network_error";
     }
   }, []);

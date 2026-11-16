@@ -1,64 +1,70 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth/auth-context";
 import { useQuery } from "@tanstack/react-query";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { IconChevronDown, IconLock } from "@/components/dashboard/icons";
 import { apiFetch } from "@/lib/api/client";
-import { mapBackendRole } from "@/lib/auth/role-mapping";
+import { useAuth } from "@/lib/auth/auth-context";
+import { mapBackendRole, titleForRole } from "@/lib/auth/role-mapping";
 import { dashboardPathForRole } from "@/lib/auth/role-routes";
 import type { Role } from "@/lib/auth/types";
 
-const ROLE_TABS: { role: Role; label: string }[] = [
-  { role: "nurse", label: "In charge of ANC" },
-  { role: "lab_nurse", label: "Laboratory Nurse" },
-  { role: "gynecologist", label: "Gynecologist" },
-  { role: "hospital_admin", label: "Hospital Administrator" },
-  { role: "chw", label: "Community Health Worker" },
-  { role: "pharmacist", label: "Pharmacist" },
-];
+interface DemoAccount {
+  email: string;
+  role: string;
+}
 
-function RoleIcon({ role, className = "h-4 w-4" }: { role: Role; className?: string }) {
-  if (role === "nurse") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-        <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
+// The order the demo accounts are listed in.
+const ROLE_ORDER: Role[] = ["nurse", "lab_nurse", "gynecologist", "hospital_admin", "chw", "pharmacist"];
+
+function groupDemoAccounts(accounts: DemoAccount[]): { role: Role; emails: string[] }[] {
+  const emailsByRole = new Map<Role, string[]>();
+  for (const account of accounts) {
+    let role: Role;
+    try {
+      role = mapBackendRole(account.role);
+    } catch {
+      // A role this app has no dashboard for: nothing to offer.
+      continue;
+    }
+    emailsByRole.set(role, [...(emailsByRole.get(role) ?? []), account.email]);
   }
-  if (role === "lab_nurse") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-        <path d="M9 2v6.5L4.5 17a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L15 8.5V2M9 2h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (role === "pharmacist") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-        <path d="m10.5 20.5-7-7a4.95 4.95 0 0 1 7-7l7 7a4.95 4.95 0 0 1-7 7ZM7 10l7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (role === "hospital_admin") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-        <path d="M4 21V9l8-5 8 5v12M4 21h16M9 21v-6h6v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (role === "chw") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-        <path d="M4 11.5 12 4l8 7.5M6 10v9a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
+  return ROLE_ORDER.flatMap((role) => {
+    const emails = emailsByRole.get(role);
+    return emails ? [{ role, emails }] : [];
+  });
+}
+
+// text-base below sm: iOS zooms the page when a focused input is under 16px.
+const INPUT_CLASS =
+  "peer w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-10 text-base text-zinc-900 outline-none transition placeholder:text-zinc-400 hover:border-zinc-300 focus:border-teal-600 focus:bg-white focus:ring-4 focus:ring-teal-600/10 sm:text-[15px]";
+// Sits after the input in the DOM so `peer-focus` can tint it.
+const FIELD_ICON_CLASS =
+  "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 transition-colors peer-focus:text-teal-700";
+const FOCUS_RING_CLASS =
+  "rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600";
+
+function UserIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <path d="M6 3v6a6 6 0 0 0 12 0V3M6 9a3 3 0 1 1-3 3M18 9a3 3 0 1 0 3 3M12 15v4m0 0a3 3 0 1 0 3-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MailIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="2" />
+      <path d="m4 7.5 8 6 8-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -66,7 +72,7 @@ function RoleIcon({ role, className = "h-4 w-4" }: { role: Role; className?: str
 function EyeIcon({ open }: { open: boolean }) {
   if (open) {
     return (
-      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
         <path
           d="M3 3l18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M7.4 7.5C4.9 9 3.4 11 3 12c1.3 2.9 4.9 7 9 7 1.6 0 3.1-.5 4.4-1.3M21 12c-.6-1.4-1.7-3-3.2-4.3M9.9 4.4A10.4 10.4 0 0 1 12 4c4.1 0 7.7 3.1 9 7"
           stroke="currentColor"
@@ -78,7 +84,7 @@ function EyeIcon({ open }: { open: boolean }) {
     );
   }
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
       <path
         d="M3 12c1.3-2.9 4.9-7 9-7s7.7 4.1 9 7c-1.3 2.9-4.9 7-9 7s-7.7-4.1-9-7Z"
         stroke="currentColor"
@@ -91,14 +97,26 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
+function Spinner() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 animate-spin" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" className="opacity-30" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { user, isHydrated, login } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<Role>("nurse");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDemoAccounts, setShowDemoAccounts] = useState(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
   // Set when the app signs you out: password change, inactivity, or "sign out everywhere".
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => {
@@ -116,191 +134,203 @@ export default function LoginPage() {
     );
   }, []);
 
+  // Where a signed-in user goes is decided by the role on their account — on
+  // arrival with a live session, and the moment a sign-in below succeeds.
   useEffect(() => {
     if (isHydrated && user) {
       router.replace(dashboardPathForRole(user.role));
     }
   }, [isHydrated, user, router]);
 
-  // Demo account hints come from the API (emails only).
+  // Demo account hints come from the API (emails only), which returns none
+  // where they are switched off.
   const { data: demoAccounts = [] } = useQuery({
     queryKey: ["demo-accounts"],
-    queryFn: () => apiFetch<{ email: string; role: string }[]>("/auth/demo-accounts"),
+    queryFn: () => apiFetch<DemoAccount[]>("/auth/demo-accounts"),
     staleTime: Infinity,
   });
-  const emailsForRole = demoAccounts.filter((a) => mapBackendRole(a.role) === selectedRole).map((a) => a.email);
+  const demoGroups = groupDemoAccounts(demoAccounts);
 
-  function chooseRole(role: Role) {
-    setSelectedRole(role);
-    setEmail("");
-    setPassword("");
+  function fillDemoEmail(demoEmail: string) {
+    setEmail(demoEmail);
     setError(null);
+    passwordRef.current?.focus();
   }
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setError(null);
     const result = await login(email, password);
+    // On success the button stays busy until the effect above has replaced
+    // this page with the dashboard.
+    if (result === "ok") return;
     setIsSubmitting(false);
-    if (result === "invalid") {
-      setError("Incorrect email or password.");
-      return;
-    }
-    if (result === "network_error") {
-      setError("Could not reach the server. Please try again.");
-      return;
-    }
-    router.replace(dashboardPathForRole(selectedRole));
+    setError(
+      result === "invalid"
+        ? "Incorrect email or password."
+        : "Could not reach the server. Please try again.",
+    );
   }
 
   return (
-    <div className="relative flex flex-1 flex-col sm:flex-row min-h-dvh">
-      {/* ════════════════════════════════════════
-          LEFT PANEL — photo background + role tabs
-      ════════════════════════════════════════ */}
-      <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-8 py-24 text-center text-white sm:px-16">
-        {/* Background image */}
-        <Image
-          src="/login-bg.png"
-          alt="Nurse consulting with a pregnant patient at a Rwanda health center"
-          fill
-          className="object-cover object-center"
-          priority
-        />
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-teal-950/65" />
-
-        <div className="relative mb-8">
-          <Image src="/logo-full-v3.png" alt="ubuntumed" width={220} height={220} className="h-auto w-44 object-contain sm:w-56" priority />
+    <AuthShell footer="Need an account? Ask your hospital administrator.">
+      <div className="animate-auth-rise text-center [animation-delay:120ms]">
+        {/* The brand band sits directly above on small screens, so the badge
+            would only push the fields down. */}
+        <div
+          aria-hidden
+          className="mx-auto mb-5 hidden h-14 w-14 items-center justify-center rounded-full bg-teal-50 ring-8 ring-teal-50/50 lg:flex"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-teal-700 shadow-sm ring-1 ring-teal-100">
+            <UserIcon className="h-5 w-5" />
+          </span>
         </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Log in to your account</h1>
+        <p className="mt-1.5 text-sm text-zinc-500">Enter your work email and password to continue.</p>
+      </div>
 
-        {/* Role tab switcher */}
-        <div className="scrollbar-hidden relative flex w-fit flex-wrap justify-center gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
-          {ROLE_TABS.map(({ role, label }) => {
-            const isActive = selectedRole === role;
-            return (
-              <button
-                key={role}
-                type="button"
-                id={`role-tab-${role}`}
-                onClick={() => chooseRole(role)}
-                className={`shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-[#0f766e] text-white shadow-sm shadow-teal-700/20"
-                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                }`}
-              >
-                <RoleIcon role={role} />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Headline */}
-        <h1 className="relative mt-8 max-w-md text-3xl font-bold leading-tight sm:text-4xl">
-          Track Every High&#8209;Risk Pregnancy!
-        </h1>
-        <p className="relative mt-3 max-w-sm text-teal-100">
-          Identify, classify, and follow up on high-risk cases from ANC
-          through postpartum — across every level of care.
+      {notice && !error && (
+        <p
+          role="status"
+          className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800"
+        >
+          {notice}
         </p>
-      </div>
+      )}
 
-      {/* ════════════════════════════════════════
-          RIGHT PANEL — warm off-white + floating card
-      ════════════════════════════════════════ */}
-      <div className="flex flex-1 items-center justify-center bg-[#fff6ef] px-8 py-20 sm:px-16 shadow-[inset_4px_0_24px_rgba(0,0,0,0.04)]">
-        <div className="w-full max-w-sm rounded-4xl bg-white p-8 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
-          {/* Card header */}
-          <div className="flex flex-col items-center text-center">
-            <Image src="/logo-full-v3.png" alt="ubuntumed logo" width={220} height={220} className="h-auto w-20 object-contain" />
-
-            {/* Role badge */}
-            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800 ring-1 ring-teal-200">
-              <RoleIcon role={selectedRole} className="h-3.5 w-3.5 text-teal-600" />
-              {ROLE_TABS.find((t) => t.role === selectedRole)?.label}
-            </span>
-
+      <form
+        id="login-form"
+        onSubmit={handleSubmit}
+        className={`animate-auth-rise flex flex-col gap-4 [animation-delay:200ms] ${notice && !error ? "mt-4" : "mt-7"}`}
+      >
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="email-field" className="text-sm font-medium text-zinc-700">
+            Email
+          </label>
+          <div className="relative">
+            <input
+              type="email"
+              id="email-field"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@facility.rw"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              className={`${INPUT_CLASS} pr-3.5`}
+              required
+            />
+            <MailIcon className={FIELD_ICON_CLASS} />
           </div>
-
-          {/* Form */}
-          <form id="login-form" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-              Email
-              <input
-                type="email"
-                id="email-field"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Enter your email"
-                autoComplete="email"
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                required
-              />
-              <span className="text-xs text-zinc-400">
-                Demo {ROLE_TABS.find((t) => t.role === selectedRole)?.label} emails: {emailsForRole.join(", ")}
-              </span>
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-              Password
-              <div className="relative">
-                <input
-                  id="password-field"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
-                  className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-zinc-900 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((show) => !show)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 right-3 flex items-center text-zinc-400 transition-colors hover:text-zinc-600"
-                >
-                  <EyeIcon open={showPassword} />
-                </button>
-              </div>
-            </label>
-
-            <div className="flex justify-end">
-              <Link
-                href="/forgot-password"
-                className="text-xs font-medium text-teal-700 hover:text-teal-600"
-              >
-                Forgot Password?
-              </Link>
-            </div>
-
-            {notice && !error && (
-              <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                {notice}
-              </p>
-            )}
-            {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              id="login-submit-btn"
-              disabled={isSubmitting}
-              className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-teal-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmitting ? "Signing in…" : "Log In →"}
-            </button>
-          </form>
         </div>
-      </div>
-    </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="password-field" className="text-sm font-medium text-zinc-700">
+            Password
+          </label>
+          <div className="relative">
+            <input
+              ref={passwordRef}
+              id="password-field"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              className={`${INPUT_CLASS} pr-11`}
+              required
+            />
+            <IconLock className={FIELD_ICON_CLASS} />
+            <button
+              type="button"
+              onClick={() => setShowPassword((show) => !show)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className={`absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-600 ${FOCUS_RING_CLASS}`}
+            >
+              <EyeIcon open={showPassword} />
+            </button>
+          </div>
+        </div>
+
+        <div className="-mt-1 flex justify-end">
+          <Link
+            href="/forgot-password"
+            className={`text-xs font-medium text-teal-700 hover:text-teal-600 ${FOCUS_RING_CLASS}`}
+          >
+            Forgot password?
+          </Link>
+        </div>
+
+        {error && (
+          <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          id="login-submit-btn"
+          disabled={isSubmitting}
+          className="flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 font-semibold text-white shadow-sm shadow-teal-900/20 transition hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isSubmitting && <Spinner />}
+          {isSubmitting ? "Signing in…" : "Log in"}
+        </button>
+      </form>
+
+      {demoGroups.length > 0 && (
+        <div className="animate-auth-rise mt-5 [animation-delay:280ms]">
+          <button
+            type="button"
+            onClick={() => setShowDemoAccounts((show) => !show)}
+            aria-expanded={showDemoAccounts}
+            aria-controls="demo-accounts"
+            className={`mx-auto flex items-center gap-1 px-1 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-800 ${FOCUS_RING_CLASS}`}
+          >
+            Demo accounts
+            <IconChevronDown
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${showDemoAccounts ? "rotate-180" : ""}`}
+            />
+          </button>
+          {/* Animating grid rows from 0fr to 1fr opens the list at its own
+              height, so the centred form slides instead of jumping. `inert`
+              keeps the collapsed buttons out of the tab order. */}
+          <div
+            id="demo-accounts"
+            inert={!showDemoAccounts}
+            className={`grid transition-[grid-template-rows] duration-200 ease-out ${showDemoAccounts ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+          >
+            <div className="overflow-hidden">
+              <div className="mt-3 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-100">
+                <p className="text-[11px] text-zinc-500">Pick one to fill in the email.</p>
+                <ul className="mt-2.5 flex flex-col gap-2">
+                  {demoGroups.map(({ role, emails }) => (
+                    <li key={role} className="grid gap-1 sm:grid-cols-[8.75rem_1fr] sm:items-baseline sm:gap-3">
+                      <span className="text-[11px] font-medium text-zinc-500">{titleForRole(role)}</span>
+                      <span className="flex flex-wrap gap-1.5">
+                        {emails.map((demoEmail) => (
+                          <button
+                            key={demoEmail}
+                            type="button"
+                            title={demoEmail}
+                            aria-label={`Use ${demoEmail}`}
+                            onClick={() => fillDemoEmail(demoEmail)}
+                            className="rounded-full bg-white px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-200 transition hover:text-teal-800 hover:ring-teal-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
+                          >
+                            {demoEmail.split("@")[0]}
+                          </button>
+                        ))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </AuthShell>
   );
 }
