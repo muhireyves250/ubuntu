@@ -193,4 +193,35 @@ describe("RiskReviewPanel", () => {
       expect(container.textContent).not.toMatch(/\b(ai|rules?|rule engine|model)\b/i);
     });
   });
+  describe("after the case is closed", () => {
+    it("says how the case ended and when", async () => {
+      showReview({
+        ...decided,
+        level: "GREEN",
+        outcome: { outcome: "STABLE", at: "2026-11-05T10:00:00.000Z" },
+      });
+      setup(false);
+      expect(await screen.findByText(/Case closed: stable/i)).toBeInTheDocument();
+    });
+
+    it("words a maternal death outcome plainly", async () => {
+      showReview({ ...decided, outcome: { outcome: "MATERNAL_DEATH", at: null } });
+      setup(false);
+      expect(await screen.findByText(/Case closed: maternal death/i)).toBeInTheDocument();
+    });
+
+    it("shows nothing about an outcome while the case is open", async () => {
+      showReview({ ...pending, outcome: null });
+      setup(false);
+      await screen.findByText(/waiting for a clinician/i);
+      expect(screen.queryByText(/case closed/i)).not.toBeInTheDocument();
+    });
+
+    it("copes with an answer that has no outcome field", async () => {
+      showReview(pending);
+      setup(false);
+      await screen.findByText(/waiting for a clinician/i);
+      expect(screen.queryByText(/case closed/i)).not.toBeInTheDocument();
+    });
+  });
 });
