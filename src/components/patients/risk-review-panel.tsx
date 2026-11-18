@@ -14,6 +14,12 @@ const LEVELS: { value: RiskLevel; label: string }[] = [
 
 const RANK: Record<RiskLevel, number> = { green: 0, yellow: 1, orange: 2, red: 3 };
 
+/** "Blood pressure and haemoglobin have not been recorded" */
+function missingSentence(missing: string[]): string {
+  const list = missing.length === 1 ? missing[0] : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
+  return `${list.charAt(0).toUpperCase()}${list.slice(1)} ${missing.length === 1 ? "has" : "have"} not been recorded, so this colour may be lower than it should be.`;
+}
+
 /**
  * The one risk colour for a visit, why it is that colour, and (for a clinician)
  * the form to confirm or change it. It never says how the colour was worked out.
@@ -49,6 +55,12 @@ export function RiskReviewPanel({ visitId, canDecide }: { visitId: string; canDe
           </span>
         )}
       </div>
+
+      {review.missing.length > 0 && (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+          {missingSentence(review.missing)}
+        </p>
+      )}
 
       {review.reasons.length > 0 && (
         <ul className="list-disc space-y-0.5 pl-5 text-sm text-zinc-700 dark:text-zinc-300">
