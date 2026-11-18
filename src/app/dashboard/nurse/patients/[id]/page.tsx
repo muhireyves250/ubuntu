@@ -41,6 +41,7 @@ import { usePatientAccess } from "@/lib/patients/patient-access-api";
 import { getInitials, fullName } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
 import { RiskReviewPanel } from "@/components/patients/risk-review-panel";
+import { useWizardStarted, wizardOpen } from "@/lib/patients/use-wizard-open";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
 import { IconChevronDown, IconEdit, IconAlert, IconClipboard } from "@/components/dashboard/icons";
 
@@ -101,6 +102,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
     ? (referrals.find((r) => r.id === access.activeReferralId) ?? null)
     : null;
   const { user } = useAuth();
+  const wizard = useWizardStarted();
   const isReadOnly = access?.mode === "view_only";
   const readOnlyReason =
     access?.reason === "administrator"
@@ -262,8 +264,18 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
 
       {isWaitingForLabs ? (
         <AwaitingLabsBlocker patient={patient} visit={latestVisit!} />
-      ) : needsFinalization && !isReadOnly ? (
-        <FinalizeAssessmentBlocker patient={patient} visit={latestVisit!} onFinalized={finalizeAssessment} activeReferral={activeReferral} />
+      ) : wizardOpen(needsFinalization, wizard.started) && !isReadOnly ? (
+        <FinalizeAssessmentBlocker
+          patient={patient}
+          visit={latestVisit!}
+          onFinalized={async (visitId, treatment, followUpPlan) => {
+            // Saving flips the visit to finalized; keep the wizard up for its last step.
+            wizard.begin();
+            await finalizeAssessment(visitId, treatment, followUpPlan);
+          }}
+          onDone={wizard.done}
+          activeReferral={activeReferral}
+        />
       ) : (
         <>
           {activeReferral && <ActiveReferralBanner patient={patient} referral={activeReferral} />}
