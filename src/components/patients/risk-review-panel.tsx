@@ -56,6 +56,17 @@ export function RiskReviewPanel({ visitId, canDecide }: { visitId: string; canDe
         )}
       </div>
 
+      {review.outcome && (
+        <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+          Case closed: {review.outcome.label}
+          {review.outcome.at && (
+            <span className="ml-1 font-normal">
+              ({new Date(review.outcome.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })})
+            </span>
+          )}
+        </p>
+      )}
+
       {review.missing.length > 0 && (
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
           {missingSentence(review.missing)}

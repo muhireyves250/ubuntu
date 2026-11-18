@@ -36,6 +36,8 @@ interface BackendRiskReview {
     decidedAt: string | null;
     decidedBy: { firstName: string; lastName: string } | null;
   } | null;
+  /** How the visit's referral ended, once it has closed. */
+  outcome?: { outcome: string; at: string | null } | null;
 }
 
 /** The one colour a clinician sees for a visit, with its reasons. */
@@ -54,6 +56,8 @@ export interface RiskReview {
     decidedAt: string | null;
     decidedBy: string;
   } | null;
+  /** How the visit's referral ended ("maternal death"), once it has closed. */
+  outcome: { label: string; at: string | null } | null;
 }
 
 export function toFrontendRiskReview(r: BackendRiskReview): RiskReview {
@@ -64,6 +68,9 @@ export function toFrontendRiskReview(r: BackendRiskReview): RiskReview {
     provisional: r.provisional,
     reasons: r.reasons,
     missing: r.missing ?? [],
+    outcome: r.outcome
+      ? { label: r.outcome.outcome.replace(/_/g, " ").toLowerCase(), at: r.outcome.at }
+      : null,
     decision: r.decision
       ? {
           level: TO_FRONTEND[r.decision.level] ?? "green",
