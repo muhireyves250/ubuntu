@@ -40,6 +40,7 @@ import {
 import { usePatientAccess } from "@/lib/patients/patient-access-api";
 import { getInitials, fullName } from "@/lib/format";
 import { RiskBadge } from "@/components/patients/risk-badge";
+import { RiskReviewPanel } from "@/components/patients/risk-review-panel";
 import type { Pregnancy, Referral, Visit } from "@/lib/patients/types";
 import { IconChevronDown, IconEdit, IconAlert, IconClipboard } from "@/components/dashboard/icons";
 
@@ -266,6 +267,12 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
       ) : (
         <>
           {activeReferral && <ActiveReferralBanner patient={patient} referral={activeReferral} />}
+          {latestVisit && (
+            <RiskReviewPanel
+              visitId={latestVisit.id}
+              canDecide={(user?.role === "nurse" || user?.role === "gynecologist") && !isReadOnly}
+            />
+          )}
           <div className="scrollbar-hidden flex max-w-full gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
             {TABS.filter((tab) => tab !== "Signs & Symptoms" && !(isReadOnly && tab === "New Assessment")).map((tab) => (
               <button
