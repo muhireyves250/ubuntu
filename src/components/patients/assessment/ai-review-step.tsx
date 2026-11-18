@@ -2,12 +2,14 @@
 
 import { Fragment, useState } from "react";
 import { IconActivity, IconAlert } from "@/components/dashboard/icons";
-import type { Patient, Visit, LabTestResult } from "@/lib/patients/types";
+import type { Visit, LabTestResult } from "@/lib/patients/types";
 import type { RiskPrediction } from "@/lib/patients/risk-prediction-api";
 import { useClinicalReference } from "@/lib/patients/clinical-reference-api";
 import { runAiPrediction, useRiskPredictionForVisit } from "@/lib/patients/use-patients";
 import { queryClient } from "@/lib/query-client";
 import { LabResultCommentBox } from "@/components/patients/lab-result-comment-box";
+import { RiskReviewPanel } from "@/components/patients/risk-review-panel";
+import { useRiskReview } from "@/lib/patients/risk-review-api";
 
 function InterpretationBadge({ value }: { value: LabTestResult["interpretation"] }) {
   if (value === "Normal") {
@@ -62,27 +64,20 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-const RISK_BANNER_CONFIG = {
-  red: { bg: "bg-red-50 border-red-300 dark:bg-red-950/20 dark:border-red-900/60", text: "text-red-800 dark:text-red-300", badge: "bg-red-600 text-white", label: "RED CASE — OBSTETRIC EMERGENCY", icon: "🚨" },
-  orange: { bg: "bg-orange-50 border-orange-300 dark:bg-orange-950/20 dark:border-orange-900/60", text: "text-orange-800 dark:text-orange-300", badge: "bg-orange-600 text-white", label: "ORANGE CASE — HIGH COMPLICATION RISK", icon: "⚠" },
-  yellow: { bg: "bg-yellow-50 border-yellow-300 dark:bg-yellow-950/20 dark:border-yellow-900/60", text: "text-yellow-800 dark:text-yellow-300", badge: "bg-amber-500 text-white", label: "YELLOW CASE — ELEVATED RISK", icon: "⚡" },
-  green: { bg: "bg-teal-50 border-teal-300 dark:bg-teal-950/20 dark:border-teal-900/60", text: "text-teal-800 dark:text-teal-300", badge: "bg-teal-600 text-white", label: "GREEN CASE — LOW CLINICAL RISK", icon: "✓" },
-};
-
 export function AiReviewStep({
-  patient,
   visit,
-  onConfirm,
+  onContinue,
 }: {
-  patient: Patient;
   visit: Visit;
-  onConfirm: (prediction: RiskPrediction, confirmed: boolean) => void;
+  onContinue: (prediction: RiskPrediction | null) => void;
 }) {
   const labResults: LabTestResult[] = visit.labResults ?? [];
   const { symptoms: SYMPTOM_CHECKLIST } = useClinicalReference();
   const existingPrediction = useRiskPredictionForVisit(visit.id);
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
   const shownPrediction = prediction ?? existingPrediction;
+  const { review } = useRiskReview(visit.id);
+  const mustDecide = !!review && !review.decided;
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,7 +103,6 @@ export function AiReviewStep({
     .filter(Boolean);
 
   const v = visit.labs;
-  const config = shownPrediction ? RISK_BANNER_CONFIG[shownPrediction.predictedRiskLevel] : null;
 
   const getHbStyle = (val: number | undefined) => {
     if (val == null) return "text-zinc-950 dark:text-zinc-50";
@@ -119,24 +113,9 @@ export function AiReviewStep({
 
   return (
     <div className="flex flex-col gap-4">
-      {config && (
-        <div className={`flex items-center justify-between rounded-xl border p-4 shadow-sm ${config.bg} ${config.text}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{config.icon}</span>
-            <div className="text-sm">
-              <span className="font-extrabold uppercase tracking-wide">{config.label}</span>
-              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                For patient <strong className="font-bold text-zinc-800 dark:text-zinc-200">{patient.firstName} {patient.lastName}</strong>
-              </p>
-            </div>
-          </div>
-          <span className={`rounded-lg px-3 py-1.5 text-xs font-black uppercase tracking-wider ${config.badge}`}>
-            {shownPrediction!.predictedRiskLevel} CASE
-          </span>
-        </div>
-      )}
+      <RiskReviewPanel visitId={visit.id} canDecide />
 
-      {shownPrediction?.predictedRiskLevel === "red" && (
+      {review?.level === "red" && (
         <div className="flex items-start gap-2.5 rounded-xl border border-red-300 bg-red-50 p-4 text-red-800 shadow-sm dark:border-red-700 dark:bg-red-950/30 dark:text-red-300">
           <IconAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="text-sm">
@@ -292,31 +271,19 @@ export function AiReviewStep({
         </div>
       </div>
 
-      {shownPrediction && (
+      {mustDecide && (
         <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
-          Confirming or rejecting the AI&apos;s assessment doesn&apos;t change the patient&apos;s
-          status yet — that happens once the whole assessment (Diagnosis, Treatment, Consumables,
-          Follow-up) is finished.
+          Confirm or change the colour to continue.
         </p>
       )}
-      <div className="flex gap-2.5">
-        <button
-          type="button"
-          disabled={!shownPrediction}
-          onClick={() => shownPrediction && onConfirm(shownPrediction, true)}
-          className="flex-1 rounded-xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Confirm AI Assessment →
-        </button>
-        <button
-          type="button"
-          disabled={!shownPrediction}
-          onClick={() => shownPrediction && onConfirm(shownPrediction, false)}
-          className="flex-1 rounded-xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-        >
-          Reject &amp; Continue
-        </button>
-      </div>
+      <button
+        type="button"
+        disabled={mustDecide}
+        onClick={() => onContinue(shownPrediction)}
+        className="w-full rounded-xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Continue →
+      </button>
     </div>
   );
 }
