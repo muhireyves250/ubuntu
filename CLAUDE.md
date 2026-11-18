@@ -11,9 +11,10 @@ pnpm dev        # start dev server
 pnpm build      # production build
 pnpm start      # serve production build
 pnpm lint       # run ESLint
+pnpm test       # run unit and component tests (Vitest, Testing Library, MSW)
 ```
 
-No test suite is configured yet.
+Tests sit beside the code as `*.test.ts(x)`. Fake the API with MSW (`src/test/server.ts`).
 
 ## Stack
 
