@@ -154,4 +154,43 @@ describe("RiskReviewPanel", () => {
     await screen.findByText(/waiting for a clinician/i);
     expect(container.textContent).not.toMatch(/\b(ai|rules?|rule engine|model)\b/i);
   });
+  describe("incomplete information", () => {
+    it("says which measurements are not recorded and that the colour may be too low", async () => {
+      showReview({ ...pending, level: "GREEN", reasons: [], missing: ["blood pressure", "haemoglobin"] });
+      setup(false);
+      expect(
+        await screen.findByText(/Blood pressure and haemoglobin have not been recorded/i),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/may be lower than it should be/i)).toBeInTheDocument();
+    });
+
+    it("names a single missing measurement in the singular", async () => {
+      showReview({ ...pending, missing: ["haemoglobin"] });
+      setup(false);
+      expect(await screen.findByText(/Haemoglobin has not been recorded/i)).toBeInTheDocument();
+    });
+
+    it("shows no note when nothing is missing", async () => {
+      showReview({ ...pending, missing: [] });
+      setup(false);
+      await screen.findByText(/waiting for a clinician/i);
+      expect(screen.queryByText(/not been recorded/i)).not.toBeInTheDocument();
+    });
+
+    it("copes with an answer that has no list of missing measurements", async () => {
+      const { missing, ...old } = pending;
+      void missing;
+      showReview(old);
+      setup(false);
+      await screen.findByText(/waiting for a clinician/i);
+      expect(screen.queryByText(/not been recorded/i)).not.toBeInTheDocument();
+    });
+
+    it("keeps the note free of engine wording", async () => {
+      showReview({ ...pending, missing: ["blood pressure"] });
+      const { container } = setup(true);
+      await screen.findByText(/has not been recorded/i);
+      expect(container.textContent).not.toMatch(/\b(ai|rules?|rule engine|model)\b/i);
+    });
+  });
 });
