@@ -8,7 +8,9 @@ import { FinalDiagnosisStep } from "@/components/patients/assessment/final-diagn
 import { TreatmentStep } from "@/components/patients/assessment/treatment-step";
 import { ConsumablesStep } from "@/components/patients/assessment/consumables-step";
 import { VaccinationStep } from "@/components/patients/assessment/vaccination-step";
-import { escalateVisitIfCritical, confirmAiRisk, closeReferral } from "@/lib/patients/use-patients";
+import { escalateVisitIfCritical, closeReferral } from "@/lib/patients/use-patients";
+import { useRiskReview } from "@/lib/patients/risk-review-api";
+import { statusUpdateFor } from "@/lib/patients/status-update";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 
 const STEPS = [
@@ -94,7 +96,6 @@ function FollowupDischargeStep({
 }
 
 export function FinalizeAssessmentBlocker({
-  patient,
   visit,
   onFinalized,
   onDone,
@@ -108,7 +109,8 @@ export function FinalizeAssessmentBlocker({
 }) {
   const [step, setStep] = useState<Step>("AI Review");
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
-  const [predictionConfirmed, setPredictionConfirmed] = useState(false);
+  const { review } = useRiskReview(visit.id);
+  const decidedLevel = review?.decided ? review.level : null;
   const [finalized, setFinalized] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
@@ -117,30 +119,24 @@ export function FinalizeAssessmentBlocker({
   const stepIndex = STEPS.indexOf(step);
 
   async function applyStatusUpdate() {
-    if (!prediction) return;
+    if (!decidedLevel) return;
     setIsTransferring(true);
     setTransferError(null);
     try {
-      await confirmAiRisk(visit.id, prediction.predictedRiskLevel, [
-        `AI predicted ${prediction.predictedRiskLevel} risk (${prediction.modelVersion})`,
-        ...prediction.suggestedDiagnoses.map((d) => d.title),
-      ]);
-      if (prediction.predictedRiskLevel === "red") {
+      // The clinician's decision is already recorded; this only acts on it.
+      const { escalate, closeAs } = statusUpdateFor(decidedLevel, !!activeReferral);
+      if (escalate) {
         // Transfers to a capable facility only now that the patient has
-        // been stabilized through the whole pipeline — not at AI Review.
+        // been stabilized through the whole pipeline — not at the first step.
         await escalateVisitIfCritical(visit, "red");
-      } else if (
-        activeReferral &&
-        (prediction.predictedRiskLevel === "green" || prediction.predictedRiskLevel === "yellow")
-      ) {
+      } else if (closeAs && activeReferral) {
         // Improved enough that the case no longer needs to stay open —
         // close it automatically instead of leaving the nurse to find and
-        // click "Close Case" separately with the same outcome she just
-        // confirmed here.
+        // click "Close Case" separately with the same outcome she just decided.
         await closeReferral(activeReferral.id, {
-          outcome: prediction.predictedRiskLevel === "green" ? "stable" : "improved",
-          outcomeStatement: `Auto-closed — reassessment after treatment confirmed ${prediction.predictedRiskLevel.toUpperCase()} risk.`,
-          riskLevel: prediction.predictedRiskLevel,
+          outcome: closeAs,
+          outcomeStatement: `Auto-closed — reassessment after treatment decided ${decidedLevel.toUpperCase()} risk.`,
+          riskLevel: decidedLevel,
         });
       }
     } catch (err) {
@@ -153,12 +149,10 @@ export function FinalizeAssessmentBlocker({
   }
 
   async function handleFinish() {
-    // Nothing about the patient's status changes just because the nurse
-    // submitted to AI or even confirmed/rejected its finding on that
-    // screen — it's only applied here, once the entire assessment
-    // (Diagnosis, Treatment, Consumables, Follow-up/Discharge) is done,
-    // and only if the nurse actually confirmed the AI's assessment.
-    if (prediction && predictionConfirmed) {
+    // The colour a clinician decided at the first step is already live;
+    // here, once the entire assessment (Diagnosis, Treatment, Consumables,
+    // Follow-up/Discharge) is done, the case is sent onward or closed to match.
+    if (decidedLevel) {
       if (activeReferral) {
         // This patient already has an open red case — ask explicitly
         // before changing its status, rather than silently overriding it.
@@ -192,11 +186,9 @@ export function FinalizeAssessmentBlocker({
 
       {step === "AI Review" && (
         <AiReviewStep
-          patient={patient}
           visit={visit}
-          onConfirm={(pred, confirmed) => {
+          onContinue={(pred) => {
             setPrediction(pred);
-            setPredictionConfirmed(confirmed);
             setStep("Final Diagnosis");
           }}
         />
@@ -236,22 +228,22 @@ export function FinalizeAssessmentBlocker({
         </div>
       )}
 
-      {showStatusConfirm && prediction && (
+      {showStatusConfirm && decidedLevel && (
         <ConfirmModal
           title="Update this patient's status?"
           description={`This patient has an active red case${
             activeReferral?.acceptedByFacility
               ? ` managed by ${activeReferral.acceptedByFacility}`
               : ""
-          }. Based on this assessment, update her status to ${prediction.predictedRiskLevel.toUpperCase()}?${
-            prediction.predictedRiskLevel === "green" || prediction.predictedRiskLevel === "yellow"
+          }. Based on the decision recorded for this visit, update her status to ${decidedLevel.toUpperCase()}?${
+            decidedLevel === "green" || decidedLevel === "yellow"
               ? " This will also close the emergency case automatically."
               : ""
           }`}
           confirmLabel="Update Status"
           loadingLabel="Updating…"
           isLoading={isTransferring}
-          tone={prediction.predictedRiskLevel === "red" ? "danger" : "default"}
+          tone={decidedLevel === "red" ? "danger" : "default"}
           onConfirm={async () => {
             await applyStatusUpdate();
             setShowStatusConfirm(false);
