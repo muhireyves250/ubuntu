@@ -46,7 +46,7 @@ export function FinalDiagnosisStep({ visitId, onContinue }: { visitId: string; o
 
       {prediction && prediction.suggestedDiagnoses.length > 0 && (
         <AiSuggestionCard
-          title="AI suggests"
+          title="Suggested"
           items={prediction.suggestedDiagnoses.map((d) => ({
             key: d.code,
             label: `${d.code} — ${d.title}`,

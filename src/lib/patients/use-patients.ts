@@ -5,7 +5,7 @@ import { keepPreviousData, useQuery, useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { fetchPatients, fetchPatient, createPatientApi, updatePatientApi } from "./patient-api";
 import { fetchPregnanciesForPatient, createPregnancyApi, closePregnancyApi, updatePregnancyApi, type PregnancyUpdatableFields } from "./pregnancy-api";
-import { fetchVisitsForPregnancy, fetchVisitsForPatient, createVisitApi, finalizeVisitApi, confirmAiRiskApi, createEmergencyVisitApi, escalateVisitApi } from "./visit-api";
+import { fetchVisitsForPregnancy, fetchVisitsForPatient, createVisitApi, finalizeVisitApi, createEmergencyVisitApi, escalateVisitApi } from "./visit-api";
 import { fetchAllCommunityVisits, fetchCommunityVisitsForPregnancy, fetchMyCommunityVisits } from "./community-visit-api";
 import { fetchVaccinationsForPregnancy, recordVaccinationApi, type Vaccination } from "./vaccination-api";
 import { fetchDiagnosesForVisit, createDiagnosisApi, type VisitDiagnosis } from "./diagnosis-api";
@@ -660,21 +660,7 @@ export async function finalizeAssessment(
   await queryClient.invalidateQueries({ queryKey: ["visits"] });
 }
 
-// Sets the visit's actual risk classification to match an AI-confirmed
-// finding as soon as the nurse proceeds past it — independent of the
-// emergency transfer, which still only happens once treatment completes.
-// Invalidating ["visits"] (not just this pregnancy's key) so risk badges
-// on patient lists/dashboards refresh immediately too.
-export async function confirmAiRisk(
-  visitId: string,
-  riskLevel: RiskLevel,
-  reasons: string[],
-): Promise<void> {
-  await confirmAiRiskApi(visitId, riskLevel, reasons);
-  await queryClient.invalidateQueries({ queryKey: ["visits"] });
-}
-
-// After an AI-confirmed RED, the API opens (or returns) the patient's
+// After a clinician decides RED, the API opens (or returns) the patient's
 // emergency referral and routes it to the right hospital.
 export async function escalateVisitIfCritical(visit: Visit, riskLevel: RiskLevel): Promise<Referral | null> {
   if (riskLevel !== "red") return null;

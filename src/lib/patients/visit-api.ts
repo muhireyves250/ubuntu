@@ -203,13 +203,6 @@ export async function finalizeVisitApi(
   return toFrontendVisit(v);
 }
 
-const RISK_LEVEL_TO_BACKEND: Record<"green" | "yellow" | "orange" | "red", string> = {
-  green: "GREEN",
-  yellow: "YELLOW",
-  orange: "ORANGE",
-  red: "RED",
-};
-
 // Single backend call that finds-or-creates the open pregnancy, creates the
 // visit (forced RED), and finds-or-creates+accepts the emergency referral —
 // replaces what used to be up to 4 sequential client-side round trips.
@@ -236,18 +229,4 @@ export async function createEmergencyVisitApi(
     visit: toFrontendVisit(result.visit),
     referral: toFrontendReferral(result.referral),
   };
-}
-
-export async function confirmAiRiskApi(
-  visitId: string,
-  riskLevel: "green" | "yellow" | "orange" | "red",
-  reasons: string[],
-): Promise<Visit> {
-  const token = getStoredAccessToken();
-  const v = await apiFetch<BackendVisit>(`/visits/${visitId}/confirm-ai-risk`, {
-    method: "POST",
-    body: { riskLevel: RISK_LEVEL_TO_BACKEND[riskLevel], reasons },
-    token: token ?? undefined,
-  });
-  return toFrontendVisit(v);
 }

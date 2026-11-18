@@ -55,7 +55,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     keywords: ["visit", "assessment", "record visit", "anc visit", "checkup", "check-up", "vitals", "vital signs", "blood pressure", "consultation"],
     steps: [
       "Open the patient's page and choose the “New Assessment” tab.",
-      "Work through the steps: Vital signs, Symptoms, Labs, Consultation, AI review, Final diagnosis, Treatment, Consumables, Vaccination and Summary.",
+      "Work through the steps: Vital signs, Symptoms, Labs, Consultation, Risk review, Final diagnosis, Treatment, Consumables, Vaccination and Summary.",
       "If you request lab tests in the Labs step, the patient waits on “awaiting labs” until the lab sends results — then finish the assessment.",
       "Finalize on the Summary step. The visit appears under the “Visit” tab and updates her risk colour.",
     ],
