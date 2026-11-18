@@ -14,7 +14,7 @@ import { statusUpdateFor } from "@/lib/patients/status-update";
 import { ConfirmModal } from "@/components/dashboard/confirm-modal";
 
 const STEPS = [
-  "AI Review",
+  "Risk Review",
   "Final Diagnosis",
   "Treatment",
   "Consumables",
@@ -69,7 +69,7 @@ function FollowupDischargeStep({
       <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
         Follow-up Plan
         <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500">
-          Pre-filled from the AI recommendation — edit as needed.
+          Pre-filled from the recommendation — edit as needed.
         </span>
         <textarea
           rows={3}
@@ -107,7 +107,7 @@ export function FinalizeAssessmentBlocker({
   onDone?: () => void;
   activeReferral?: Referral | null;
 }) {
-  const [step, setStep] = useState<Step>("AI Review");
+  const [step, setStep] = useState<Step>("Risk Review");
   const [prediction, setPrediction] = useState<RiskPrediction | null>(null);
   const { review } = useRiskReview(visit.id);
   const decidedLevel = review?.decided ? review.level : null;
@@ -184,7 +184,7 @@ export function FinalizeAssessmentBlocker({
         ))}
       </div>
 
-      {step === "AI Review" && (
+      {step === "Risk Review" && (
         <AiReviewStep
           visit={visit}
           onContinue={(pred) => {

@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/api/client";
 import { getStoredAccessToken } from "@/lib/auth/auth-context";
 import type { RiskLevel } from "./types";
 
-// The "AI Prediction" tab: a risk estimate for each of the patient's visits,
+// The "Risk Estimates" tab: a risk estimate for each of the patient's visits,
 // computed by the API (GET /patients/:id/risk-predictions).
 export interface VisitPrediction {
   eclampsiaRisk: number; // 0–1

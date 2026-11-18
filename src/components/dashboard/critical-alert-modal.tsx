@@ -64,7 +64,7 @@ export function CriticalAlertModal({
         {/* Body */}
         <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
           {hasCritical
-            ? "Emergency alert has been dispatched to the attending ANC Nurse. The AI Risk module has been updated with this patient's critical values."
+            ? "Emergency alert has been dispatched to the attending ANC Nurse. The patient's risk colour has been updated with these critical values."
             : "Laboratory results have been successfully recorded and are now visible to the attending ANC Nurse."}
         </p>
 
@@ -83,7 +83,7 @@ export function CriticalAlertModal({
               </li>
               <li className="flex items-center gap-2">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-                AI Risk module updated
+                Risk colour updated
               </li>
             </ul>
           </div>

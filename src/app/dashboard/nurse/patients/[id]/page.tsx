@@ -53,7 +53,7 @@ const TABS = [
   "Signs & Symptoms",
   "Vaccination",
   "CHW Reports",
-  "AI Prediction",
+  "Risk Estimates",
   "Specialist Notes",
   "Comments",
 ] as const;
@@ -293,7 +293,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             ))}
           </div>
 
-          <div className={`rounded-xl border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900 ${activeTab === "Medical History" || activeTab === "Patient Details" || activeTab === "Pregnancy" || activeTab === "Visit" || activeTab === "New Assessment" || activeTab === "CHW Reports" || activeTab === "AI Prediction" || activeTab === "Comments" ? "flex min-h-0 flex-1 flex-col p-3" : "p-5"}`}>
+          <div className={`rounded-xl border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900 ${activeTab === "Medical History" || activeTab === "Patient Details" || activeTab === "Pregnancy" || activeTab === "Visit" || activeTab === "New Assessment" || activeTab === "CHW Reports" || activeTab === "Risk Estimates" || activeTab === "Comments" ? "flex min-h-0 flex-1 flex-col p-3" : "p-5"}`}>
         {activeTab === "Patient Details" && (
           <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
             <PatientDetailsTab patient={patient} />
@@ -512,7 +512,7 @@ function PatientDetailContent({ patientId }: { patientId: string }) {
             <ChwReportsTab communityVisits={allCommunityVisits} canReview={user?.role === "nurse" && !isReadOnly} />
           </div>
         )}
-        {activeTab === "AI Prediction" && (
+        {activeTab === "Risk Estimates" && (
           <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto p-2">
             <AiPredictionTab patientId={patientId} />
           </div>

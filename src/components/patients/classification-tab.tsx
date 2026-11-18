@@ -52,7 +52,7 @@ export function ClassificationTab({
       {triggeredSymptoms.length > 0 && (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Triggered rules
+            Reasons
           </p>
           <ul className="flex flex-wrap gap-2">
             {triggeredSymptoms.map((symptom) => (

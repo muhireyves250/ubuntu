@@ -281,7 +281,7 @@ export function SummaryStep({
         disabled={isSubmitting}
         className="w-full rounded-xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Submitting…" : labsOrdered ? "Submit Request to Laboratory" : "Continue to AI Review"}
+        {isSubmitting ? "Submitting…" : labsOrdered ? "Submit Request to Laboratory" : "Continue to Risk Review"}
       </button>
     </form>
   );

@@ -26,7 +26,7 @@ const INTERPRETATION_COLORS: Record<string, string> = {
   Critical: "text-red-700 dark:text-red-400",
 };
 
-const TABS = ["Vitals", "Symptoms", "Labs", "AI Review", "Treatment", "Diagnosis", "Medications", "Billing"] as const;
+const TABS = ["Vitals", "Symptoms", "Labs", "Risk Review", "Treatment", "Diagnosis", "Medications", "Billing"] as const;
 type Tab = (typeof TABS)[number];
 
 function VitalRow({ label, value }: { label: string; value: string | number | undefined }) {
@@ -171,10 +171,10 @@ export function VisitDetailTabs({ visit }: { visit: Visit }) {
         </div>
       )}
 
-      {tab === "AI Review" && (
+      {tab === "Risk Review" && (
         <div className="flex flex-col gap-3">
           {!prediction ? (
-            <p className="text-sm text-zinc-400">AI review was not run for this visit.</p>
+            <p className="text-sm text-zinc-400">No risk review was recorded for this visit.</p>
           ) : (
             <>
               {riskConfig && (
@@ -191,7 +191,7 @@ export function VisitDetailTabs({ visit }: { visit: Visit }) {
               </div>
               <div className="rounded-lg border border-teal-200 bg-teal-50/40 p-3 dark:border-teal-900/25 dark:bg-teal-950/25">
                 <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400">
-                  AI Recommendation
+                  Recommendation
                 </span>
                 <p className="text-sm text-zinc-700 dark:text-zinc-300">{prediction.recommendation}</p>
               </div>

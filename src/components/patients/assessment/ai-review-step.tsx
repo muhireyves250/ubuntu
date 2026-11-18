@@ -92,7 +92,7 @@ export function AiReviewStep({
       // complete — see FinalizeAssessmentBlocker's Vaccination step — not
       // immediately here, so the patient is stabilized before transport.
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reach AI prediction service. You may still proceed manually.");
+      setError(err instanceof Error ? err.message : "Could not get risk estimates right now. You may still proceed manually.");
     } finally {
       setIsRunning(false);
     }
@@ -229,15 +229,15 @@ export function AiReviewStep({
         <div className="lg:col-span-2 overflow-hidden rounded-xl border border-zinc-300 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900 flex flex-col">
           <div className="flex items-center gap-2 border-b border-zinc-300 bg-[#ffeedb] px-4 py-2.5 dark:border-zinc-700 dark:bg-orange-950/40">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-teal-800 text-[10px] font-extrabold dark:bg-zinc-900 dark:text-teal-400">
-              AI
+              <IconActivity className="h-4 w-4" />
             </span>
-            <h3 className="font-bold text-sm text-zinc-950 dark:text-zinc-50">AI Diagnostic Intelligence</h3>
+            <h3 className="font-bold text-sm text-zinc-950 dark:text-zinc-50">Risk estimates</h3>
           </div>
           <div className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto max-h-[50vh] scrollbar-thin">
             {!shownPrediction ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Run the AI model against this visit&apos;s vitals, symptoms, consultation history, and labs.
+                  Estimate the chance of complications from this visit&apos;s vitals, symptoms, consultation history, and labs.
                 </p>
                 {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
                 <button
@@ -246,7 +246,7 @@ export function AiReviewStep({
                   onClick={handleSendToAi}
                   className="rounded-xl bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isRunning ? "Sending…" : "Send to AI"}
+                  {isRunning ? "Sending…" : "Get estimates"}
                 </button>
               </div>
             ) : (
@@ -259,7 +259,7 @@ export function AiReviewStep({
                 </div>
                 <div className="rounded-lg border border-teal-200 bg-teal-50/40 p-3 dark:border-teal-900/25 dark:bg-teal-950/25 mt-auto">
                   <span className="text-[9px] font-extrabold uppercase tracking-wider text-teal-700 dark:text-teal-400 block mb-1">
-                    AI Recommendation
+                    Recommendation
                   </span>
                   <p className="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 font-medium">
                     {shownPrediction.recommendation}

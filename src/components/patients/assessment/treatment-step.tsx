@@ -49,7 +49,7 @@ export function TreatmentStep({ visitId, onContinue }: { visitId: string; onCont
 
       {prediction && prediction.suggestedTreatments.length > 0 && (
         <AiSuggestionCard
-          title="AI suggests"
+          title="Suggested"
           items={prediction.suggestedTreatments.map((name) => ({
             key: name,
             label: name,

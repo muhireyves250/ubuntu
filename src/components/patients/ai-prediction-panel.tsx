@@ -231,7 +231,7 @@ export function AiPredictionTab({ patientId }: { patientId: string }) {
           </svg>
         </div>
         <p className="font-medium text-zinc-600 dark:text-zinc-400">No prediction available</p>
-        <p className="text-sm text-zinc-400">Record an assessment first to generate AI risk predictions.</p>
+        <p className="text-sm text-zinc-400">Record an assessment first to see risk estimates.</p>
       </div>
     );
   }
@@ -245,7 +245,7 @@ export function AiPredictionTab({ patientId }: { patientId: string }) {
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-teal-700 dark:bg-zinc-900 dark:text-teal-400">
               <IconActivity className="h-4 w-4" />
             </span>
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">AI Prediction</h3>
+            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">Risk Estimates</h3>
           </div>
           <div className="flex items-center gap-2">
             <span
@@ -273,7 +273,7 @@ export function AiPredictionTab({ patientId }: { patientId: string }) {
               {latest.riskLevel} Case
             </span>
             <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-teal-700 ring-1 ring-teal-200 dark:bg-zinc-900 dark:text-teal-400 dark:ring-teal-900">
-              AI · Simulated
+              Estimate
             </span>
           </div>
         </div>
